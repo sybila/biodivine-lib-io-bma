@@ -1,0 +1,21 @@
+[package]
+name = "biodivine-lib-bma-data"
+version = "0.0.1"
+authors = ["Ondřej Huvar <xhuvar@fi.muni.cz>", "Samuel Pastva <sam.pastva@gmail.com>"]
+edition = "2021"
+description = "Library for working with models in BMA format."
+homepage = "https://github.com/sybila/biodivine-lib-bma-data"
+repository = "https://github.com/sybila/biodivine-lib-bma-data"
+readme = "README.md"
+keywords = ["boolean-network", "BMA", "systems-biology"]
+categories = ["science", "simulation"]
+license = "MIT"
+
+[lib]
+name = "biodivine_lib_bma_data"
+path = "src/lib.rs"
+
+[dependencies]
+biodivine-lib-param-bn = ">=0.5.11, <1.0.0"
+clap = { version = "4.1.4", features = ["derive"] }
+rand = "0.8.5"
