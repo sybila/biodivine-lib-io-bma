@@ -1,138 +1,128 @@
+use crate::enums::{RelationshipType, VariableType};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Custom deserializer function for (potentially) quoted integers (like "42").
+///
+/// For some reason, this is XML-specific, and we have to use different variant for JSON.
+pub fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: String = String::deserialize(deserializer)?;
+    let trimmed = s.trim_matches('"');
+    u32::from_str(trimmed).map_err(serde::de::Error::custom)
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "Model")]
-struct Model {
-    #[serde(rename = "Id")]
-    id: u32,
-    #[serde(rename = "Name")]
-    name: String,
-    #[serde(rename = "BioCheckVersion")]
-    biocheck_version: String,
-    #[serde(rename = "Description")]
-    description: String,
-    #[serde(rename = "CreatedDate")]
-    created_date: String,
-    #[serde(rename = "ModifiedDate")]
-    modified_date: String,
-    #[serde(rename = "Layout")]
-    layout: Layout,
-    #[serde(rename = "Containers")]
-    containers: Containers,
-    #[serde(rename = "Variables")]
-    variables: Variables,
-    #[serde(rename = "Relationships")]
-    relationships: Relationships,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Layout {
-    #[serde(rename = "Columns")]
-    columns: u32,
-    #[serde(rename = "Rows")]
-    rows: u32,
-    #[serde(rename = "ZoomLevel")]
-    zoom_level: u32,
-    #[serde(rename = "PanX")]
-    pan_x: i32,
-    #[serde(rename = "PanY")]
-    pan_y: i32,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Containers {
-    #[serde(rename = "Container")]
-    container: Vec<Container>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Container {
-    #[serde(rename = "Id")]
-    id: u32,
-    #[serde(rename = "Name")]
-    name: String,
-    #[serde(rename = "PositionX")]
-    position_x: f64,
-    #[serde(rename = "PositionY")]
-    position_y: f64,
-    #[serde(rename = "Size")]
-    size: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Variables {
-    #[serde(rename = "Variable")]
-    variable: Vec<Variable>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Variable {
-    #[serde(rename = "Id")]
-    id: u32,
-    #[serde(rename = "Name")]
-    name: String,
-    #[serde(rename = "ContainerId")]
-    container_id: u32,
-    #[serde(rename = "Type")]
-    r#type: String,
-    #[serde(rename = "RangeFrom")]
-    range_from: f64,
-    #[serde(rename = "RangeTo")]
-    range_to: f64,
-    #[serde(rename = "Formula")]
-    formula: String,
-    #[serde(rename = "PositionX")]
-    position_x: f64,
-    #[serde(rename = "PositionY")]
-    position_y: f64,
-    #[serde(rename = "CellX")]
-    cell_x: u32,
-    #[serde(rename = "CellY")]
-    cell_y: u32,
-    #[serde(rename = "Angle")]
-    angle: f64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Relationships {
-    #[serde(rename = "Relationship")]
-    relationship: Vec<Relationship>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Relationship {
-    #[serde(rename = "Id")]
-    id: u32,
-    #[serde(rename = "ContainerId")]
-    container_id: u32,
-    #[serde(rename = "FromVariableId")]
-    from_variable_id: u32,
-    #[serde(rename = "ToVariableId")]
-    to_variable_id: u32,
-    #[serde(rename = "Type")]
-    r#type: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct XmlBmaModel {
-    #[serde(rename = "Id")]
-    id: u32,
+    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    pub id: u32,
     #[serde(rename = "Name")]
-    name: String,
+    pub name: String,
     #[serde(rename = "BioCheckVersion")]
-    biocheck_version: String,
+    pub biocheck_version: String,
     #[serde(rename = "Description")]
-    description: String,
+    pub description: String,
     #[serde(rename = "CreatedDate")]
-    created_date: String,
+    pub created_date: String,
     #[serde(rename = "ModifiedDate")]
-    modified_date: String,
+    pub modified_date: String,
     #[serde(rename = "Layout")]
-    layout: Layout,
+    pub layout: XmlLayout,
     #[serde(rename = "Containers")]
-    containers: Containers,
+    pub containers: XmlContainers,
     #[serde(rename = "Variables")]
-    variables: Variables,
+    pub variables: XmlVariables,
     #[serde(rename = "Relationships")]
-    relationships: Relationships,
+    pub relationships: XmlRelationships,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlLayout {
+    #[serde(rename = "Columns", deserialize_with = "deser_quoted_int")]
+    pub columns: u32,
+    #[serde(rename = "Rows", deserialize_with = "deser_quoted_int")]
+    pub rows: u32,
+    #[serde(rename = "ZoomLevel")]
+    pub zoom_level: f32,
+    #[serde(rename = "PanX")]
+    pub pan_x: i32,
+    #[serde(rename = "PanY")]
+    pub pan_y: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlContainers {
+    #[serde(rename = "Container")]
+    pub container: Vec<XmlContainer>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlContainer {
+    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    pub id: u32,
+    #[serde(rename = "Name")]
+    pub name: String,
+    #[serde(rename = "PositionX")]
+    pub position_x: f64,
+    #[serde(rename = "PositionY")]
+    pub position_y: f64,
+    #[serde(rename = "Size", deserialize_with = "deser_quoted_int")]
+    pub size: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlVariables {
+    #[serde(rename = "Variable")]
+    pub variable: Vec<XmlVariable>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlVariable {
+    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    pub id: u32,
+    #[serde(rename = "Name")]
+    pub name: String,
+    #[serde(rename = "ContainerId", deserialize_with = "deser_quoted_int")]
+    pub container_id: u32,
+    #[serde(rename = "Type")]
+    pub r#type: VariableType,
+    #[serde(rename = "RangeFrom", deserialize_with = "deser_quoted_int")]
+    pub range_from: u32,
+    #[serde(rename = "RangeTo", deserialize_with = "deser_quoted_int")]
+    pub range_to: u32,
+    #[serde(rename = "Formula")]
+    pub formula: String,
+    #[serde(rename = "PositionX")]
+    pub position_x: f64,
+    #[serde(rename = "PositionY")]
+    pub position_y: f64,
+    #[serde(rename = "CellX", deserialize_with = "deser_quoted_int")]
+    pub cell_x: u32,
+    #[serde(rename = "CellY", deserialize_with = "deser_quoted_int")]
+    pub cell_y: u32,
+    #[serde(rename = "Angle")]
+    pub angle: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlRelationships {
+    #[serde(rename = "Relationship")]
+    pub relationship: Vec<XmlRelationship>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct XmlRelationship {
+    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    pub id: u32,
+    #[serde(rename = "ContainerId", deserialize_with = "deser_quoted_int")]
+    pub container_id: u32,
+    #[serde(rename = "FromVariableId", deserialize_with = "deser_quoted_int")]
+    pub from_variable_id: u32,
+    #[serde(rename = "ToVariableId", deserialize_with = "deser_quoted_int")]
+    pub to_variable_id: u32,
+    #[serde(rename = "Type")]
+    pub r#type: RelationshipType,
 }

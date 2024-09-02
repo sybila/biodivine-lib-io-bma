@@ -1,14 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Model Id="0" Name="Skin1D" BioCheckVersion="3">
   <Description>Description</Description>
-  <CreatedDate>2012-05-30T10:14:04.4761834+01:00</CreatedDate>
-  <ModifiedDate>2012-05-30T12:15:31.1964861+01:00</ModifiedDate>
+  <CreatedDate>2012-10-27T13:16:01.6519909+01:00</CreatedDate>
+  <ModifiedDate>2012-10-27T13:16:01.6519909+01:00</ModifiedDate>
   <Layout>
     <Columns>6</Columns>
     <Rows>5</Rows>
-    <ZoomLevel>100</ZoomLevel>
-    <PanX>646</PanX>
-    <PanY>402</PanY>
+    <ZoomLevel>98.76</ZoomLevel>
+    <PanX>0</PanX>
+    <PanY>95</PanY>
   </Layout>
   <Containers>
     <Container Id="1" Name="">
@@ -115,7 +115,7 @@
       <Type>Constant</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>(4+var(Wnt))/2</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>179</PositionY>
       <CellX>1</CellX>
@@ -127,7 +127,7 @@
       <Type>Constant</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>(2+var(Jagged))/2</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>179</PositionY>
       <CellX>1</CellX>
@@ -139,7 +139,7 @@
       <Type>Constant</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>var(Wnt)/2</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>179</PositionY>
       <CellX>5</CellX>
@@ -151,7 +151,7 @@
       <Type>Constant</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>(2+var(Jagged))/2</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>179</PositionY>
       <CellX>5</CellX>
@@ -247,7 +247,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>109</PositionY>
       <CellX>2</CellX>
@@ -259,7 +259,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>184</PositionY>
       <CellX>2</CellX>
@@ -415,7 +415,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>109</PositionY>
       <CellX>3</CellX>
@@ -427,7 +427,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>184</PositionY>
       <CellX>3</CellX>
@@ -571,7 +571,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>109</PositionY>
       <CellX>4</CellX>
@@ -583,7 +583,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>184</PositionY>
       <CellX>4</CellX>
@@ -715,7 +715,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>109</PositionY>
       <CellX>1</CellX>
@@ -727,7 +727,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>184</PositionY>
       <CellX>1</CellX>
@@ -883,7 +883,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>109</PositionY>
       <CellX>5</CellX>
@@ -895,7 +895,7 @@
       <Type>Default</Type>
       <RangeFrom>0</RangeFrom>
       <RangeTo>4</RangeTo>
-      <Formula>4</Formula>
+      <Formula></Formula>
       <PositionX>159</PositionX>
       <PositionY>184</PositionY>
       <CellX>5</CellX>
@@ -1234,34 +1234,16 @@
       <ToVariableId>92</ToVariableId>
       <Type>Activator</Type>
     </Relationship>
-    <Relationship Id="112">
-      <ContainerId>3</ContainerId>
-      <FromVariableId>33</FromVariableId>
-      <ToVariableId>75</ToVariableId>
-      <Type>Activator</Type>
-    </Relationship>
-    <Relationship Id="113">
-      <ContainerId>16</ContainerId>
-      <FromVariableId>83</FromVariableId>
-      <ToVariableId>72</ToVariableId>
-      <Type>Activator</Type>
-    </Relationship>
-    <Relationship Id="114">
-      <ContainerId>1</ContainerId>
-      <FromVariableId>7</FromVariableId>
-      <ToVariableId>73</ToVariableId>
-      <Type>Activator</Type>
-    </Relationship>
-    <Relationship Id="115">
-      <ContainerId>2</ContainerId>
-      <FromVariableId>20</FromVariableId>
-      <ToVariableId>72</ToVariableId>
-      <Type>Activator</Type>
-    </Relationship>
     <Relationship Id="68">
       <ContainerId>0</ContainerId>
       <FromVariableId>72</FromVariableId>
       <ToVariableId>10</ToVariableId>
+      <Type>Activator</Type>
+    </Relationship>
+    <Relationship Id="72">
+      <ContainerId>1</ContainerId>
+      <FromVariableId>10</FromVariableId>
+      <ToVariableId>73</ToVariableId>
       <Type>Activator</Type>
     </Relationship>
     <Relationship Id="8">
@@ -1310,6 +1292,12 @@
       <ContainerId>0</ContainerId>
       <FromVariableId>41</FromVariableId>
       <ToVariableId>24</ToVariableId>
+      <Type>Activator</Type>
+    </Relationship>
+    <Relationship Id="69">
+      <ContainerId>2</ContainerId>
+      <FromVariableId>24</FromVariableId>
+      <ToVariableId>72</ToVariableId>
       <Type>Activator</Type>
     </Relationship>
     <Relationship Id="19">
@@ -1366,6 +1354,12 @@
       <ToVariableId>37</ToVariableId>
       <Type>Activator</Type>
     </Relationship>
+    <Relationship Id="75">
+      <ContainerId>3</ContainerId>
+      <FromVariableId>37</FromVariableId>
+      <ToVariableId>75</ToVariableId>
+      <Type>Activator</Type>
+    </Relationship>
     <Relationship Id="30">
       <ContainerId>3</ContainerId>
       <FromVariableId>37</FromVariableId>
@@ -1412,6 +1406,12 @@
       <ContainerId>3</ContainerId>
       <FromVariableId>30</FromVariableId>
       <ToVariableId>39</ToVariableId>
+      <Type>Activator</Type>
+    </Relationship>
+    <Relationship Id="70">
+      <ContainerId>16</ContainerId>
+      <FromVariableId>86</FromVariableId>
+      <ToVariableId>72</ToVariableId>
       <Type>Activator</Type>
     </Relationship>
     <Relationship Id="71">
