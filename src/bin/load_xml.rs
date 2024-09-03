@@ -16,13 +16,26 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
         let xml_data = read_to_string(&model_path)
             .unwrap_or_else(|_| panic!("Unable to read file: {}", model_path_str));
 
-        let model = BmaModel::from_xml_str(&xml_data);
-        match model {
-            Ok(_) => {
-                println!("Successfully parsed model: `{model_path_str}`.");
+        let result_model = BmaModel::from_xml_str(&xml_data);
+        match result_model {
+            Ok(bma_model) => {
+                let result_bn = bma_model.to_boolean_network();
+                match result_bn {
+                    Ok(_) => {
+                        println!("Successfully parsed and converted model: `{model_path_str}`.");
+                    }
+                    Err(e) => {
+                        println!(
+                            "Failed to convert model `{}` to BN: {:?}.",
+                            model_path_str, e
+                        );
+                    }
+                }
+
+                println!("Successfully parsed and converted model: `{model_path_str}`.");
             }
             Err(e) => {
-                println!("Failed to parse XML file `{}`: {:?}.", model_path_str, e);
+                println!("Failed to parse JSON file `{}`: {:?}.", model_path_str, e);
             }
         }
     }

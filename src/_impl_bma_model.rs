@@ -3,6 +3,7 @@ use crate::enums::VariableType;
 use crate::json_model::JsonBmaModel;
 use crate::traits::{JsonSerde, XmlSerde};
 use crate::xml_model::XmlBmaModel;
+use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
 use std::collections::HashMap;
 
 impl<'de> JsonSerde<'de> for BmaModel {
@@ -217,5 +218,51 @@ impl From<XmlBmaModel> for BmaModel {
             layout,
             metadata,
         }
+    }
+}
+
+impl BmaModel {
+    pub fn to_regulatory_graph(&self) -> Result<RegulatoryGraph, String> {
+        let mut variables_map: HashMap<u32, String> = HashMap::new();
+        for var in &self.model.variables {
+            let inserted =
+                variables_map.insert(var.id, format!("v_{}_{}", var.id, var.name.clone()));
+            if inserted.is_some() {
+                return Err(format!("Variable ID {} is not unique.", var.id));
+            }
+        }
+        let variables = variables_map.clone().into_values().collect();
+        let mut graph = RegulatoryGraph::new(variables);
+
+        // add regulations
+        self.model
+            .relationships
+            .iter()
+            .try_for_each(|relationship| {
+                let regulator_id = relationship.from_variable;
+                let target_id = relationship.to_variable;
+                let regulator = variables_map
+                    .get(&regulator_id)
+                    .ok_or(format!("Regulator var {} does not exist.", regulator_id))?;
+                let target = variables_map
+                    .get(&target_id)
+                    .ok_or(format!("Target var {} does not exist.", target_id))?;
+                let monotonicity = Some(relationship.relationship_type.into());
+                graph.add_regulation(regulator, target, true, monotonicity)
+            })?;
+
+        Ok(graph)
+    }
+
+    pub fn to_boolean_network(&self) -> Result<BooleanNetwork, String> {
+        let graph = self.to_regulatory_graph()?;
+        let bn = BooleanNetwork::new(graph);
+
+        // add update functions
+        self.model.variables.iter().for_each(|_var| {
+            // todo - convert the formula to update functions
+        });
+
+        Ok(bn)
     }
 }
