@@ -1,5 +1,5 @@
 use biodivine_lib_bma_data::bma_model::BmaModel;
-use biodivine_lib_bma_data::json_model::JsonBmaModel;
+use biodivine_lib_bma_data::traits::JsonSerde;
 use std::fs::{read_dir, read_to_string};
 
 /// Iterate through all models and see if they are parse without error.
@@ -16,9 +16,8 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
         let json_data = read_to_string(&model_path)
             .unwrap_or_else(|_| panic!("Unable to read file: {}", model_path_str));
 
-        let json_model: Result<JsonBmaModel, _> = serde_json::from_str(&json_data);
-
-        match json_model {
+        let model = BmaModel::from_json_str(&json_data);
+        match model {
             Ok(_) => {
                 println!("Successfully parsed model: `{model_path_str}`.");
             }
@@ -36,10 +35,8 @@ fn main() {
     for model_path in selected_model_paths {
         println!("Parsing selected model {:?}:", model_path);
         let json_data = read_to_string(model_path).expect("Unable to read file");
-        let json_model: JsonBmaModel =
-            serde_json::from_str(&json_data).expect("JSON was not well-formatted");
-        let model = BmaModel::from(json_model);
-        println!("Internal structure:\n{:?}\n", model);
+        let model = BmaModel::from_json_str(&json_data).expect("JSON was not well-formatted");
+        println!("Internal BmaModel structure:\n{:?}\n", model);
     }
 
     // 2) now let's iterate through all models and see if they at least parse without error

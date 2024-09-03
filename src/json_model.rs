@@ -28,7 +28,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonBmaModel {
+pub(crate) struct JsonBmaModel {
     #[serde(rename = "Model", alias = "model")]
     pub model: JsonModel,
     #[serde(rename = "Layout", alias = "layout")]
@@ -36,7 +36,7 @@ pub struct JsonBmaModel {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonModel {
+pub(crate) struct JsonModel {
     #[serde(rename = "Name", alias = "name")]
     pub name: String,
     #[serde(rename = "Variables", alias = "variables")]
@@ -46,7 +46,7 @@ pub struct JsonModel {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonVariable {
+pub(crate) struct JsonVariable {
     #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "Id", alias = "id")]
@@ -68,7 +68,7 @@ pub struct JsonVariable {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonRelationship {
+pub(crate) struct JsonRelationship {
     #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(
@@ -92,7 +92,7 @@ pub struct JsonRelationship {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonLayout {
+pub(crate) struct JsonLayout {
     #[serde(rename = "Variables", alias = "variables")]
     pub variables: Vec<JsonLayoutVariable>,
     #[serde(rename = "Containers", alias = "containers")]
@@ -100,7 +100,7 @@ pub struct JsonLayout {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonLayoutVariable {
+pub(crate) struct JsonLayoutVariable {
     #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "Name", alias = "name")]
@@ -126,7 +126,7 @@ pub struct JsonLayoutVariable {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JsonContainer {
+pub(crate) struct JsonContainer {
     #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "Name", alias = "name")]

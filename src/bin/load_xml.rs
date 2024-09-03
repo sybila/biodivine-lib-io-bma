@@ -1,5 +1,5 @@
 use biodivine_lib_bma_data::bma_model::BmaModel;
-use biodivine_lib_bma_data::xml_model::XmlBmaModel;
+use biodivine_lib_bma_data::traits::XmlSerde;
 use std::fs::{read_dir, read_to_string};
 
 /// Iterate through all models and see if they are parse without error.
@@ -16,9 +16,8 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
         let xml_data = read_to_string(&model_path)
             .unwrap_or_else(|_| panic!("Unable to read file: {}", model_path_str));
 
-        let xml_model: Result<XmlBmaModel, _> = serde_xml_rs::from_str(&xml_data);
-
-        match xml_model {
+        let model = BmaModel::from_xml_str(&xml_data);
+        match model {
             Ok(_) => {
                 println!("Successfully parsed model: `{model_path_str}`.");
             }
@@ -36,10 +35,8 @@ fn main() {
     for model_path in selected_model_paths {
         println!("Parsing selected model {:?}:", model_path);
         let xml_data = read_to_string(model_path).expect("Unable to read file");
-        let xml_model: XmlBmaModel =
-            serde_xml_rs::from_str(&xml_data).expect("XML was not well-formatted");
-        let model = BmaModel::from(xml_model);
-        println!("Internal structure:\n{:?}\n", model);
+        let model = BmaModel::from_xml_str(&xml_data).expect("XML was not well-formatted");
+        println!("Internal BmaModel structure:\n{:?}\n", model);
     }
 
     // 2) now let's iterate through all models and see if they at least parse without error

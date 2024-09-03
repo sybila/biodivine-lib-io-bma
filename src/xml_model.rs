@@ -16,7 +16,7 @@ where
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "Model")]
-pub struct XmlBmaModel {
+pub(crate) struct XmlBmaModel {
     #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "Name")]
@@ -40,7 +40,7 @@ pub struct XmlBmaModel {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlLayout {
+pub(crate) struct XmlLayout {
     #[serde(rename = "Columns", deserialize_with = "deser_quoted_int")]
     pub columns: u32,
     #[serde(rename = "Rows", deserialize_with = "deser_quoted_int")]
@@ -54,13 +54,13 @@ pub struct XmlLayout {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlContainers {
+pub(crate) struct XmlContainers {
     #[serde(rename = "Container")]
     pub container: Vec<XmlContainer>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlContainer {
+pub(crate) struct XmlContainer {
     #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "Name")]
@@ -74,13 +74,13 @@ pub struct XmlContainer {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlVariables {
+pub(crate) struct XmlVariables {
     #[serde(rename = "Variable")]
     pub variable: Vec<XmlVariable>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlVariable {
+pub(crate) struct XmlVariable {
     #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "Name")]
@@ -108,13 +108,13 @@ pub struct XmlVariable {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlRelationships {
+pub(crate) struct XmlRelationships {
     #[serde(rename = "Relationship")]
     pub relationship: Vec<XmlRelationship>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct XmlRelationship {
+pub(crate) struct XmlRelationship {
     #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "ContainerId", deserialize_with = "deser_quoted_int")]
