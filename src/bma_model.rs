@@ -1,4 +1,5 @@
 use crate::enums::{RelationshipType, VariableType};
+use crate::update_fn::bma_fn_tree::BmaFnNode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -26,7 +27,7 @@ pub struct Variable {
     pub variable_type: VariableType, // Corresponds to "Type" in JSON/XML
     pub range_from: u32,
     pub range_to: u32,
-    pub formula: String,
+    pub formula: BmaFnNode,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

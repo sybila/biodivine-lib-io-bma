@@ -2,6 +2,8 @@ use crate::bma_model::*;
 use crate::enums::VariableType;
 use crate::json_model::JsonBmaModel;
 use crate::traits::{JsonSerde, XmlSerde};
+use crate::update_fn::bma_fn_tree::BmaFnNode;
+use crate::update_fn::parser::parse_bma_formula;
 use crate::xml_model::XmlBmaModel;
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
 use std::collections::HashMap;
@@ -74,7 +76,8 @@ impl From<JsonBmaModel> for BmaModel {
                         .unwrap_or(VariableType::Default), // Use the type from layout if available
                     range_from: var.range_from,
                     range_to: var.range_to,
-                    formula: var.formula,
+                    // todo: handle the failures and empty formulas
+                    formula: parse_bma_formula(&var.formula).unwrap_or(BmaFnNode::mk_constant(0)),
                 })
                 .collect(),
             relationships: json_model
@@ -157,7 +160,8 @@ impl From<XmlBmaModel> for BmaModel {
                     variable_type: var.r#type,
                     range_from: var.range_from,
                     range_to: var.range_to,
-                    formula: var.formula,
+                    // todo: handle the failures and empty formulas
+                    formula: parse_bma_formula(&var.formula).unwrap_or(BmaFnNode::mk_constant(0)),
                 })
                 .collect(),
             relationships: xml_model

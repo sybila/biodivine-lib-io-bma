@@ -1,4 +1,4 @@
 pub mod bma_fn_tree;
-mod enums;
-mod parser;
-mod tokenizer;
+pub mod enums;
+pub mod parser;
+pub mod tokenizer;

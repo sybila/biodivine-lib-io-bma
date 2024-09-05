@@ -1,5 +1,7 @@
 use crate::update_fn::enums::{AggregateOp, ArithOp, Literal, UnaryOp};
+use crate::update_fn::parser::parse_bma_fn_tokens;
 use crate::update_fn::tokenizer::BmaFnToken;
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt;
 
@@ -10,7 +12,7 @@ use std::fmt;
 ///     - A "unary" node with a `UnaryOp` and a sub-expression.
 ///     - A binary "arithmetic" node, with a `BinaryOp` and two sub-expressions.
 ///     - An "aggregation" node with a `AggregateOp` op and a list of sub-expressions.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Expression {
     Terminal(Literal),
     Unary(UnaryOp, Box<BmaFnNode>),
@@ -24,7 +26,7 @@ pub enum Expression {
 ///     - `height`; A positive integer starting from 0 (for term nodes).
 ///     - `expression_tree`; A parse tree for the expression`.
 ///     - `function_str`; A canonical string representation of the expression.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct BmaFnNode {
     pub function_str: String,
     pub height: u32,
@@ -33,8 +35,8 @@ pub struct BmaFnNode {
 
 impl BmaFnNode {
     /// "Parse" a new [BmaFnNode] from a list of [BmaFnToken] objects.
-    pub fn from_tokens(_tokens: &[BmaFnToken]) -> Result<BmaFnNode, String> {
-        todo!()
+    pub fn from_tokens(tokens: &[BmaFnToken]) -> Result<BmaFnNode, String> {
+        parse_bma_fn_tokens(tokens)
     }
 
     /// Create a "unary" [BmaFnNode] from the given arguments.
