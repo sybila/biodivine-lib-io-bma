@@ -1,5 +1,5 @@
 use crate::enums::{RelationshipType, VariableType};
-use crate::update_fn::bma_fn_tree::BmaFnNode;
+use crate::update_fn::bma_fn_tree::BmaFnUpdate;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use std::collections::HashMap;
@@ -33,7 +33,7 @@ pub struct Variable {
     pub range_from: u32,
     pub range_to: u32,
     #[serde(serialize_with = "serialize_update_fn")]
-    pub formula: Option<BmaFnNode>,
+    pub formula: Option<BmaFnUpdate>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -85,7 +85,7 @@ pub struct Container {
     pub position_y: f64,
 }
 
-fn serialize_update_fn<S>(update_fn: &Option<BmaFnNode>, s: S) -> Result<S::Ok, S::Error>
+fn serialize_update_fn<S>(update_fn: &Option<BmaFnUpdate>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {

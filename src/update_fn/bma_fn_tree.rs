@@ -15,9 +15,9 @@ use std::fmt;
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Expression {
     Terminal(Literal),
-    Unary(UnaryOp, Box<BmaFnNode>),
-    Arithmetic(ArithOp, Box<BmaFnNode>, Box<BmaFnNode>),
-    Aggregation(AggregateOp, Vec<Box<BmaFnNode>>),
+    Unary(UnaryOp, Box<BmaFnUpdate>),
+    Arithmetic(ArithOp, Box<BmaFnUpdate>, Box<BmaFnUpdate>),
+    Aggregation(AggregateOp, Vec<Box<BmaFnUpdate>>),
 }
 
 /// A single node in a syntax tree of a FOL formula.
@@ -27,66 +27,66 @@ pub enum Expression {
 ///     - `expression_tree`; A parse tree for the expression`.
 ///     - `function_str`; A canonical string representation of the expression.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct BmaFnNode {
+pub struct BmaFnUpdate {
     pub function_str: String,
     pub height: u32,
     pub expression_tree: Expression,
 }
 
-impl BmaFnNode {
-    /// "Parse" a new [BmaFnNode] from a list of [BmaFnToken] objects.
-    pub fn from_tokens(tokens: &[BmaFnToken]) -> Result<BmaFnNode, String> {
+impl BmaFnUpdate {
+    /// "Parse" a new [BmaFnUpdate] from a list of [BmaFnToken] objects.
+    pub fn from_tokens(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
         parse_bma_fn_tokens(tokens)
     }
 
-    /// Create a "unary" [BmaFnNode] from the given arguments.
+    /// Create a "unary" [BmaFnUpdate] from the given arguments.
     ///
     /// See also [Expression::Unary].
-    pub fn mk_unary(child: BmaFnNode, op: UnaryOp) -> BmaFnNode {
+    pub fn mk_unary(child: BmaFnUpdate, op: UnaryOp) -> BmaFnUpdate {
         let subform_str = format!("{op}({child})");
-        BmaFnNode {
+        BmaFnUpdate {
             function_str: subform_str,
             height: child.height + 1,
             expression_tree: Expression::Unary(op, Box::new(child)),
         }
     }
 
-    /// Create a "binary" arithmetic [BmaFnNode] from the given arguments.
+    /// Create a "binary" arithmetic [BmaFnUpdate] from the given arguments.
     ///
     /// See also [Expression::Binary].
-    pub fn mk_arithmetic(left: BmaFnNode, right: BmaFnNode, op: ArithOp) -> BmaFnNode {
-        BmaFnNode {
+    pub fn mk_arithmetic(left: BmaFnUpdate, right: BmaFnUpdate, op: ArithOp) -> BmaFnUpdate {
+        BmaFnUpdate {
             function_str: format!("({left} {op} {right})"),
             height: cmp::max(left.height, right.height) + 1,
             expression_tree: Expression::Arithmetic(op, Box::new(left), Box::new(right)),
         }
     }
 
-    /// Create a [BmaFnNode] representing a Boolean constant.
+    /// Create a [BmaFnUpdate] representing a Boolean constant.
     ///
     /// See also [Expression::Terminal] and [Atomic::True] / [Atomic::False].
-    pub fn mk_constant(constant_val: i32) -> BmaFnNode {
+    pub fn mk_constant(constant_val: i32) -> BmaFnUpdate {
         Self::mk_literal(Literal::Int(constant_val))
     }
 
-    /// Create a [BmaFnNode] representing a variable.
+    /// Create a [BmaFnUpdate] representing a variable.
     ///
     /// See also [Expression::Terminal] and [Literal::Str].
-    pub fn mk_variable(var_name: &str) -> BmaFnNode {
+    pub fn mk_variable(var_name: &str) -> BmaFnUpdate {
         Self::mk_literal(Literal::Str(var_name.to_string()))
     }
 
-    /// A helper function which creates a new [BmaFnNode] for the given [Literal] value.
-    fn mk_literal(literal: Literal) -> BmaFnNode {
-        BmaFnNode {
+    /// A helper function which creates a new [BmaFnUpdate] for the given [Literal] value.
+    fn mk_literal(literal: Literal) -> BmaFnUpdate {
+        BmaFnUpdate {
             function_str: literal.to_string(),
             height: 0,
             expression_tree: Expression::Terminal(literal),
         }
     }
 
-    /// Create a [BmaFnNode] representing an aggregation operator applied to given arguments.
-    pub fn mk_aggregation(op: AggregateOp, inner_nodes: Vec<BmaFnNode>) -> BmaFnNode {
+    /// Create a [BmaFnUpdate] representing an aggregation operator applied to given arguments.
+    pub fn mk_aggregation(op: AggregateOp, inner_nodes: Vec<BmaFnUpdate>) -> BmaFnUpdate {
         let max_height = inner_nodes
             .iter()
             .map(|node| node.height)
@@ -101,7 +101,7 @@ impl BmaFnNode {
 
         let inner_boxed_nodes = inner_nodes.into_iter().map(Box::new).collect();
 
-        BmaFnNode {
+        BmaFnUpdate {
             function_str,
             height: max_height + 1,
             expression_tree: Expression::Aggregation(op, inner_boxed_nodes),
@@ -109,13 +109,13 @@ impl BmaFnNode {
     }
 }
 
-impl BmaFnNode {
+impl BmaFnUpdate {
     pub fn as_str(&self) -> &str {
         self.function_str.as_str()
     }
 }
 
-impl fmt::Display for BmaFnNode {
+impl fmt::Display for BmaFnUpdate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.function_str)
     }

@@ -1,6 +1,8 @@
 use crate::bma_model::*;
+use crate::enums::{RelationshipType, VariableType};
 use crate::json_model::JsonBmaModel;
 use crate::traits::{JsonSerDe, XmlDe};
+use crate::update_fn::bma_fn_tree::BmaFnUpdate;
 use crate::update_fn::parser::parse_bma_formula;
 use crate::xml_model::XmlBmaModel;
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
@@ -267,5 +269,175 @@ impl BmaModel {
         });
 
         Ok(bn)
+    }
+
+    /// Construct `BmaModel` instance with a given name from a provided BooleanNetwork `bn`.
+    ///
+    /// Boolean network must not use function symbols in any of its update functions.
+    ///
+    /// TODO: for now, we only utilize monotonic regulations (and ignore the rest), and we do not use observability
+    pub fn from_boolean_network(bn: &BooleanNetwork, name: &str) -> Result<BmaModel, String> {
+        if bn.num_parameters() > 0 {
+            return Err("Boolean network with parameters can not be translated.".to_string());
+        }
+        // transform variables and update functions
+        let variables = bn
+            .variables()
+            .map(|var_id| {
+                let formula = if let Some(update_fn) = bn.get_update_function(var_id) {
+                    // we unwrap since we already checked BN has no parameters
+                    let bma_function = BmaFnUpdate::try_from_fn_update(update_fn).unwrap();
+                    Some(bma_function)
+                } else {
+                    None
+                };
+                Variable {
+                    id: var_id.to_index() as u32,
+                    name: bn.get_variable_name(var_id).clone(),
+                    range_from: 0,
+                    range_to: 1,
+                    formula,
+                }
+            })
+            .collect();
+
+        // transform regulations into relationships
+        // TODO: deal with non-monotonic regulations
+        let relationships = bn
+            .as_graph()
+            .regulations()
+            .filter(|reg| reg.monotonicity.is_some())
+            .enumerate()
+            .map(|(idx, reg)| Relationship {
+                id: idx as u32,
+                from_variable: reg.regulator.to_index() as u32,
+                to_variable: reg.target.to_index() as u32,
+                relationship_type: RelationshipType::from(reg.monotonicity.unwrap()),
+            })
+            .collect();
+
+        let model = Model {
+            name: name.to_string(),
+            variables,
+            relationships,
+        };
+
+        // each variable gets default layout settings
+        let layout_vars = bn
+            .variables()
+            .map(|var_id| LayoutVariable {
+                id: var_id.to_index() as u32,
+                name: bn.get_variable_name(var_id).clone(),
+                variable_type: VariableType::Default,
+                container_id: 0,
+                position_x: 0.0,
+                position_y: 0.0,
+                cell_x: None,
+                cell_y: None,
+                angle: 0.0,
+                description: "".to_string(),
+            })
+            .collect();
+
+        // a single default container for all the variables
+        let container = Container {
+            id: 0,
+            name: "".to_string(),
+            size: 1,
+            position_x: 0.0,
+            position_y: 0.0,
+        };
+
+        let layout = Layout {
+            variables: layout_vars,
+            containers: vec![container],
+            description: "".to_string(),
+            zoom_level: None,
+            pan_x: None,
+            pan_y: None,
+        };
+
+        Ok(BmaModel {
+            model,
+            layout,
+            metadata: HashMap::new(),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::bma_model::BmaModel;
+    use crate::enums::RelationshipType;
+    use biodivine_lib_param_bn::BooleanNetwork;
+
+    #[test]
+    fn test_from_boolean_network_aeon() {
+        let aeon_model = r#"
+        $A: A & !B
+        $B: A
+        B -| A
+        A -> A
+        A -> B
+        "#;
+        let bn = BooleanNetwork::try_from(aeon_model).unwrap();
+
+        let bma_model = BmaModel::from_boolean_network(&bn, "Test Model").unwrap();
+
+        /* === VARIABLES AND UPDATE FUNCTIONS === */
+
+        assert_eq!(bma_model.model.variables.len(), 2);
+        let var_a_bma = &bma_model.model.variables[0];
+        let var_b_bma = &bma_model.model.variables[1];
+
+        assert_eq!(var_a_bma.name, "A");
+        assert!(var_a_bma.formula.is_some());
+        let formula_a = var_a_bma.formula.as_ref().unwrap().to_string();
+        assert_eq!(formula_a, "(var(0) * (1 - var(1)))");
+
+        assert_eq!(var_b_bma.name, "B");
+        assert!(var_b_bma.formula.is_some());
+        let formula_b = var_b_bma.formula.as_ref().unwrap().to_string();
+        assert_eq!(formula_b, "var(0)");
+
+        /* === RELATIONSHIPS === */
+
+        assert_eq!(bma_model.model.relationships.len(), 3);
+        let rel_b_inhibits_a = &bma_model.model.relationships[0];
+        let rel_a_self_activates = &bma_model.model.relationships[1];
+        let rel_a_activates_b = &bma_model.model.relationships[2];
+        assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
+        assert_eq!(rel_b_inhibits_a.to_variable, 0);
+        assert_eq!(
+            rel_b_inhibits_a.relationship_type,
+            RelationshipType::Inhibitor
+        );
+
+        assert_eq!(rel_a_self_activates.from_variable, 0); // A -> A
+        assert_eq!(rel_a_self_activates.to_variable, 0);
+        assert_eq!(
+            rel_a_self_activates.relationship_type,
+            RelationshipType::Activator
+        );
+
+        assert_eq!(rel_a_activates_b.from_variable, 0); // A -> B
+        assert_eq!(rel_a_activates_b.to_variable, 1);
+        assert_eq!(
+            rel_a_activates_b.relationship_type,
+            RelationshipType::Activator
+        );
+
+        /* === LAYOUT === */
+
+        assert_eq!(bma_model.layout.variables.len(), 2);
+        let layout_var_a = &bma_model.layout.variables[0];
+        let layout_var_b = &bma_model.layout.variables[1];
+        assert_eq!(layout_var_a.name, "A");
+        assert_eq!(layout_var_b.name, "B");
+
+        // Verify that there is a default container
+        assert_eq!(bma_model.layout.containers.len(), 1);
+        let container = &bma_model.layout.containers[0];
+        assert_eq!(container.id, 0);
     }
 }
