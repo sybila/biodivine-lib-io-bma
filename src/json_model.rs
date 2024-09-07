@@ -97,6 +97,8 @@ pub(crate) struct JsonLayout {
     pub variables: Vec<JsonLayoutVariable>,
     #[serde(rename = "Containers", alias = "containers")]
     pub containers: Vec<JsonContainer>,
+    #[serde(rename = "Description", alias = "description")]
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -123,6 +125,8 @@ pub(crate) struct JsonLayoutVariable {
     pub cell_y: Option<u32>,
     #[serde(rename = "Angle", alias = "angle")]
     pub angle: f64,
+    #[serde(rename = "Description", alias = "description")]
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

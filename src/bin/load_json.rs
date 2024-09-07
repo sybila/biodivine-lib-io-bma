@@ -1,5 +1,5 @@
 use biodivine_lib_bma_data::bma_model::BmaModel;
-use biodivine_lib_bma_data::traits::JsonSerde;
+use biodivine_lib_bma_data::traits::JsonSerDe;
 use std::fs::{read_dir, read_to_string};
 
 /// Iterate through all models and see if they are parse without error.
@@ -44,12 +44,16 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
 
 fn main() {
     // 1) first, let's just check the small example and print the internal structure
-    let selected_model_paths = vec!["models/json-repo/SimpleBifurcation.json"];
+    let selected_model_paths = vec!["models/json-export-from-tool/ToyModelStable.json"];
     for model_path in selected_model_paths {
         println!("Parsing selected model {:?}:", model_path);
         let json_data = read_to_string(model_path).expect("Unable to read file");
         let model = BmaModel::from_json_str(&json_data).expect("JSON was not well-formatted");
         println!("Internal BmaModel structure:\n{:?}\n", model);
+        println!(
+            "Exported JSON BmaModel structure:\n{}\n",
+            model.to_json_str()
+        );
     }
 
     // 2) now let's iterate through all models and see if they at least parse without error

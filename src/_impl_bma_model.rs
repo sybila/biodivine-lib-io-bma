@@ -1,20 +1,18 @@
 use crate::bma_model::*;
-use crate::enums::VariableType;
 use crate::json_model::JsonBmaModel;
-use crate::traits::{JsonSerde, XmlSerde};
-use crate::update_fn::bma_fn_tree::BmaFnNode;
+use crate::traits::{JsonSerDe, XmlDe};
 use crate::update_fn::parser::parse_bma_formula;
 use crate::xml_model::XmlBmaModel;
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
 use std::collections::HashMap;
 
-impl<'de> JsonSerde<'de> for BmaModel {
+impl<'de> JsonSerDe<'de> for BmaModel {
     fn to_json_str(&self) -> String {
-        todo!()
+        serde_json::to_string(self).unwrap()
     }
 
     fn to_pretty_json_str(&self) -> String {
-        todo!()
+        serde_json::to_string_pretty(self).unwrap()
     }
 
     fn from_json_str(json_str: &'de str) -> Result<Self, String> {
@@ -24,15 +22,7 @@ impl<'de> JsonSerde<'de> for BmaModel {
     }
 }
 
-impl<'de> XmlSerde<'de> for BmaModel {
-    fn to_xml_str(&self) -> String {
-        todo!()
-    }
-
-    fn to_pretty_xml_str(&self) -> String {
-        todo!()
-    }
-
+impl<'de> XmlDe<'de> for BmaModel {
     fn from_xml_str(xml_str: &'de str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
         let model = BmaModel::from(xml_model);
@@ -68,16 +58,14 @@ impl From<JsonBmaModel> for BmaModel {
                     name: var
                         .name
                         .unwrap_or(layout_var_names.get(&var.id).cloned().unwrap_or_default()), // Use the name from layout
-                    variable_type: json_model
-                        .layout
-                        .as_ref()
-                        .and_then(|layout| layout.variables.iter().find(|v| v.id == var.id))
-                        .map(|v| v.r#type)
-                        .unwrap_or(VariableType::Default), // Use the type from layout if available
                     range_from: var.range_from,
                     range_to: var.range_to,
-                    // todo: handle the failures and empty formulas
-                    formula: parse_bma_formula(&var.formula).unwrap_or(BmaFnNode::mk_constant(0)),
+                    formula: if var.formula.is_empty() {
+                        // TODO: handle incorrectly parsed formulas
+                        parse_bma_formula(&var.formula).ok()
+                    } else {
+                        None
+                    },
                 })
                 .collect(),
             relationships: json_model
@@ -102,12 +90,15 @@ impl From<JsonBmaModel> for BmaModel {
                     .into_iter()
                     .map(|var| LayoutVariable {
                         id: var.id,
+                        name: var.name.unwrap_or_default(),
                         container_id: var.container_id,
+                        variable_type: var.r#type,
                         position_x: var.position_x,
                         position_y: var.position_y,
                         cell_x: var.cell_x,
                         cell_y: var.cell_y,
                         angle: var.angle,
+                        description: var.description.unwrap_or_default(),
                     })
                     .collect(),
                 containers: layout
@@ -115,12 +106,13 @@ impl From<JsonBmaModel> for BmaModel {
                     .into_iter()
                     .map(|container| Container {
                         id: container.id,
-                        name: container.name,
+                        name: container.name.unwrap_or_default(),
                         size: container.size,
                         position_x: container.position_x,
                         position_y: container.position_y,
                     })
                     .collect(),
+                description: layout.description.unwrap_or_default(),
                 zoom_level: None,
                 pan_x: None,
                 pan_y: None,
@@ -128,6 +120,7 @@ impl From<JsonBmaModel> for BmaModel {
             .unwrap_or_else(|| Layout {
                 variables: vec![],
                 containers: vec![],
+                description: String::default(),
                 zoom_level: None,
                 pan_x: None,
                 pan_y: None,
@@ -157,11 +150,14 @@ impl From<XmlBmaModel> for BmaModel {
                 .map(|var| Variable {
                     id: var.id,
                     name: var.name,
-                    variable_type: var.r#type,
                     range_from: var.range_from,
                     range_to: var.range_to,
-                    // todo: handle the failures and empty formulas
-                    formula: parse_bma_formula(&var.formula).unwrap_or(BmaFnNode::mk_constant(0)),
+                    formula: if var.formula.is_empty() {
+                        // TODO: handle incorrectly parsed formulas
+                        parse_bma_formula(&var.formula).ok()
+                    } else {
+                        None
+                    },
                 })
                 .collect(),
             relationships: xml_model
@@ -185,12 +181,15 @@ impl From<XmlBmaModel> for BmaModel {
                 .into_iter()
                 .map(|var| LayoutVariable {
                     id: var.id,
+                    name: var.name,
+                    variable_type: var.r#type,
                     container_id: var.container_id,
                     position_x: var.position_x,
                     position_y: var.position_y,
                     cell_x: Some(var.cell_x),
                     cell_y: Some(var.cell_y),
                     angle: var.angle,
+                    description: String::default(),
                 })
                 .collect(),
             containers: xml_model
@@ -199,12 +198,13 @@ impl From<XmlBmaModel> for BmaModel {
                 .into_iter()
                 .map(|container| Container {
                     id: container.id,
-                    name: Some(container.name),
+                    name: container.name,
                     size: container.size,
                     position_x: container.position_x,
                     position_y: container.position_y,
                 })
                 .collect(),
+            description: xml_model.description,
             zoom_level: Some(xml_model.layout.zoom_level),
             pan_x: Some(xml_model.layout.pan_x),
             pan_y: Some(xml_model.layout.pan_y),
@@ -213,7 +213,6 @@ impl From<XmlBmaModel> for BmaModel {
         // Metadata can be constructed from various XML fields
         let mut metadata = HashMap::new();
         metadata.insert("biocheck_version".to_string(), xml_model.biocheck_version);
-        metadata.insert("description".to_string(), xml_model.description);
         metadata.insert("created_date".to_string(), xml_model.created_date);
         metadata.insert("modified_date".to_string(), xml_model.modified_date);
 
