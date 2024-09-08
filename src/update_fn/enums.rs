@@ -18,53 +18,53 @@ impl fmt::Display for Literal {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum ArithOp {
-    Add,
+    Plus,
     Minus,
-    Times,
+    Mult,
     Div,
 }
 
 impl fmt::Display for ArithOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ArithOp::Add => write!(f, "+"),
+            ArithOp::Plus => write!(f, "+"),
             ArithOp::Minus => write!(f, "-"),
-            ArithOp::Times => write!(f, "*"),
+            ArithOp::Mult => write!(f, "*"),
             ArithOp::Div => write!(f, "/"),
         }
     }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum UnaryOp {
+pub enum UnaryFn {
     Ceil,
     Floor,
     Abs,
 }
 
-impl fmt::Display for UnaryOp {
+impl fmt::Display for UnaryFn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UnaryOp::Ceil => write!(f, "ceil"),
-            UnaryOp::Floor => write!(f, "floor"),
-            UnaryOp::Abs => write!(f, "abs"),
+            UnaryFn::Ceil => write!(f, "ceil"),
+            UnaryFn::Floor => write!(f, "floor"),
+            UnaryFn::Abs => write!(f, "abs"),
         }
     }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum AggregateOp {
+pub enum AggregateFn {
     Min,
     Max,
     Avg,
 }
 
-impl fmt::Display for AggregateOp {
+impl fmt::Display for AggregateFn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AggregateOp::Min => write!(f, "min"),
-            AggregateOp::Max => write!(f, "max"),
-            AggregateOp::Avg => write!(f, "avg"),
+            AggregateFn::Min => write!(f, "min"),
+            AggregateFn::Max => write!(f, "max"),
+            AggregateFn::Avg => write!(f, "avg"),
         }
     }
 }

@@ -6,6 +6,8 @@ use crate::update_fn::bma_fn_tree::BmaFnUpdate;
 use crate::update_fn::parser::parse_bma_formula;
 use crate::xml_model::XmlBmaModel;
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
+use regex::Regex;
+use std::cmp::max;
 use std::collections::HashMap;
 
 impl<'de> JsonSerDe<'de> for BmaModel {
@@ -227,11 +229,17 @@ impl From<XmlBmaModel> for BmaModel {
 }
 
 impl BmaModel {
+    fn canonical_var_name(var: &Variable) -> String {
+        // Regex that matches non-alphanumeric and non-underscore characters
+        let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
+        let sanitized_name = re.replace_all(&var.name, "");
+        format!("v_{}_{}", var.id, sanitized_name)
+    }
+
     pub fn to_regulatory_graph(&self) -> Result<RegulatoryGraph, String> {
         let mut variables_map: HashMap<u32, String> = HashMap::new();
         for var in &self.model.variables {
-            let inserted =
-                variables_map.insert(var.id, format!("v_{}_{}", var.id, var.name.clone()));
+            let inserted = variables_map.insert(var.id, BmaModel::canonical_var_name(var));
             if inserted.is_some() {
                 return Err(format!("Variable ID {} is not unique.", var.id));
             }
@@ -240,6 +248,7 @@ impl BmaModel {
         let mut graph = RegulatoryGraph::new(variables);
 
         // add regulations
+        // TODO: decide how to handle "doubled" regulations (of the same vs of different type)
         self.model
             .relationships
             .iter()
@@ -260,6 +269,11 @@ impl BmaModel {
     }
 
     pub fn to_boolean_network(&self) -> Result<BooleanNetwork, String> {
+        // TODO: for now, we are only allowing conversion of Boolean models (not multi-valued)
+        if self.get_max_var_level() > 1 {
+            return Err("Cannot convert multi-valued model to a Boolean network.".to_string());
+        }
+
         let graph = self.to_regulatory_graph()?;
         let bn = BooleanNetwork::new(graph);
 
@@ -362,6 +376,16 @@ impl BmaModel {
             layout,
             metadata: HashMap::new(),
         })
+    }
+
+    pub fn get_max_var_level(&self) -> u32 {
+        let mut max_level = 0;
+        self.model.variables.iter().for_each(|v| {
+            // just in case, lets check both `range_from` and `range_to`
+            max_level = max(max_level, v.range_from);
+            max_level = max(max_level, v.range_to);
+        });
+        max_level
     }
 }
 

@@ -32,17 +32,17 @@ impl BmaFnUpdate {
                 match op {
                     // AND: map A && B to A * B
                     BinaryOp::And => {
-                        BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Times)
+                        BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Mult)
                     }
                     // OR: map A || B to A + B - A * B
                     BinaryOp::Or => {
                         let sum_expr = BmaFnUpdate::mk_arithmetic(
                             left_expr.clone(),
                             right_expr.clone(),
-                            ArithOp::Add,
+                            ArithOp::Plus,
                         );
                         let prod_expr =
-                            BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Times);
+                            BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Mult);
                         BmaFnUpdate::mk_arithmetic(sum_expr, prod_expr, ArithOp::Minus)
                     }
                     // XOR: map A ^ B to A + B - 2 * (A * B)
@@ -50,14 +50,14 @@ impl BmaFnUpdate {
                         let sum_expr = BmaFnUpdate::mk_arithmetic(
                             left_expr.clone(),
                             right_expr.clone(),
-                            ArithOp::Add,
+                            ArithOp::Plus,
                         );
                         let prod_expr =
-                            BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Times);
+                            BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Mult);
                         let two_prod_expr = BmaFnUpdate::mk_arithmetic(
                             BmaFnUpdate::mk_constant(2),
                             prod_expr,
-                            ArithOp::Times,
+                            ArithOp::Mult,
                         );
                         BmaFnUpdate::mk_arithmetic(sum_expr, two_prod_expr, ArithOp::Minus)
                     }
@@ -79,8 +79,8 @@ impl BmaFnUpdate {
                             ArithOp::Minus,
                         );
                         let prod_expr =
-                            BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Times);
-                        BmaFnUpdate::mk_arithmetic(not_left_expr, prod_expr, ArithOp::Add)
+                            BmaFnUpdate::mk_arithmetic(left_expr, right_expr, ArithOp::Mult);
+                        BmaFnUpdate::mk_arithmetic(not_left_expr, prod_expr, ArithOp::Plus)
                     }
                 }
             }

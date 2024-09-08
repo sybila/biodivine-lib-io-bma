@@ -38,12 +38,12 @@ fn parse_1_div(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 
 /// Recursive parsing step 2: extract `*` operators.
 fn parse_2_mul(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
-    let mul_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Times));
+    let mul_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Mult));
     Ok(if let Some(i) = mul_token {
         BmaFnUpdate::mk_arithmetic(
             parse_3_minus(&tokens[..i])?,
             parse_2_mul(&tokens[(i + 1)..])?,
-            ArithOp::Times,
+            ArithOp::Mult,
         )
     } else {
         parse_3_minus(tokens)?
@@ -66,12 +66,12 @@ fn parse_3_minus(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 
 /// Recursive parsing step 4: extract `+` operators.
 fn parse_4_plus(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
-    let minus_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Add));
+    let minus_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Plus));
     Ok(if let Some(i) = minus_token {
         BmaFnUpdate::mk_arithmetic(
             parse_5_others(&tokens[..i])?,
             parse_4_plus(&tokens[(i + 1)..])?,
-            ArithOp::Add,
+            ArithOp::Plus,
         )
     } else {
         parse_5_others(tokens)?
@@ -139,7 +139,7 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 mod tests {
     use super::*;
     use crate::update_fn::bma_fn_tree::BmaFnUpdate;
-    use crate::update_fn::enums::{AggregateOp, ArithOp, UnaryOp};
+    use crate::update_fn::enums::{AggregateFn, ArithOp, UnaryFn};
 
     #[test]
     fn test_parse_simple_addition() {
@@ -148,7 +148,7 @@ mod tests {
         let expected = BmaFnUpdate::mk_arithmetic(
             BmaFnUpdate::mk_constant(3),
             BmaFnUpdate::mk_constant(5),
-            ArithOp::Add,
+            ArithOp::Plus,
         );
         assert_eq!(result, Ok(expected));
     }
@@ -173,7 +173,7 @@ mod tests {
             BmaFnUpdate::mk_arithmetic(
                 BmaFnUpdate::mk_constant(8),
                 BmaFnUpdate::mk_constant(4),
-                ArithOp::Times,
+                ArithOp::Mult,
             ),
             BmaFnUpdate::mk_constant(2),
             ArithOp::Div,
@@ -190,9 +190,9 @@ mod tests {
             BmaFnUpdate::mk_arithmetic(
                 BmaFnUpdate::mk_constant(5),
                 BmaFnUpdate::mk_constant(2),
-                ArithOp::Times,
+                ArithOp::Mult,
             ),
-            ArithOp::Add,
+            ArithOp::Plus,
         );
         assert_eq!(result, Ok(expected));
     }
@@ -201,7 +201,7 @@ mod tests {
     fn test_parse_abs_function() {
         let input = "abs(5)";
         let result = parse_bma_formula(input);
-        let expected = BmaFnUpdate::mk_unary(BmaFnUpdate::mk_constant(5), UnaryOp::Abs);
+        let expected = BmaFnUpdate::mk_unary(BmaFnUpdate::mk_constant(5), UnaryFn::Abs);
         assert_eq!(result, Ok(expected));
     }
 
@@ -210,14 +210,14 @@ mod tests {
         let input = "min(3, 5, 5 + variable)";
         let result = parse_bma_formula(input);
         let expected = BmaFnUpdate::mk_aggregation(
-            AggregateOp::Min,
+            AggregateFn::Min,
             vec![
                 BmaFnUpdate::mk_constant(3),
                 BmaFnUpdate::mk_constant(5),
                 BmaFnUpdate::mk_arithmetic(
                     BmaFnUpdate::mk_constant(5),
                     BmaFnUpdate::mk_variable("variable"),
-                    ArithOp::Add,
+                    ArithOp::Plus,
                 ),
             ],
         );
@@ -248,7 +248,7 @@ mod tests {
         let input = "max(3, 5, 10)";
         let result = parse_bma_formula(input);
         let expected = BmaFnUpdate::mk_aggregation(
-            AggregateOp::Max,
+            AggregateFn::Max,
             vec![
                 BmaFnUpdate::mk_constant(3),
                 BmaFnUpdate::mk_constant(5),

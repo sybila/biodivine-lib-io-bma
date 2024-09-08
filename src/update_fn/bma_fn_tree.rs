@@ -1,4 +1,4 @@
-use crate::update_fn::enums::{AggregateOp, ArithOp, Literal, UnaryOp};
+use crate::update_fn::enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use crate::update_fn::parser::parse_bma_fn_tokens;
 use crate::update_fn::tokenizer::BmaFnToken;
 use serde::{Deserialize, Serialize};
@@ -9,15 +9,15 @@ use std::fmt;
 ///
 /// In particular, a node type can be:
 ///     - A "terminal" node containing a literal (variable, constant).
-///     - A "unary" node with a `UnaryOp` and a sub-expression.
+///     - A "unary" node with a `UnaryFn` and a sub-expression.
 ///     - A binary "arithmetic" node, with a `BinaryOp` and two sub-expressions.
-///     - An "aggregation" node with a `AggregateOp` op and a list of sub-expressions.
+///     - An "aggregation" node with a `AggregateFn` op and a list of sub-expressions.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Expression {
     Terminal(Literal),
-    Unary(UnaryOp, Box<BmaFnUpdate>),
+    Unary(UnaryFn, Box<BmaFnUpdate>),
     Arithmetic(ArithOp, Box<BmaFnUpdate>, Box<BmaFnUpdate>),
-    Aggregation(AggregateOp, Vec<Box<BmaFnUpdate>>),
+    Aggregation(AggregateFn, Vec<Box<BmaFnUpdate>>),
 }
 
 /// A single node in a syntax tree of a FOL formula.
@@ -42,7 +42,7 @@ impl BmaFnUpdate {
     /// Create a "unary" [BmaFnUpdate] from the given arguments.
     ///
     /// See also [Expression::Unary].
-    pub fn mk_unary(child: BmaFnUpdate, op: UnaryOp) -> BmaFnUpdate {
+    pub fn mk_unary(child: BmaFnUpdate, op: UnaryFn) -> BmaFnUpdate {
         let subform_str = format!("{op}({child})");
         BmaFnUpdate {
             function_str: subform_str,
@@ -86,7 +86,7 @@ impl BmaFnUpdate {
     }
 
     /// Create a [BmaFnUpdate] representing an aggregation operator applied to given arguments.
-    pub fn mk_aggregation(op: AggregateOp, inner_nodes: Vec<BmaFnUpdate>) -> BmaFnUpdate {
+    pub fn mk_aggregation(op: AggregateFn, inner_nodes: Vec<BmaFnUpdate>) -> BmaFnUpdate {
         let max_height = inner_nodes
             .iter()
             .map(|node| node.height)

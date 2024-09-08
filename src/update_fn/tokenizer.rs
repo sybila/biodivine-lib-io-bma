@@ -1,4 +1,4 @@
-use crate::update_fn::enums::{AggregateOp, ArithOp, Literal, UnaryOp};
+use crate::update_fn::enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -6,9 +6,9 @@ use std::str::Chars;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum BmaFnToken {
     Atomic(Literal),
-    Unary(UnaryOp, Box<BmaFnToken>),
+    Unary(UnaryFn, Box<BmaFnToken>),
     Binary(ArithOp),
-    Aggregate(AggregateOp, Vec<BmaFnToken>),
+    Aggregate(AggregateFn, Vec<BmaFnToken>),
     TokenList(Vec<BmaFnToken>),
 }
 
@@ -40,9 +40,9 @@ fn try_tokenize_recursive(
     while let Some(c) = input_chars.next() {
         match c {
             c if c.is_whitespace() => {}
-            '+' => output.push(BmaFnToken::Binary(ArithOp::Add)),
+            '+' => output.push(BmaFnToken::Binary(ArithOp::Plus)),
             '-' => output.push(BmaFnToken::Binary(ArithOp::Minus)),
-            '*' => output.push(BmaFnToken::Binary(ArithOp::Times)),
+            '*' => output.push(BmaFnToken::Binary(ArithOp::Mult)),
             '/' => output.push(BmaFnToken::Binary(ArithOp::Div)),
             '(' => {
                 // start a nested token group
@@ -67,35 +67,35 @@ fn try_tokenize_recursive(
                     "abs" => {
                         let args = collect_fn_arguments(input_chars)?;
                         output.push(BmaFnToken::Unary(
-                            UnaryOp::Abs,
+                            UnaryFn::Abs,
                             Box::new(args[0].to_owned()),
                         ))
                     }
                     "ceil" => {
                         let args = collect_fn_arguments(input_chars)?;
                         output.push(BmaFnToken::Unary(
-                            UnaryOp::Ceil,
+                            UnaryFn::Ceil,
                             Box::new(args[0].to_owned()),
                         ))
                     }
                     "floor" => {
                         let args = collect_fn_arguments(input_chars)?;
                         output.push(BmaFnToken::Unary(
-                            UnaryOp::Floor,
+                            UnaryFn::Floor,
                             Box::new(args[0].to_owned()),
                         ))
                     }
                     "min" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Aggregate(AggregateOp::Min, args));
+                        output.push(BmaFnToken::Aggregate(AggregateFn::Min, args));
                     }
                     "max" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Aggregate(AggregateOp::Max, args));
+                        output.push(BmaFnToken::Aggregate(AggregateFn::Max, args));
                     }
                     "avg" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Aggregate(AggregateOp::Avg, args));
+                        output.push(BmaFnToken::Aggregate(AggregateFn::Avg, args));
                     }
                     _ => {
                         // Assume it’s a literal
@@ -198,7 +198,7 @@ fn collect_fn_arguments(input_chars: &mut Peekable<Chars>) -> Result<Vec<BmaFnTo
 
 #[cfg(test)]
 mod tests {
-    use crate::update_fn::enums::{AggregateOp, ArithOp, Literal, UnaryOp};
+    use crate::update_fn::enums::{AggregateFn, ArithOp, Literal, UnaryFn};
     use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
 
     #[test]
@@ -209,7 +209,7 @@ mod tests {
             result,
             Ok(vec![
                 BmaFnToken::Atomic(Literal::Int(3)),
-                BmaFnToken::Binary(ArithOp::Add),
+                BmaFnToken::Binary(ArithOp::Plus),
                 BmaFnToken::Atomic(Literal::Int(5)),
                 BmaFnToken::Binary(ArithOp::Minus),
                 BmaFnToken::Atomic(Literal::Int(2))
@@ -224,7 +224,7 @@ mod tests {
         assert_eq!(
             result,
             Ok(vec![BmaFnToken::Unary(
-                UnaryOp::Abs,
+                UnaryFn::Abs,
                 Box::new(BmaFnToken::TokenList(vec![BmaFnToken::Atomic(
                     Literal::Int(5)
                 )])),
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(
             result,
             Ok(vec![BmaFnToken::Aggregate(
-                AggregateOp::Min,
+                AggregateFn::Min,
                 vec![
                     BmaFnToken::TokenList(vec![BmaFnToken::Atomic(Literal::Int(5))]),
                     BmaFnToken::TokenList(vec![BmaFnToken::Atomic(Literal::Int(3))])
@@ -255,16 +255,16 @@ mod tests {
         assert_eq!(
             result,
             Ok(vec![BmaFnToken::Aggregate(
-                AggregateOp::Max,
+                AggregateFn::Max,
                 vec![
                     BmaFnToken::TokenList(vec![BmaFnToken::Unary(
-                        UnaryOp::Abs,
+                        UnaryFn::Abs,
                         Box::new(BmaFnToken::TokenList(vec![BmaFnToken::Atomic(
                             Literal::Int(5)
                         )])),
                     )]),
                     BmaFnToken::TokenList(vec![BmaFnToken::Unary(
-                        UnaryOp::Ceil,
+                        UnaryFn::Ceil,
                         Box::new(BmaFnToken::TokenList(vec![BmaFnToken::Atomic(
                             Literal::Int(3)
                         )])),
@@ -301,13 +301,13 @@ mod tests {
             result,
             Ok(vec![
                 BmaFnToken::Atomic(Literal::Int(3)),
-                BmaFnToken::Binary(ArithOp::Add),
+                BmaFnToken::Binary(ArithOp::Plus),
                 BmaFnToken::TokenList(vec![
                     BmaFnToken::Atomic(Literal::Int(5)),
-                    BmaFnToken::Binary(ArithOp::Times),
+                    BmaFnToken::Binary(ArithOp::Mult),
                     BmaFnToken::TokenList(vec![
                         BmaFnToken::Atomic(Literal::Int(2)),
-                        BmaFnToken::Binary(ArithOp::Add),
+                        BmaFnToken::Binary(ArithOp::Plus),
                         BmaFnToken::Atomic(Literal::Int(1))
                     ])
                 ])
