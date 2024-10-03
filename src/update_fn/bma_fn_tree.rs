@@ -20,7 +20,7 @@ pub enum Expression {
     Aggregation(AggregateFn, Vec<Box<BmaFnUpdate>>),
 }
 
-/// A single node in a syntax tree of a FOL formula.
+/// A single node in a syntax tree of a BMA update function's expression.
 ///
 /// Each node tracks its:
 ///     - `height`; A positive integer starting from 0 (for term nodes).

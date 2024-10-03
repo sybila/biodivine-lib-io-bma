@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// An atomic expression that can be either an integer or a string (variable name).
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Literal {
     Int(i32),
@@ -16,6 +17,7 @@ impl fmt::Display for Literal {
     }
 }
 
+/// Arithmetic operations admissible in BMA function expressions.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum ArithOp {
     Plus,
@@ -35,6 +37,7 @@ impl fmt::Display for ArithOp {
     }
 }
 
+/// Unary functions admissible in BMA function expressions.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum UnaryFn {
     Ceil,
@@ -52,6 +55,7 @@ impl fmt::Display for UnaryFn {
     }
 }
 
+/// Aggregate functions admissible in BMA function expressions.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum AggregateFn {
     Min,

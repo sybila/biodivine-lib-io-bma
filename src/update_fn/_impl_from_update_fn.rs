@@ -3,6 +3,9 @@ use crate::update_fn::enums::ArithOp;
 use biodivine_lib_param_bn::{BinaryOp, FnUpdate};
 
 impl BmaFnUpdate {
+    /// Try to make a BMA expression from a `FnUpdate` instance (of [biodivine_lib_param_bn]).
+    ///
+    /// The update function cannot contain any parameters.
     pub fn try_from_fn_update(fn_update: &FnUpdate) -> Result<Self, String> {
         // update functions with function symbols are not allowed
         if !fn_update.collect_parameters().is_empty() {

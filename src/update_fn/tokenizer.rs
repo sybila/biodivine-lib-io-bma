@@ -12,7 +12,7 @@ pub enum BmaFnToken {
     TokenList(Vec<BmaFnToken>),
 }
 
-/// Tokenize a BMA formula string into tokens,
+/// Tokenize a BMA function expression into tokens.
 ///
 /// This is a wrapper for the (more general) recursive [try_tokenize_recursive]` function.
 pub fn try_tokenize_bma_formula(formula: String) -> Result<Vec<BmaFnToken>, String> {

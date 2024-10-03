@@ -6,11 +6,16 @@ use num_traits::sign::Signed;
 use std::collections::HashMap;
 
 impl BmaFnUpdate {
+    /// Convert the BMA expression into corresponding `FnUpdate` instance of
+    /// [biodivine_lib_param_bn] library.
+    ///
+    /// TODO: implementation via explicit construction of the function table
     pub fn to_update_fn(&self) -> FnUpdate {
-        // TODO: implementation via explicit construction of the function table
         todo!()
     }
 
+    /// Evaluate the BMA function expression in a given valuation.
+    /// A valuation assigns values to all variables.
     pub fn evaluate_in_valuation(
         &self,
         valuation: &HashMap<String, Rational32>,

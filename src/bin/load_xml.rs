@@ -1,4 +1,4 @@
-use biodivine_lib_bma_data::bma_model::BmaModel;
+use biodivine_lib_bma_data::model::BmaModel;
 use biodivine_lib_bma_data::traits::XmlDe;
 use std::fs::{read_dir, read_to_string};
 

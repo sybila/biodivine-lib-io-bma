@@ -4,6 +4,11 @@ use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
+/// Main structure with all the important parts of BMA model.
+/// We distinguish between three parts tracked in the BMA format
+/// - the functional part with all the variables and relationships (`model`)
+/// - the layout part positions of variables and containers (`layout`)
+/// - the additional (optional) data like version and so on (`metadata`)
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -17,6 +22,7 @@ pub struct BmaModel {
     pub metadata: HashMap<String, String>,
 }
 
+/// Named model with several `variables` that have various `relationships`.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct Model {
@@ -25,6 +31,8 @@ pub struct Model {
     pub relationships: Vec<Relationship>,
 }
 
+/// A discrete variable with ID and name, range of possible values, and an update expression
+/// that dictates how the variable evolves.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct Variable {
@@ -36,6 +44,7 @@ pub struct Variable {
     pub formula: Option<BmaFnUpdate>,
 }
 
+/// A relationship of a given type between two variables.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct Relationship {
@@ -46,6 +55,7 @@ pub struct Relationship {
     pub relationship_type: RelationshipType, // Corresponds to "Type" in JSON/XML
 }
 
+/// A layout describing positions and types of variables and containers.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -58,6 +68,7 @@ pub struct Layout {
     pub pan_y: Option<i32>,
 }
 
+/// A layout information regarding a model variable.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct LayoutVariable {
@@ -74,6 +85,7 @@ pub struct LayoutVariable {
     pub description: String, // can be empty (by default if not provided)
 }
 
+/// A layout information about a container.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -85,6 +97,7 @@ pub struct Container {
     pub position_y: f64,
 }
 
+/// A utility to serialize update function by calling a custom parser.
 fn serialize_update_fn<S>(update_fn: &Option<BmaFnUpdate>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
