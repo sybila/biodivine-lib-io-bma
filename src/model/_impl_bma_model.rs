@@ -1,7 +1,10 @@
 use crate::enums::{RelationshipType, VariableType};
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_tree::BmaFnUpdate;
-use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
+use crate::update_fn::enums::{AggregateFn, ArithOp};
+
+use biodivine_lib_param_bn::{BooleanNetwork, Monotonicity, RegulatoryGraph};
+
 use regex::Regex;
 use std::cmp::max;
 use std::collections::HashMap;
@@ -56,17 +59,85 @@ impl BmaModel {
     /// regulations. The update functions are transformed using [BmaFnUpdate::to_update_fn].
     pub fn to_boolean_network(&self) -> Result<BooleanNetwork, String> {
         // TODO: for now, we do not handle multi-valued models
+
         if !self.is_boolean_model() {
             return Err("Cannot convert multi-valued model to a Boolean network.".to_string());
         }
 
         let graph = self.to_regulatory_graph()?;
-        let bn = BooleanNetwork::new(graph);
+        let mut bn = BooleanNetwork::new(graph);
+
+        // TODO: this will have to change to handle multi-valued models
+        let mut max_levels = HashMap::new();
+        for var in &self.model.variables {
+            let var_name = BmaModel::canonical_var_name(var);
+            max_levels.insert(var_name, var.range_to);
+        }
 
         // add update functions
-        self.model.variables.iter().for_each(|_var| {
-            // todo - convert the formula to update functions
-        });
+        for var in &self.model.variables {
+            let var_name = BmaModel::canonical_var_name(var);
+            let var_id = bn.as_graph().find_variable(&var_name).unwrap();
+
+            if var.range_to == 0 {
+                // We can have zero constants and we must deal with these accordingly.
+                bn.add_string_update_function(&var_name, "false").unwrap()
+            }
+
+            if let Some(bma_formula) = var.formula.clone() {
+                let update_fn = bma_formula.to_update_fn(&max_levels);
+                bn.set_update_function(var_id, Some(update_fn))?;
+            } else {
+                // The formula is empty, which means we have to build a default one
+                // the same way as BMA is doing this.
+                // We then convert this default BMA expression to a logical formula.
+
+                let regulators = bn.regulators(var_id);
+                if regulators.is_empty() {
+                    // This is an undetermined input, in which case we set it to zero,
+                    // because that's what BMA does.
+                    bn.add_string_update_function(&var_name, "false").unwrap()
+                }
+
+                // We build the default function the same way as BMA does.
+                let mut positive = Vec::new();
+                let mut negative = Vec::new();
+                for regulator in regulators {
+                    let regulator_name = bn.get_variable_name(regulator);
+                    let reg = bn.as_graph().find_regulation(regulator, var_id).unwrap();
+                    // BMA variables must be monotonic
+                    match reg.monotonicity.unwrap() {
+                        Monotonicity::Activation => positive.push(regulator_name),
+                        Monotonicity::Inhibition => negative.push(regulator_name),
+                    }
+                }
+
+                let p_avr = if !positive.is_empty() {
+                    let p_args = positive
+                        .iter()
+                        .map(|x| BmaFnUpdate::mk_variable(x))
+                        .collect();
+                    BmaFnUpdate::mk_aggregation(AggregateFn::Avg, p_args)
+                } else {
+                    // This does not make much sense, because it means any variable with only negative
+                    // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
+                    // that's what we are doing as well...
+                    BmaFnUpdate::mk_constant(0)
+                };
+                let n_avr = if !negative.is_empty() {
+                    let n_args = negative
+                        .iter()
+                        .map(|x| BmaFnUpdate::mk_variable(x))
+                        .collect();
+                    BmaFnUpdate::mk_aggregation(AggregateFn::Avg, n_args)
+                } else {
+                    BmaFnUpdate::mk_constant(0)
+                };
+                let default_bma_formula = BmaFnUpdate::mk_arithmetic(p_avr, n_avr, ArithOp::Minus);
+                let update_fn = default_bma_formula.to_update_fn(&max_levels);
+                bn.set_update_function(var_id, Some(update_fn))?;
+            }
+        }
 
         Ok(bn)
     }
