@@ -14,7 +14,7 @@ pub fn parse_bma_formula(formula: &str) -> Result<BmaFnUpdate, String> {
 
 /// Utility method to find the first occurrence of a specific token in the token tree.
 fn index_of_first(tokens: &[BmaFnToken], token: BmaFnToken) -> Option<usize> {
-    return tokens.iter().position(|t| *t == token);
+    tokens.iter().position(|t| *t == token)
 }
 
 /// Parse `tokens` of BMA update fn formula into an abstract syntax tree using recursive steps.

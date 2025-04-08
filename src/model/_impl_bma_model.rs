@@ -85,6 +85,7 @@ impl BmaModel {
             }
 
             if let Some(bma_formula) = var.formula.clone() {
+                // todo: to_update_fn is not fully finished yet
                 let update_fn = bma_formula.to_update_fn(&max_levels);
                 bn.set_update_function(var_id, Some(update_fn))?;
             } else {
