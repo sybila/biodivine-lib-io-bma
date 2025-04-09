@@ -49,7 +49,7 @@ pub(crate) struct JsonModel {
 pub(crate) struct JsonVariable {
     #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
-    #[serde(rename = "Id", alias = "id")]
+    #[serde(rename = "Name", alias = "name")]
     pub name: Option<String>,
     #[serde(
         rename = "RangeFrom",
