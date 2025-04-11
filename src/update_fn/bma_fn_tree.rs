@@ -1,9 +1,11 @@
-use crate::update_fn::enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use crate::update_fn::parser::parse_bma_fn_tokens;
 use crate::update_fn::tokenizer::BmaFnToken;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt;
+
+use super::parser::parse_bma_formula;
 
 /// Enum of possible node types in a BMA expression syntax tree.
 ///
@@ -13,7 +15,7 @@ use std::fmt;
 ///     - A binary "arithmetic" node, with a `BinaryOp` and two sub-expressions.
 ///     - An "aggregation" node with a `AggregateFn` op and a list of sub-expressions.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum Expression {
+pub enum BmaFnNodeType {
     Terminal(Literal),
     Unary(UnaryFn, Box<BmaFnUpdate>),
     Arithmetic(ArithOp, Box<BmaFnUpdate>, Box<BmaFnUpdate>),
@@ -30,16 +32,21 @@ pub enum Expression {
 pub struct BmaFnUpdate {
     pub function_str: String,
     pub height: u32,
-    pub expression_tree: Expression,
+    pub expression_tree: BmaFnNodeType,
 }
 
 impl BmaFnUpdate {
-    /// "Parse" a new [BmaFnUpdate] from a list of [BmaFnToken] objects.
+    /// "Parse" new [BmaFnUpdate] tree from a list of [BmaFnToken] objects.
     pub fn from_tokens(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
         parse_bma_fn_tokens(tokens)
     }
 
-    /// Create a "unary" [BmaFnUpdate] from the given arguments.
+    /// Parse new [BmaFnUpdate] tree directly from a string representation.
+    pub fn parse_from_str(function_str: &str) -> Result<BmaFnUpdate, String> {
+        parse_bma_formula(function_str)
+    }
+
+    /// Create an "unary" [BmaFnUpdate] from the given arguments.
     ///
     /// See also [Expression::Unary].
     pub fn mk_unary(child: BmaFnUpdate, op: UnaryFn) -> BmaFnUpdate {
@@ -47,7 +54,7 @@ impl BmaFnUpdate {
         BmaFnUpdate {
             function_str: subform_str,
             height: child.height + 1,
-            expression_tree: Expression::Unary(op, Box::new(child)),
+            expression_tree: BmaFnNodeType::Unary(op, Box::new(child)),
         }
     }
 
@@ -58,7 +65,7 @@ impl BmaFnUpdate {
         BmaFnUpdate {
             function_str: format!("({left} {op} {right})"),
             height: cmp::max(left.height, right.height) + 1,
-            expression_tree: Expression::Arithmetic(op, Box::new(left), Box::new(right)),
+            expression_tree: BmaFnNodeType::Arithmetic(op, Box::new(left), Box::new(right)),
         }
     }
 
@@ -81,7 +88,7 @@ impl BmaFnUpdate {
         BmaFnUpdate {
             function_str: literal.to_string(),
             height: 0,
-            expression_tree: Expression::Terminal(literal),
+            expression_tree: BmaFnNodeType::Terminal(literal),
         }
     }
 
@@ -104,7 +111,7 @@ impl BmaFnUpdate {
         BmaFnUpdate {
             function_str,
             height: max_height + 1,
-            expression_tree: Expression::Aggregation(op, inner_boxed_nodes),
+            expression_tree: BmaFnNodeType::Aggregation(op, inner_boxed_nodes),
         }
     }
 }

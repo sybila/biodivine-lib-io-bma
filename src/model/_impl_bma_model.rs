@@ -1,7 +1,7 @@
 use crate::enums::{RelationshipType, VariableType};
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_tree::BmaFnUpdate;
-use crate::update_fn::enums::{AggregateFn, ArithOp};
+use crate::update_fn::expression_enums::{AggregateFn, ArithOp};
 
 use biodivine_lib_param_bn::{BooleanNetwork, Monotonicity, RegulatoryGraph};
 

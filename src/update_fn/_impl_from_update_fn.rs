@@ -1,9 +1,13 @@
 use crate::update_fn::bma_fn_tree::BmaFnUpdate;
-use crate::update_fn::enums::ArithOp;
+use crate::update_fn::expression_enums::ArithOp;
 use biodivine_lib_param_bn::{BinaryOp, FnUpdate};
 
 impl BmaFnUpdate {
     /// Try to make a BMA expression from a `FnUpdate` instance (of [biodivine_lib_param_bn]).
+    ///
+    /// Essentially, this function converts a Boolean formula into a corresponding arithmetic
+    /// expression. Constants are converted to 0 or 1, and logical operators are replaced with
+    /// their arithmetic equivalents (AND with multiplication, OR with addition, etc.).
     ///
     /// The update function cannot contain any parameters.
     pub fn try_from_fn_update(fn_update: &FnUpdate) -> Result<Self, String> {
@@ -16,7 +20,7 @@ impl BmaFnUpdate {
 
     /// Recursively converts the `FnUpdate` Boolean formula into a corresponding `BmaFnUpdate`
     /// real-number expression.
-    pub fn try_from_fn_update_rec(fn_update: &FnUpdate) -> Result<BmaFnUpdate, String> {
+    fn try_from_fn_update_rec(fn_update: &FnUpdate) -> Result<BmaFnUpdate, String> {
         let res = match fn_update {
             FnUpdate::Const(val) => BmaFnUpdate::mk_constant(if *val { 1 } else { 0 }),
             FnUpdate::Var(var_id) => {

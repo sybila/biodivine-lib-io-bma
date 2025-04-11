@@ -1,6 +1,6 @@
 use crate::json_model::JsonBmaModel;
 use crate::model::bma_model::*;
-use crate::update_fn::parser::parse_bma_formula;
+use crate::update_fn::bma_fn_tree::BmaFnUpdate;
 use crate::xml_model::XmlBmaModel;
 
 use std::collections::HashMap;
@@ -59,7 +59,7 @@ impl From<JsonBmaModel> for BmaModel {
                     range_to: var.range_to,
                     formula: if var.formula.is_empty() {
                         // TODO: handle incorrectly parsed formulas
-                        parse_bma_formula(&var.formula).ok()
+                        BmaFnUpdate::parse_from_str(&var.formula).ok()
                     } else {
                         None
                     },
@@ -151,7 +151,7 @@ impl From<XmlBmaModel> for BmaModel {
                     range_to: var.range_to,
                     formula: if var.formula.is_empty() {
                         // TODO: handle incorrectly parsed formulas
-                        parse_bma_formula(&var.formula).ok()
+                        BmaFnUpdate::parse_from_str(&var.formula).ok()
                     } else {
                         None
                     },

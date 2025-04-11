@@ -1,4 +1,4 @@
-use crate::update_fn::enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -66,36 +66,27 @@ fn try_tokenize_recursive(
                 match name.as_str() {
                     "abs" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Unary(
-                            UnaryFn::Abs,
-                            Box::new(args[0].to_owned()),
-                        ))
+                        output.push(mk_unary(UnaryFn::Abs, args[0].clone()))
                     }
                     "ceil" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Unary(
-                            UnaryFn::Ceil,
-                            Box::new(args[0].to_owned()),
-                        ))
+                        output.push(mk_unary(UnaryFn::Ceil, args[0].clone()))
                     }
                     "floor" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Unary(
-                            UnaryFn::Floor,
-                            Box::new(args[0].to_owned()),
-                        ))
+                        output.push(mk_unary(UnaryFn::Floor, args[0].clone()))
                     }
                     "min" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Aggregate(AggregateFn::Min, args));
+                        output.push(mk_aggregate(AggregateFn::Min, args));
                     }
                     "max" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Aggregate(AggregateFn::Max, args));
+                        output.push(mk_aggregate(AggregateFn::Max, args));
                     }
                     "avg" => {
                         let args = collect_fn_arguments(input_chars)?;
-                        output.push(BmaFnToken::Aggregate(AggregateFn::Avg, args));
+                        output.push(mk_aggregate(AggregateFn::Avg, args));
                     }
                     _ => {
                         // Assume it’s a literal
@@ -121,6 +112,16 @@ fn try_tokenize_recursive(
     } else {
         Err("Expected ')' to previously encountered opening counterpart.".to_string())
     }
+}
+
+/// Shortcut for creating an unary function token.
+fn mk_unary(fn_type: UnaryFn, arg: BmaFnToken) -> BmaFnToken {
+    BmaFnToken::Unary(fn_type, Box::new(arg))
+}
+
+/// Shortcut for creating an aggregate function token.
+fn mk_aggregate(fn_type: AggregateFn, args: Vec<BmaFnToken>) -> BmaFnToken {
+    BmaFnToken::Aggregate(fn_type, args)
 }
 
 /// Check all whitespaces at the front of the iterator.
@@ -198,7 +199,7 @@ fn collect_fn_arguments(input_chars: &mut Peekable<Chars>) -> Result<Vec<BmaFnTo
 
 #[cfg(test)]
 mod tests {
-    use crate::update_fn::enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+    use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
     use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
 
     #[test]

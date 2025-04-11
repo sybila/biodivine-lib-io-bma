@@ -1,5 +1,5 @@
 use crate::update_fn::bma_fn_tree::*;
-use crate::update_fn::enums::*;
+use crate::update_fn::expression_enums::*;
 use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
 
 /// Parse an BMA update function formula string representation into an actual expression tree.
@@ -101,10 +101,9 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
                         if let BmaFnToken::TokenList(inner_token_list) = inner {
                             arg_expression_nodes.push(parse_bma_fn_tokens(inner_token_list)?);
                         } else {
-                            return Err(
-                                "Function must be applied on `BmaFnToken::TokenList` args."
-                                    .to_string(),
-                            );
+                            let message =
+                                "Function must be applied on `BmaFnToken::TokenList` args.";
+                            return Err(message.to_string());
                         }
                     }
                     return Ok(BmaFnUpdate::mk_aggregation(
@@ -139,7 +138,7 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 mod tests {
     use super::*;
     use crate::update_fn::bma_fn_tree::BmaFnUpdate;
-    use crate::update_fn::enums::{AggregateFn, ArithOp, UnaryFn};
+    use crate::update_fn::expression_enums::{AggregateFn, ArithOp, UnaryFn};
 
     #[test]
     fn test_parse_simple_addition() {
