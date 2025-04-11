@@ -1,5 +1,4 @@
 use biodivine_lib_bma_data::model::BmaModel;
-use biodivine_lib_bma_data::traits::JsonSerDe;
 use std::fs::{read_dir, read_to_string};
 
 /// Iterate through all models and see if they are parse without error.

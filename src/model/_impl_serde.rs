@@ -1,28 +1,26 @@
 use crate::json_model::JsonBmaModel;
 use crate::model::bma_model::*;
-use crate::traits::{JsonSerDe, XmlDe};
 use crate::update_fn::parser::parse_bma_formula;
 use crate::xml_model::XmlBmaModel;
+
 use std::collections::HashMap;
 
-impl<'de> JsonSerDe<'de> for BmaModel {
-    fn to_json_str(&self) -> String {
+impl BmaModel {
+    pub fn to_json_str(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 
-    fn to_pretty_json_str(&self) -> String {
+    pub fn to_pretty_json_str(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }
 
-    fn from_json_str(json_str: &'de str) -> Result<Self, String> {
+    pub fn from_json_str(json_str: &str) -> Result<Self, String> {
         let json_model: JsonBmaModel = serde_json::from_str(json_str).map_err(|e| e.to_string())?;
         let model = BmaModel::from(json_model);
         Ok(model)
     }
-}
 
-impl<'de> XmlDe<'de> for BmaModel {
-    fn from_xml_str(xml_str: &'de str) -> Result<Self, String> {
+    pub fn from_xml_str(xml_str: &str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
         let model = BmaModel::from(xml_model);
         Ok(model)
