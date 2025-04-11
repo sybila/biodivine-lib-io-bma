@@ -64,6 +64,11 @@ fn try_tokenize_recursive(
             c if is_valid_start_name(c) => {
                 let name = format!("{c}{}", collect_name(input_chars));
                 match name.as_str() {
+                    "var" => {
+                        // collect the variable name, all format checks are done in the function
+                        let var_name = collect_var_name(input_chars)?;
+                        output.push(BmaFnToken::Atomic(Literal::Str(var_name)));
+                    }
                     "abs" => {
                         let args = collect_fn_arguments(input_chars)?;
                         output.push(mk_unary(UnaryFn::Abs, args[0].clone()))
@@ -89,8 +94,7 @@ fn try_tokenize_recursive(
                         output.push(mk_aggregate(AggregateFn::Avg, args));
                     }
                     _ => {
-                        // Assume it’s a literal
-                        output.push(BmaFnToken::Atomic(Literal::Str(name)));
+                        return Err(format!("Unexpected name: '{name}'"));
                     }
                 }
             }
@@ -136,8 +140,11 @@ fn skip_whitespaces(chars: &mut Peekable<Chars>) {
 }
 
 /// Check if given char can appear in a name.
+/// 
+/// Apparently, "-" is valid too, as it is present in variable names in 
+/// most XML BMA model files...
 fn is_valid_in_name(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
+    c.is_alphanumeric() || c == '_' || c == '-'
 }
 
 /// Check if given char can appear at the beginning of a name.
@@ -157,6 +164,27 @@ fn collect_name(input_chars: &mut Peekable<Chars>) -> String {
         }
     }
     name
+}
+
+/// Collects a variable name from the input character iterator.
+/// 
+/// This function is used when parsing a variable in the form `var(x)`.
+/// It expects the name to be enclosed in parentheses, with possible whitespaces.
+fn collect_var_name(input_chars: &mut Peekable<Chars>) -> Result<String, String> {
+    skip_whitespaces(input_chars);
+    if Some('(') != input_chars.next() {
+        return Err("Expected `(` after `var`.".to_string());
+    }
+    skip_whitespaces(input_chars);
+    let var_name = collect_name(input_chars);
+    if var_name.is_empty() {
+        return Err("Variable name cannot be empty.".to_string());
+    }
+    skip_whitespaces(input_chars);
+    if Some(')') != input_chars.next() {
+        return Err("Expected `)` after variable name.".to_string());
+    }
+    Ok(var_name)
 }
 
 /// Collects a number (integer) from the input character iterator.
@@ -276,25 +304,6 @@ mod tests {
     }
 
     #[test]
-    fn test_unmatched_parentheses() {
-        let input = "min(5, 3".to_string();
-        let result = try_tokenize_bma_formula(input);
-        assert!(result.is_err());
-        assert_eq!(
-            result,
-            Err("Expected ')' to previously encountered opening counterpart.".to_string())
-        );
-    }
-
-    #[test]
-    fn test_unexpected_character() {
-        let input = "5 + @".to_string();
-        let result = try_tokenize_bma_formula(input);
-        assert!(result.is_err());
-        assert_eq!(result, Err("Unexpected character: '@'".to_string()));
-    }
-
-    #[test]
     fn test_compound_expression_with_nested_parentheses() {
         let input = "3 + (5 * (2 + 1))".to_string();
         let result = try_tokenize_bma_formula(input);
@@ -314,6 +323,35 @@ mod tests {
                 ])
             ])
         );
+    }
+
+    #[test]
+    fn test_variable() {
+        let input = "var(x)".to_string();
+        let result = try_tokenize_bma_formula(input);
+        assert_eq!(
+            result,
+            Ok(vec![BmaFnToken::Atomic(Literal::Str("x".to_string()))])
+        );
+    }
+
+    #[test]
+    fn test_unmatched_parentheses() {
+        let input = "min(5, 3".to_string();
+        let result = try_tokenize_bma_formula(input);
+        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err("Expected ')' to previously encountered opening counterpart.".to_string())
+        );
+    }
+
+    #[test]
+    fn test_unexpected_character() {
+        let input = "5 + @".to_string();
+        let result = try_tokenize_bma_formula(input);
+        assert!(result.is_err());
+        assert_eq!(result, Err("Unexpected character: '@'".to_string()));
     }
 
     #[test]

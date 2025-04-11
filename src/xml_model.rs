@@ -5,7 +5,7 @@ use std::str::FromStr;
 /// Custom deserializer function for (potentially) quoted integers (like "42").
 ///
 /// For some reason, this is XML-specific, and we have to use different variant for JSON.
-pub fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
+fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -14,6 +14,10 @@ where
     u32::from_str(trimmed).map_err(serde::de::Error::custom)
 }
 
+/// An intermediate structure for deserializing XML BMA models.
+///
+/// This structure may contain invalid data, such as incorrectly formatted update functions.
+/// The full correctness of the model is checked when constructing the final `BmaModel` struct.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "Model")]
 pub(crate) struct XmlBmaModel {

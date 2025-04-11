@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_parse_aggregate_min() {
-        let input = "min(3, 5, 5 + variable)";
+        let input = "min(3, 5, 5 + var(a))";
         let result = parse_bma_formula(input);
         let expected = BmaFnUpdate::mk_aggregation(
             AggregateFn::Min,
@@ -215,7 +215,7 @@ mod tests {
                 BmaFnUpdate::mk_constant(5),
                 BmaFnUpdate::mk_arithmetic(
                     BmaFnUpdate::mk_constant(5),
-                    BmaFnUpdate::mk_variable("variable"),
+                    BmaFnUpdate::mk_variable("a"),
                     ArithOp::Plus,
                 ),
             ],

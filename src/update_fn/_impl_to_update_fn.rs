@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_terminal_str() {
-        let expression = parse_bma_formula("x").unwrap();
+        let expression = parse_bma_formula("var(x)").unwrap();
         let valuation = HashMap::from([("x".to_string(), Rational32::new(5, 1))]);
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_arithmetic_mult() {
-        let expression = parse_bma_formula("4 * x").unwrap();
+        let expression = parse_bma_formula("4 * var(x)").unwrap();
         let valuation = HashMap::from([("x".to_string(), Rational32::new(2, 1))]);
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());

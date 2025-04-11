@@ -6,29 +6,37 @@ use crate::xml_model::XmlBmaModel;
 use std::collections::HashMap;
 
 impl BmaModel {
+    /// Convert the `BmaModel` into a JSON string.
+    /// Internally, we use serde_json for the conversion.
     pub fn to_json_str(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 
+    /// Convert the `BmaModel` into a pretty formatted JSON string.
+    /// Internally, we use serde_json for the conversion.
     pub fn to_pretty_json_str(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }
 
+    /// Create new BMA model from a model string in JSON format.
+    /// Internally, we use json_serde serialization into an intermediate `JsonBmaModel` structure.
     pub fn from_json_str(json_str: &str) -> Result<Self, String> {
         let json_model: JsonBmaModel = serde_json::from_str(json_str).map_err(|e| e.to_string())?;
-        let model = BmaModel::from(json_model);
-        Ok(model)
+        BmaModel::try_from(json_model)
     }
 
+    /// Create new BMA model from a model string in XML format.
+    /// Internally, we use serde_xml_rs serialization into an intermediate `XmlBmaModel` structure.
     pub fn from_xml_str(xml_str: &str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
-        let model = BmaModel::from(xml_model);
-        Ok(model)
+        BmaModel::try_from(xml_model)
     }
 }
 
-impl From<JsonBmaModel> for BmaModel {
-    fn from(json_model: JsonBmaModel) -> Self {
+impl TryFrom<JsonBmaModel> for BmaModel {
+    type Error = String;
+
+    fn try_from(json_model: JsonBmaModel) -> Result<BmaModel, String> {
         // Create a mapping from variable IDs to their names from the layout
         let layout_var_names: HashMap<u32, String> = json_model
             .layout
@@ -50,21 +58,22 @@ impl From<JsonBmaModel> for BmaModel {
                 .model
                 .variables
                 .into_iter()
-                .map(|var| Variable {
-                    id: var.id,
-                    name: var
-                        .name
-                        .unwrap_or(layout_var_names.get(&var.id).cloned().unwrap_or_default()), // Use the name from layout
-                    range_from: var.range_from,
-                    range_to: var.range_to,
-                    formula: if var.formula.is_empty() {
-                        // TODO: handle incorrectly parsed formulas
-                        BmaFnUpdate::parse_from_str(&var.formula).ok()
-                    } else {
-                        None
-                    },
+                .map(|var| {
+                    Ok(Variable {
+                        id: var.id,
+                        name: var
+                            .name
+                            .unwrap_or(layout_var_names.get(&var.id).cloned().unwrap_or_default()), // Use the name from layout
+                        range_from: var.range_from,
+                        range_to: var.range_to,
+                        formula: if !var.formula.is_empty() {
+                            Some(BmaFnUpdate::parse_from_str(&var.formula)?)
+                        } else {
+                            None
+                        },
+                    })
                 })
-                .collect(),
+                .collect::<Result<Vec<Variable>, String>>()?,
             relationships: json_model
                 .model
                 .relationships
@@ -126,16 +135,19 @@ impl From<JsonBmaModel> for BmaModel {
         // metadata not present in JsonBmaModel
         let metadata = HashMap::new();
 
-        BmaModel {
+        let bma_model = BmaModel {
             model,
             layout,
             metadata,
-        }
+        };
+        Ok(bma_model)
     }
 }
 
-impl From<XmlBmaModel> for BmaModel {
-    fn from(xml_model: XmlBmaModel) -> Self {
+impl TryFrom<XmlBmaModel> for BmaModel {
+    type Error = String;
+
+    fn try_from(xml_model: XmlBmaModel) -> Result<BmaModel, String> {
         // Convert the model
         let model = Model {
             name: xml_model.name,
@@ -144,19 +156,20 @@ impl From<XmlBmaModel> for BmaModel {
                 .variable
                 .clone()
                 .into_iter()
-                .map(|var| Variable {
-                    id: var.id,
-                    name: var.name,
-                    range_from: var.range_from,
-                    range_to: var.range_to,
-                    formula: if var.formula.is_empty() {
-                        // TODO: handle incorrectly parsed formulas
-                        BmaFnUpdate::parse_from_str(&var.formula).ok()
-                    } else {
-                        None
-                    },
+                .map(|var| {
+                    Ok(Variable {
+                        id: var.id,
+                        name: var.name,
+                        range_from: var.range_from,
+                        range_to: var.range_to,
+                        formula: if !var.formula.is_empty() {
+                            Some(BmaFnUpdate::parse_from_str(&var.formula)?)
+                        } else {
+                            None
+                        },
+                    })
                 })
-                .collect(),
+                .collect::<Result<Vec<Variable>, String>>()?,
             relationships: xml_model
                 .relationships
                 .relationship
@@ -213,10 +226,11 @@ impl From<XmlBmaModel> for BmaModel {
         metadata.insert("created_date".to_string(), xml_model.created_date);
         metadata.insert("modified_date".to_string(), xml_model.modified_date);
 
-        BmaModel {
+        let bma_model = BmaModel {
             model,
             layout,
             metadata,
-        }
+        };
+        Ok(bma_model)
     }
 }

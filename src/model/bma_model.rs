@@ -9,6 +9,10 @@ use std::collections::HashMap;
 /// - the functional part with all the variables and relationships (`model`)
 /// - the layout part positions of variables and containers (`layout`)
 /// - the additional (optional) data like version and so on (`metadata`)
+///
+/// `BmaModel` instances can be parsed from JSON or XML versions of the BMA format.
+/// You can use `from_json_str`, `from_xml_str` to create a model from a string.
+/// For serialization to JSON, use custom methods `to_json_str`, or `to_pretty_json_str`.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]

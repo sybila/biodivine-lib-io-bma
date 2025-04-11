@@ -12,7 +12,7 @@ enum StrOrNum<'a> {
 /// Custom deserializer function for (potentially) quoted integers (like "42").
 ///
 /// For some reason, this is JSON-specific, and we have to use different variant for XMP.
-pub fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
+fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -27,6 +27,10 @@ where
     }
 }
 
+/// An intermediate structure for deserializing JSON BMA models.
+///
+/// This structure may contain invalid data, such as incorrectly formatted update functions.
+/// The full correctness of the model is checked when constructing the final `BmaModel` struct.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonBmaModel {
     #[serde(rename = "Model", alias = "model")]
