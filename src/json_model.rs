@@ -1,6 +1,6 @@
 use crate::enums::{RelationshipType, VariableType};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -29,7 +29,9 @@ where
 
 /// An intermediate structure for deserializing JSON BMA models.
 ///
-/// This structure may contain invalid data, such as incorrectly formatted update functions.
+/// This structure is intended purely to simplify serialization. It does not provide much of a
+/// consistency checking. The serialized instances may contain semantically invalid data, such as
+/// incorrectly formatted update functions, or variables not matching in layout and model.
 /// The full correctness of the model is checked when constructing the final `BmaModel` struct.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonBmaModel {
@@ -145,4 +147,20 @@ pub(crate) struct JsonContainer {
     pub position_x: f64,
     #[serde(rename = "PositionY", alias = "positionY")]
     pub position_y: f64,
+}
+
+impl JsonBmaModel {
+    /// Collects set of all named variables from the layout, creating ID-name mapping.
+    /// Variables without names are ignored.
+    pub fn collect_named_layout_variables(&self) -> HashMap<u32, String> {
+        match &self.layout {
+            None => HashMap::new(),
+            Some(layout) => layout
+                .variables
+                .iter()
+                .filter(|layout_var| layout_var.name.is_some())
+                .map(|layout_var| (layout_var.id, layout_var.name.clone().unwrap()))
+                .collect(),
+        }
+    }
 }

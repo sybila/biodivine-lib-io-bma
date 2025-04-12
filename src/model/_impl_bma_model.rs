@@ -10,9 +10,19 @@ use std::cmp::max;
 use std::collections::HashMap;
 
 impl BmaModel {
+    /// Create a new BMA model with a given network, layout, and metadata.
+    /// This is just a wrapper, it does not check the validity of the model.
+    pub fn new(model: BmaNetwork, layout: BmaLayout, metadata: HashMap<String, String>) -> Self {
+        BmaModel {
+            model,
+            layout,
+            metadata,
+        }
+    }
+
     /// Utility to generate a canonical name for a BMA `Variable` by combining its ID and name.
     /// This canonical name will be used in a BooleanNetwork.
-    fn canonical_var_name(var: &Variable) -> String {
+    fn canonical_var_name(var: &BmaVariable) -> String {
         // Regex that matches non-alphanumeric and non-underscore characters
         let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
         let sanitized_name = re.replace_all(&var.name, "");
@@ -163,7 +173,7 @@ impl BmaModel {
                 } else {
                     None
                 };
-                Variable {
+                BmaVariable {
                     id: var_id.to_index() as u32,
                     name: bn.get_variable_name(var_id).clone(),
                     range_from: 0,
@@ -180,7 +190,7 @@ impl BmaModel {
             .regulations()
             .filter(|reg| reg.monotonicity.is_some())
             .enumerate()
-            .map(|(idx, reg)| Relationship {
+            .map(|(idx, reg)| BmaRelationship {
                 id: idx as u32,
                 from_variable: reg.regulator.to_index() as u32,
                 to_variable: reg.target.to_index() as u32,
@@ -188,7 +198,7 @@ impl BmaModel {
             })
             .collect();
 
-        let model = Model {
+        let model = BmaNetwork {
             name: name.to_string(),
             variables,
             relationships,
@@ -197,7 +207,7 @@ impl BmaModel {
         // each variable gets default layout settings
         let layout_vars = bn
             .variables()
-            .map(|var_id| LayoutVariable {
+            .map(|var_id| BmaLayoutVariable {
                 id: var_id.to_index() as u32,
                 name: bn.get_variable_name(var_id).clone(),
                 variable_type: VariableType::Default,
@@ -212,7 +222,7 @@ impl BmaModel {
             .collect();
 
         // a single default container for all the variables
-        let container = Container {
+        let container = BmaContainer {
             id: 0,
             name: "".to_string(),
             size: 1,
@@ -220,7 +230,7 @@ impl BmaModel {
             position_y: 0.0,
         };
 
-        let layout = Layout {
+        let layout = BmaLayout {
             variables: layout_vars,
             containers: vec![container],
             description: "".to_string(),

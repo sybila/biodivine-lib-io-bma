@@ -18,9 +18,9 @@ use std::collections::HashMap;
 #[serde(rename_all = "PascalCase")]
 pub struct BmaModel {
     /// Main data with variables and relationships.
-    pub model: Model,
+    pub model: BmaNetwork,
     /// Layout information (variable positions, containers, ...).
-    pub layout: Layout,
+    pub layout: BmaLayout,
     /// Stores additional metadata like biocheck_version that are sometimes present in XML.
     #[serde(flatten)]
     pub metadata: HashMap<String, String>,
@@ -29,17 +29,17 @@ pub struct BmaModel {
 /// Named model with several `variables` that have various `relationships`.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Model {
+pub struct BmaNetwork {
     pub name: String,
-    pub variables: Vec<Variable>,
-    pub relationships: Vec<Relationship>,
+    pub variables: Vec<BmaVariable>,
+    pub relationships: Vec<BmaRelationship>,
 }
 
 /// A discrete variable with ID and name, range of possible values, and an update expression
 /// that dictates how the variable evolves.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Variable {
+pub struct BmaVariable {
     pub id: u32,
     pub name: String,
     pub range_from: u32,
@@ -51,7 +51,7 @@ pub struct Variable {
 /// A relationship of a given type between two variables.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Relationship {
+pub struct BmaRelationship {
     pub id: u32,
     pub from_variable: u32,
     pub to_variable: u32,
@@ -63,9 +63,9 @@ pub struct Relationship {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Layout {
-    pub variables: Vec<LayoutVariable>,
-    pub containers: Vec<Container>,
+pub struct BmaLayout {
+    pub variables: Vec<BmaLayoutVariable>,
+    pub containers: Vec<BmaContainer>,
     pub description: String, // can be empty (by default if not provided)
     pub zoom_level: Option<f32>,
     pub pan_x: Option<i32>,
@@ -75,7 +75,7 @@ pub struct Layout {
 /// A layout information regarding a model variable.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct LayoutVariable {
+pub struct BmaLayoutVariable {
     pub id: u32,
     pub name: String, // duplicated with Variable.name, but that's what BMA does
     #[serde(rename = "Type")]
@@ -93,12 +93,26 @@ pub struct LayoutVariable {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Container {
+pub struct BmaContainer {
     pub id: u32,
     pub name: String, // can be empty if not provided
     pub size: u32,
     pub position_x: f64,
     pub position_y: f64,
+}
+
+impl Default for BmaLayout {
+    /// Create a default empty layout with no variables or containers.
+    fn default() -> Self {
+        BmaLayout {
+            variables: Vec::new(),
+            containers: Vec::new(),
+            description: String::default(),
+            zoom_level: None,
+            pan_x: None,
+            pan_y: None,
+        }
+    }
 }
 
 /// A utility to serialize update function by calling a custom parser.

@@ -16,7 +16,9 @@ where
 
 /// An intermediate structure for deserializing XML BMA models.
 ///
-/// This structure may contain invalid data, such as incorrectly formatted update functions.
+/// This structure is intended purely to simplify serialization. It does not provide much of a
+/// consistency checking. The serialized instances may contain semantically invalid data, such as
+/// incorrectly formatted update functions, or variables not matching in layout and model.
 /// The full correctness of the model is checked when constructing the final `BmaModel` struct.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "Model")]

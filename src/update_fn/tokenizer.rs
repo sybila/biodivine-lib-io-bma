@@ -140,8 +140,8 @@ fn skip_whitespaces(chars: &mut Peekable<Chars>) {
 }
 
 /// Check if given char can appear in a name.
-/// 
-/// Apparently, "-" is valid too, as it is present in variable names in 
+///
+/// Apparently, "-" is valid too, as it is present in variable names in
 /// most XML BMA model files...
 fn is_valid_in_name(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || c == '-'
@@ -167,7 +167,7 @@ fn collect_name(input_chars: &mut Peekable<Chars>) -> String {
 }
 
 /// Collects a variable name from the input character iterator.
-/// 
+///
 /// This function is used when parsing a variable in the form `var(x)`.
 /// It expects the name to be enclosed in parentheses, with possible whitespaces.
 fn collect_var_name(input_chars: &mut Peekable<Chars>) -> Result<String, String> {
