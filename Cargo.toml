@@ -24,7 +24,8 @@ name = "load-xml"
 path = "src/bin/load_xml.rs"
 
 [dependencies]
-biodivine-lib-param-bn = ">=0.5.11, <1.0.0"
+biodivine-lib-bdd = ">=0.5.22, <1.0.0"
+biodivine-lib-param-bn = ">=0.5.13, <1.0.0"
 clap = { version = "4.1.4", features = ["derive"] }
 rand = "0.8.5"
 regex = "1.10.2"

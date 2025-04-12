@@ -129,7 +129,7 @@ pub fn generate_input_combinations(
 ) -> Vec<HashMap<String, Rational32>> {
     let mut results = Vec::new();
     let mut current_combination = HashMap::new();
-    recursive_combinations(
+    generate_input_combinations_rec(
         variables,
         max_levels,
         &mut current_combination,
@@ -140,7 +140,7 @@ pub fn generate_input_combinations(
 }
 
 /// Recursive helper function to generate input combinations.
-pub fn recursive_combinations(
+pub fn generate_input_combinations_rec(
     variables: &[String],
     max_levels: &HashMap<String, u32>,
     current: &mut HashMap<String, Rational32>,
@@ -157,7 +157,7 @@ pub fn recursive_combinations(
 
     for level in 0..=max_level {
         current.insert(var_name.clone(), Rational32::new(level as i32, 1));
-        recursive_combinations(variables, max_levels, current, index + 1, results);
+        generate_input_combinations_rec(variables, max_levels, current, index + 1, results);
     }
 }
 

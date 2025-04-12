@@ -101,6 +101,38 @@ pub struct BmaContainer {
     pub position_y: f64,
 }
 
+impl BmaLayoutVariable {
+    /// Create a default layout for a variable with given name and ID.
+    /// Default position is (0, 0), angle is 0.0, and cell/description is empty.
+    pub fn new_default(id: u32, name: String) -> Self {
+        BmaLayoutVariable {
+            id,
+            name,
+            variable_type: VariableType::Default,
+            container_id: 0,
+            position_x: 0.0,
+            position_y: 0.0,
+            cell_x: None,
+            cell_y: None,
+            angle: 0.0,
+            description: "".to_string(),
+        }
+    }
+}
+
+impl BmaContainer {
+    /// Create a default empty container. Default position is (0, 0), and size is 1.
+    pub fn new_default(id: u32, name: String) -> Self {
+        BmaContainer {
+            id,
+            name,
+            size: 1,
+            position_x: 0.0,
+            position_y: 0.0,
+        }
+    }
+}
+
 impl Default for BmaLayout {
     /// Create a default empty layout with no variables or containers.
     fn default() -> Self {
