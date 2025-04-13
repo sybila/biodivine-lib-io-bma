@@ -88,10 +88,10 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
             // This should be name (var/function) or a parenthesis group, anything
             // else does not make sense.
             match &tokens[0] {
-                BmaFnToken::Atomic(Literal::Str(name)) => {
+                BmaFnToken::Atomic(Literal::Var(name)) => {
                     return Ok(BmaFnUpdate::mk_variable(name.as_str()));
                 }
-                BmaFnToken::Atomic(Literal::Int(num)) => {
+                BmaFnToken::Atomic(Literal::Const(num)) => {
                     return Ok(BmaFnUpdate::mk_constant(*num));
                 }
                 BmaFnToken::Aggregate(operator, arguments) => {

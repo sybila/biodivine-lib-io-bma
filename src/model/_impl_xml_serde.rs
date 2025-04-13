@@ -1,6 +1,6 @@
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_tree::BmaFnUpdate;
-use crate::xml_model::{XmlBmaModel, XmlContainer, XmlRelationship, XmlVariable};
+use crate::xml_model::{XmlBmaModel, XmlContainer, XmlContainers, XmlRelationship, XmlVariable};
 use std::collections::HashMap;
 
 impl BmaModel {
@@ -47,11 +47,11 @@ impl BmaModel {
             name: xml_var.name,
             variable_type: xml_var.r#type,
             container_id: xml_var.container_id,
-            position_x: xml_var.position_x,
-            position_y: xml_var.position_y,
-            cell_x: Some(xml_var.cell_x),
-            cell_y: Some(xml_var.cell_y),
-            angle: xml_var.angle,
+            position_x: xml_var.position_x.unwrap_or_default(),
+            position_y: xml_var.position_y.unwrap_or_default(),
+            cell_x: xml_var.cell_x,
+            cell_y: xml_var.cell_y,
+            angle: xml_var.angle.unwrap_or_default(),
             description: String::default(),
         }
     }
@@ -103,21 +103,36 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .collect(),
             containers: xml_model
                 .containers
+                .unwrap_or(XmlContainers {
+                    container: Vec::new(),
+                })
                 .container
                 .into_iter()
                 .map(Self::convert_xml_container)
                 .collect(),
             description: xml_model.description,
-            zoom_level: Some(xml_model.layout.zoom_level),
-            pan_x: Some(xml_model.layout.pan_x),
-            pan_y: Some(xml_model.layout.pan_y),
+            zoom_level: xml_model.layout.as_ref().map(|l| l.zoom_level),
+            pan_x: xml_model.layout.as_ref().map(|l| l.pan_x),
+            pan_y: xml_model.layout.as_ref().map(|l| l.pan_y),
         };
 
         // Metadata can be constructed from various XML fields
         let mut metadata = HashMap::new();
-        metadata.insert("biocheck_version".to_string(), xml_model.biocheck_version);
-        metadata.insert("created_date".to_string(), xml_model.created_date);
-        metadata.insert("modified_date".to_string(), xml_model.modified_date);
+        if xml_model.biocheck_version.is_some() {
+            metadata.insert(
+                "biocheck_version".to_string(),
+                xml_model.biocheck_version.unwrap(),
+            );
+        }
+        if xml_model.created_date.is_some() {
+            metadata.insert("created_date".to_string(), xml_model.created_date.unwrap());
+        }
+        if xml_model.modified_date.is_some() {
+            metadata.insert(
+                "modified_date".to_string(),
+                xml_model.modified_date.unwrap(),
+            );
+        }
 
         Ok(BmaModel::new(model, layout, metadata))
     }

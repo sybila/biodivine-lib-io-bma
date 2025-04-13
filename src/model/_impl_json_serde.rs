@@ -37,21 +37,29 @@ impl BmaModel {
         json_var: JsonVariable,
         layout_var_names: &HashMap<u32, String>,
     ) -> Result<BmaVariable, String> {
+        // If there is no name, we try to find it in the layout variables
+        let name = if json_var.name.is_empty() {
+            layout_var_names
+                .get(&json_var.id)
+                .cloned()
+                .unwrap_or_default()
+        } else {
+            json_var.name
+        };
+
+        // Try to parse the update function from the JSON variable
+        let formula = if !json_var.formula.is_empty() {
+            Some(BmaFnUpdate::parse_from_str(&json_var.formula)?)
+        } else {
+            None
+        };
+
         Ok(BmaVariable {
             id: json_var.id,
-            name: json_var.name.unwrap_or(
-                layout_var_names
-                    .get(&json_var.id)
-                    .cloned()
-                    .unwrap_or_default(),
-            ), // Use the name from layout,
+            name,
             range_from: json_var.range_from,
             range_to: json_var.range_to,
-            formula: if !json_var.formula.is_empty() {
-                Some(BmaFnUpdate::parse_from_str(&json_var.formula)?)
-            } else {
-                None
-            },
+            formula,
         })
     }
 
@@ -71,7 +79,7 @@ impl BmaModel {
     fn convert_json_layout_variable(json_var: JsonLayoutVariable) -> BmaLayoutVariable {
         BmaLayoutVariable {
             id: json_var.id,
-            name: json_var.name.unwrap_or_default(),
+            name: json_var.name,
             container_id: json_var.container_id,
             variable_type: json_var.r#type,
             position_x: json_var.position_x,
@@ -79,7 +87,7 @@ impl BmaModel {
             cell_x: json_var.cell_x,
             cell_y: json_var.cell_y,
             angle: json_var.angle,
-            description: json_var.description.unwrap_or_default(),
+            description: json_var.description,
         }
     }
 
@@ -88,7 +96,7 @@ impl BmaModel {
     fn convert_json_container(json_container: JsonContainer) -> BmaContainer {
         BmaContainer {
             id: json_container.id,
-            name: json_container.name.unwrap_or_default(),
+            name: json_container.name,
             size: json_container.size,
             position_x: json_container.position_x,
             position_y: json_container.position_y,
@@ -137,7 +145,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                     .into_iter()
                     .map(Self::convert_json_container)
                     .collect(),
-                description: layout.description.unwrap_or_default(),
+                description: layout.description,
                 zoom_level: None,
                 pan_x: None,
                 pan_y: None,

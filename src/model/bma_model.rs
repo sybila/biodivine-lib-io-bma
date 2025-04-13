@@ -5,12 +5,12 @@ use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 
 /// Main structure with all the important parts of BMA model.
-/// We distinguish between three parts tracked in the BMA format
+/// We distinguish between three parts tracked in the BMA format:
 /// - the functional part with all the variables and relationships (`model`)
-/// - the layout part positions of variables and containers (`layout`)
-/// - the additional (optional) data like version and so on (`metadata`)
+/// - the optional layout with positions of variables and containers (`layout`)
+/// - the additional optional data like version and so on (`metadata`)
 ///
-/// `BmaModel` instances can be parsed from JSON or XML versions of the BMA format.
+/// `BmaModel` instances can be created from JSON or XML versions of the BMA format.
 /// You can use `from_json_str`, `from_xml_str` to create a model from a string.
 /// For serialization to JSON, use custom methods `to_json_str`, or `to_pretty_json_str`.
 #[skip_serializing_none]
@@ -20,13 +20,16 @@ pub struct BmaModel {
     /// Main data with variables and relationships.
     pub model: BmaNetwork,
     /// Layout information (variable positions, containers, ...).
+    /// Laout can be empty, but it is recommended to provide it.
     pub layout: BmaLayout,
     /// Stores additional metadata like biocheck_version that are sometimes present in XML.
+    /// Metadata are usually empty.
     #[serde(flatten)]
     pub metadata: HashMap<String, String>,
 }
 
 /// Named model with several `variables` that have various `relationships`.
+/// This is the main part of the BMA model, and it is always required.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct BmaNetwork {
@@ -36,7 +39,13 @@ pub struct BmaNetwork {
 }
 
 /// A discrete variable with ID and name, range of possible values, and an update expression
-/// that dictates how the variable evolves.
+/// that dictates how the variable evolves. Name string can be empty.
+///
+/// Additional not-functional information like variable's position, description, or type are
+/// present as part of the layout (as is usual in BMA JSON format).
+///
+/// The update expression is optional. The `None` variant is used when empty update expression
+/// is provided. Update expressions are serialized using custom `serialize_update_fn` function.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct BmaVariable {
@@ -49,6 +58,7 @@ pub struct BmaVariable {
 }
 
 /// A relationship of a given type between two variables.
+/// All fields are required.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct BmaRelationship {
@@ -60,6 +70,9 @@ pub struct BmaRelationship {
 }
 
 /// A layout describing positions and types of variables and containers.
+/// Most fields are optional, as layout contains mostly complementary information.
+///
+/// Set of variables here should be a subset of the variables in the model.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -67,26 +80,30 @@ pub struct BmaLayout {
     pub variables: Vec<BmaLayoutVariable>,
     pub containers: Vec<BmaContainer>,
     pub description: String, // can be empty (by default if not provided)
-    pub zoom_level: Option<f32>,
-    pub pan_x: Option<i32>,
-    pub pan_y: Option<i32>,
+    pub zoom_level: Option<f64>,
+    pub pan_x: Option<f64>,
+    pub pan_y: Option<f64>,
 }
 
-/// A layout information regarding a model variable.
+/// Additional layout information regarding a model variable.
+///
+/// If some information is not provided, it cab be set to default values (like
+/// position and angle values 0, default type, empty description, ...).
+/// Other missing information is set to `None` (like cell or container ID).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct BmaLayoutVariable {
     pub id: u32,
-    pub name: String, // duplicated with Variable.name, but that's what BMA does
+    pub name: String, // duplicated with Variable.name, but that's what JSON BMA does
     #[serde(rename = "Type")]
     pub variable_type: VariableType, // Corresponds to "Type" in JSON/XML
-    pub container_id: u32,
     pub position_x: f64,
     pub position_y: f64,
-    pub cell_x: Option<u32>, // this can be serialized to null
-    pub cell_y: Option<u32>, // this can be serialized to null
     pub angle: f64,
     pub description: String, // can be empty (by default if not provided)
+    pub container_id: Option<u32>,
+    pub cell_x: Option<u32>,
+    pub cell_y: Option<u32>,
 }
 
 /// A layout information about a container.
@@ -103,18 +120,21 @@ pub struct BmaContainer {
 
 impl BmaLayoutVariable {
     /// Create a default layout for a variable with given name and ID.
+    /// Container ID is optional, and can be set to `None`.
+    ///
     /// Default position is (0, 0), angle is 0.0, and cell/description is empty.
-    pub fn new_default(id: u32, name: String) -> Self {
+    /// Cell values are set to `None`.
+    pub fn new_default(id: u32, name: String, container_id: Option<u32>) -> Self {
         BmaLayoutVariable {
             id,
             name,
             variable_type: VariableType::Default,
-            container_id: 0,
             position_x: 0.0,
             position_y: 0.0,
+            angle: 0.0,
+            container_id,
             cell_x: None,
             cell_y: None,
-            angle: 0.0,
             description: "".to_string(),
         }
     }

@@ -21,7 +21,7 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
                 println!("Successfully parsed model `{model_path_str}`.");
             }
             Err(e) => {
-                println!("Failed to parse JSON file `{}`: {:?}.", model_path_str, e);
+                println!("Failed to parse XML file `{}`: {:?}.", model_path_str, e);
             }
         }
     }
@@ -40,4 +40,5 @@ fn main() {
 
     // 2) now let's iterate through all models and see if they at least parse without error
     test_parse_all_models_in_dir("models/xml-repo/");
+    test_parse_all_models_in_dir("models/xml-trap-mvn/");
 }

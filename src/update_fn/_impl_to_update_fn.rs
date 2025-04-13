@@ -25,14 +25,14 @@ impl BmaFnUpdate {
         valuation: &HashMap<String, Rational32>,
     ) -> Result<Rational32, String> {
         match &self.expression_tree {
-            BmaFnNodeType::Terminal(Literal::Str(name)) => {
+            BmaFnNodeType::Terminal(Literal::Var(name)) => {
                 if let Some(value) = valuation.get(name) {
                     Ok(*value)
                 } else {
                     Err(format!("Variable `{name}` not found in the valuation."))
                 }
             }
-            BmaFnNodeType::Terminal(Literal::Int(value)) => Ok(Rational32::new(*value, 1)),
+            BmaFnNodeType::Terminal(Literal::Const(value)) => Ok(Rational32::new(*value, 1)),
             BmaFnNodeType::Arithmetic(operator, left, right) => {
                 let left_value = left.evaluate_in_valuation(valuation)?;
                 let right_value = right.evaluate_in_valuation(valuation)?;
@@ -82,12 +82,12 @@ impl BmaFnUpdate {
 
     fn collect_variables(&self) -> HashSet<String> {
         match &self.expression_tree {
-            BmaFnNodeType::Terminal(Literal::Str(name)) => {
+            BmaFnNodeType::Terminal(Literal::Var(name)) => {
                 let mut set = HashSet::new();
                 set.insert(name.clone());
                 set
             }
-            BmaFnNodeType::Terminal(Literal::Int(_)) => HashSet::new(),
+            BmaFnNodeType::Terminal(Literal::Const(_)) => HashSet::new(),
             BmaFnNodeType::Arithmetic(_, left, right) => {
                 let left_set = left.collect_variables();
                 let right_set = right.collect_variables();

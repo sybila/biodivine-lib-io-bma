@@ -1,18 +1,19 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// An atomic expression that can be either an integer or a string (variable name).
+/// An atomic expression that can be either an integer or a variable.
+/// The variable is referenced by its ID.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Literal {
-    Int(i32),
-    Str(String),
+    Const(i32),
+    Var(String),
 }
 
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Literal::Int(value) => write!(f, "{}", value),
-            Literal::Str(value) => write!(f, "{}", value),
+            Literal::Const(value) => write!(f, "{}", value),
+            Literal::Var(value) => write!(f, "var({})", value),
         }
     }
 }

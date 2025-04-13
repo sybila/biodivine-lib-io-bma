@@ -53,6 +53,50 @@ impl BmaModel {
         Ok(graph)
     }
 
+    /// Create a default update function for a variable in the BMA model with
+    /// originally empty formula.
+    ///
+    /// This function is created the same way as BMA does it, even though that
+    /// can feel weird at times.
+    pub fn create_default_update_fn(&self, var_id: u32) -> BmaFnUpdate {
+        let (positive, negative) = self.get_regulators(var_id);
+        if positive.is_empty() && negative.is_empty() {
+            // This is an undetermined input, in which case we set it to zero,
+            // because that's what BMA does.
+            return BmaFnUpdate::mk_constant(0);
+        }
+
+        // We build the default function the same way as BMA does.
+
+        // First we average the positive regulators
+        let p_avr = if !positive.is_empty() {
+            let p_args = positive
+                .iter()
+                .map(|x| BmaFnUpdate::mk_variable(&x.to_string()))
+                .collect();
+            BmaFnUpdate::mk_aggregation(AggregateFn::Avg, p_args)
+        } else {
+            // This does not make much sense, because it means any variable with only negative
+            // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
+            // that's what we are doing as well...
+            BmaFnUpdate::mk_constant(0)
+        };
+
+        // Now we average the negative regulators
+        let n_avr = if !negative.is_empty() {
+            let n_args = negative
+                .iter()
+                .map(|x| BmaFnUpdate::mk_variable(&x.to_string()))
+                .collect();
+            BmaFnUpdate::mk_aggregation(AggregateFn::Avg, n_args)
+        } else {
+            BmaFnUpdate::mk_constant(0)
+        };
+
+        // Finally, we subtract the negative average from the positive average
+        BmaFnUpdate::mk_arithmetic(p_avr, n_avr, ArithOp::Minus)
+    }
+
     /// Convert BmaModel into a BooleanNetwork instance.
     ///
     /// The network will contain the same set of variables and regulations as this model.

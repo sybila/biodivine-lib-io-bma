@@ -67,7 +67,7 @@ fn try_tokenize_recursive(
                     "var" => {
                         // collect the variable name, all format checks are done in the function
                         let var_name = collect_var_name(input_chars)?;
-                        output.push(BmaFnToken::Atomic(Literal::Str(var_name)));
+                        output.push(BmaFnToken::Atomic(Literal::Var(var_name)));
                     }
                     "abs" => {
                         let args = collect_fn_arguments(input_chars)?;
@@ -103,7 +103,7 @@ fn try_tokenize_recursive(
                 let int_number = number
                     .parse::<i32>()
                     .map_err(|_| "Failed to parse number".to_string())?;
-                output.push(BmaFnToken::Atomic(Literal::Int(int_number)));
+                output.push(BmaFnToken::Atomic(Literal::Const(int_number)));
             }
             _ => {
                 return Err(format!("Unexpected character: '{c}'"));
@@ -237,11 +237,11 @@ mod tests {
         assert_eq!(
             result,
             Ok(vec![
-                BmaFnToken::Atomic(Literal::Int(3)),
+                BmaFnToken::Atomic(Literal::Const(3)),
                 BmaFnToken::Binary(ArithOp::Plus),
-                BmaFnToken::Atomic(Literal::Int(5)),
+                BmaFnToken::Atomic(Literal::Const(5)),
                 BmaFnToken::Binary(ArithOp::Minus),
-                BmaFnToken::Atomic(Literal::Int(2))
+                BmaFnToken::Atomic(Literal::Const(2))
             ])
         );
     }
@@ -255,7 +255,7 @@ mod tests {
             Ok(vec![BmaFnToken::Unary(
                 UnaryFn::Abs,
                 Box::new(BmaFnToken::TokenList(vec![BmaFnToken::Atomic(
-                    Literal::Int(5)
+                    Literal::Const(5)
                 )])),
             )])
         );
@@ -270,8 +270,8 @@ mod tests {
             Ok(vec![BmaFnToken::Aggregate(
                 AggregateFn::Min,
                 vec![
-                    BmaFnToken::TokenList(vec![BmaFnToken::Atomic(Literal::Int(5))]),
-                    BmaFnToken::TokenList(vec![BmaFnToken::Atomic(Literal::Int(3))])
+                    BmaFnToken::TokenList(vec![BmaFnToken::Atomic(Literal::Const(5))]),
+                    BmaFnToken::TokenList(vec![BmaFnToken::Atomic(Literal::Const(3))])
                 ]
             )])
         );
@@ -289,13 +289,13 @@ mod tests {
                     BmaFnToken::TokenList(vec![BmaFnToken::Unary(
                         UnaryFn::Abs,
                         Box::new(BmaFnToken::TokenList(vec![BmaFnToken::Atomic(
-                            Literal::Int(5)
+                            Literal::Const(5)
                         )])),
                     )]),
                     BmaFnToken::TokenList(vec![BmaFnToken::Unary(
                         UnaryFn::Ceil,
                         Box::new(BmaFnToken::TokenList(vec![BmaFnToken::Atomic(
-                            Literal::Int(3)
+                            Literal::Const(3)
                         )])),
                     )])
                 ]
@@ -310,15 +310,15 @@ mod tests {
         assert_eq!(
             result,
             Ok(vec![
-                BmaFnToken::Atomic(Literal::Int(3)),
+                BmaFnToken::Atomic(Literal::Const(3)),
                 BmaFnToken::Binary(ArithOp::Plus),
                 BmaFnToken::TokenList(vec![
-                    BmaFnToken::Atomic(Literal::Int(5)),
+                    BmaFnToken::Atomic(Literal::Const(5)),
                     BmaFnToken::Binary(ArithOp::Mult),
                     BmaFnToken::TokenList(vec![
-                        BmaFnToken::Atomic(Literal::Int(2)),
+                        BmaFnToken::Atomic(Literal::Const(2)),
                         BmaFnToken::Binary(ArithOp::Plus),
-                        BmaFnToken::Atomic(Literal::Int(1))
+                        BmaFnToken::Atomic(Literal::Const(1))
                     ])
                 ])
             ])
@@ -331,7 +331,7 @@ mod tests {
         let result = try_tokenize_bma_formula(input);
         assert_eq!(
             result,
-            Ok(vec![BmaFnToken::Atomic(Literal::Str("x".to_string()))])
+            Ok(vec![BmaFnToken::Atomic(Literal::Var("x".to_string()))])
         );
     }
 

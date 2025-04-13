@@ -16,6 +16,42 @@ impl BmaModel {
         }
     }
 
+    /// Check if all variables in the model are Boolean (max level is 1).
+    pub fn is_boolean_model(&self) -> bool {
+        self.get_max_var_level() <= 1
+    }
+
+    /// Get maximum level of any variable in the BMA model.
+    pub fn get_max_var_level(&self) -> u32 {
+        let mut max_level = 0;
+        self.model.variables.iter().for_each(|v| {
+            // just in case, lets check both `range_from` and `range_to`
+            max_level = max(max_level, v.range_from);
+            max_level = max(max_level, v.range_to);
+        });
+        max_level
+    }
+
+    /// Get regulators of a particular variable.
+    /// Returns a tuple of two vectors: positive and negative regulators.
+    /// The regulators are represented by their IDs.
+    pub fn get_regulators(&self, target_var: u32) -> (Vec<u32>, Vec<u32>) {
+        let mut positive = Vec::new();
+        let mut negative = Vec::new();
+        self.model
+            .relationships
+            .iter()
+            .filter(|rel| rel.to_variable == target_var)
+            .for_each(|rel| {
+                if rel.relationship_type == RelationshipType::Activator {
+                    positive.push(rel.from_variable);
+                } else if rel.relationship_type == RelationshipType::Inhibitor {
+                    negative.push(rel.from_variable);
+                }
+            });
+        (positive, negative)
+    }
+
     /// Construct `BmaModel` instance with a given name from a provided BooleanNetwork `bn`.
     ///
     /// The Boolean network must contain parameters in any of its update functions.
@@ -71,17 +107,18 @@ impl BmaModel {
         };
 
         // each variable gets default layout settings
+        let container_id = 0; // default container ID
         let layout_vars = bn
             .variables()
             .map(|var_id| {
                 let id = var_id.to_index() as u32;
                 let name = bn.get_variable_name(var_id).clone();
-                BmaLayoutVariable::new_default(id, name)
+                BmaLayoutVariable::new_default(id, name, Some(container_id))
             })
             .collect();
 
         // a single default container for all the variables
-        let container = BmaContainer::new_default(0, "Default".to_string());
+        let container = BmaContainer::new_default(container_id, "Default".to_string());
 
         let layout = BmaLayout {
             variables: layout_vars,
@@ -93,22 +130,6 @@ impl BmaModel {
         };
 
         Ok(BmaModel::new(model, layout, HashMap::new()))
-    }
-
-    /// Check if all variables in the model are Boolean (max level is 1).
-    pub fn is_boolean_model(&self) -> bool {
-        self.get_max_var_level() <= 1
-    }
-
-    /// Get maximum level of any variable in the BMA model.
-    pub fn get_max_var_level(&self) -> u32 {
-        let mut max_level = 0;
-        self.model.variables.iter().for_each(|v| {
-            // just in case, lets check both `range_from` and `range_to`
-            max_level = max(max_level, v.range_from);
-            max_level = max(max_level, v.range_to);
-        });
-        max_level
     }
 }
 

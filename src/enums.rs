@@ -1,8 +1,9 @@
 use biodivine_lib_param_bn::Monotonicity;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq)]
 pub enum VariableType {
+    #[default]
     Default,
     Constant,
     MembraneReceptor,

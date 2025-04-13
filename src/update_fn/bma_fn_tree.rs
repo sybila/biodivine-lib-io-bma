@@ -48,7 +48,7 @@ impl BmaFnUpdate {
 
     /// Create an "unary" [BmaFnUpdate] from the given arguments.
     ///
-    /// See also [Expression::Unary].
+    /// See also [BmaFnNodeType::Unary].
     pub fn mk_unary(child: BmaFnUpdate, op: UnaryFn) -> BmaFnUpdate {
         let subform_str = format!("{op}({child})");
         BmaFnUpdate {
@@ -60,7 +60,7 @@ impl BmaFnUpdate {
 
     /// Create a "binary" arithmetic [BmaFnUpdate] from the given arguments.
     ///
-    /// See also [Expression::Binary].
+    /// See also [BmaFnNodeType::Arithmetic].
     pub fn mk_arithmetic(left: BmaFnUpdate, right: BmaFnUpdate, op: ArithOp) -> BmaFnUpdate {
         BmaFnUpdate {
             function_str: format!("({left} {op} {right})"),
@@ -71,16 +71,16 @@ impl BmaFnUpdate {
 
     /// Create a [BmaFnUpdate] representing a Boolean constant.
     ///
-    /// See also [Expression::Terminal] and [Atomic::True] / [Atomic::False].
+    /// See also [BmaFnNodeType::Terminal] and [Literal::Const].
     pub fn mk_constant(constant_val: i32) -> BmaFnUpdate {
-        Self::mk_literal(Literal::Int(constant_val))
+        Self::mk_literal(Literal::Const(constant_val))
     }
 
     /// Create a [BmaFnUpdate] representing a variable.
     ///
-    /// See also [Expression::Terminal] and [Literal::Str].
+    /// See also [BmaFnNodeType::Terminal] and [Literal::Var].
     pub fn mk_variable(var_name: &str) -> BmaFnUpdate {
-        Self::mk_literal(Literal::Str(var_name.to_string()))
+        Self::mk_literal(Literal::Var(var_name.to_string()))
     }
 
     /// A helper function which creates a new [BmaFnUpdate] for the given [Literal] value.
