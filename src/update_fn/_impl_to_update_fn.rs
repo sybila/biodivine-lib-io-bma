@@ -9,13 +9,23 @@ impl BmaFnUpdate {
     /// Convert the BMA expression into corresponding `FnUpdate` instance of
     /// [biodivine_lib_param_bn] library.
     ///
+    /// Max levels indicate the maximum level for each variable in the model. For
+    /// Boolean networks, this is set to 1 for all variables.
+    /// Arg `var_name_mapping` maps each BMA variable ID to its canonical name in the
+    /// constructed BN.
+    ///
     /// TODO: implementation via explicit construction of the function table
-    pub fn to_update_fn(&self, max_levels: &HashMap<u32, u32>) -> FnUpdate {
+    pub fn to_update_fn(
+        &self,
+        max_levels: &HashMap<u32, u32>,
+        _var_name_mapping: &HashMap<u32, String>,
+    ) -> FnUpdate {
         // To convert the BMA expression into an update function, we essetially create
         // an explicit function table mapping all valuations of inputs to output values.
         // In BNs, this corresponds to a truth table.
         // We can then use this function table to create a new `FnUpdate` instance.
 
+        // Collect all variable IDs used in the expression, and sort them
         let mut variables: Vec<u32> = self.collect_variables().into_iter().collect();
         variables.sort();
         let _function_table = self.build_function_table(&variables, max_levels);

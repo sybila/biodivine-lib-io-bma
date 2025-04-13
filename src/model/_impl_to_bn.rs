@@ -15,13 +15,16 @@ impl BmaModel {
         format!("v_{}_{}", var.id, sanitized_name)
     }
 
-    /// Convert BmaModel into a RegulatoryGraph instance.
+    /// Extract a regulatory graph from this BMA model. 
     /// The graph will contain the same set of variables and regulations as this model.
+    /// 
+    /// Returns the RegulatoryGraph instance and a mapping of BMA variable IDs to their
+    /// canonical names used in the new graph.
     /// See [Self::canonical_var_name] for how we create variable names.
     ///
     // TODO: decide how to handle "doubled" regulations (of the same vs of different type)
     // TODO: for now, we do not specify observability (making it `false` for all regulations)
-    pub fn to_regulatory_graph(&self) -> Result<RegulatoryGraph, String> {
+    pub fn to_regulatory_graph(&self) -> Result<(RegulatoryGraph, HashMap<u32, String>), String> {
         let mut variables_map: HashMap<u32, String> = HashMap::new();
         for var in &self.model.variables {
             let inserted = variables_map.insert(var.id, BmaModel::canonical_var_name(var));
@@ -50,7 +53,7 @@ impl BmaModel {
                 graph.add_regulation(regulator, target, false, monotonicity)
             })?;
 
-        Ok(graph)
+        Ok((graph, variables_map))
     }
 
     /// Create a default update function for a variable in the BMA model with
@@ -112,21 +115,31 @@ impl BmaModel {
             );
         }
 
-        let graph = self.to_regulatory_graph()?;
+        // Extract the regulatory graph and variable name mapping (BMA var id -> BN var name)
+        let (graph, var_name_mapping) = self.to_regulatory_graph()?;
         let mut bn = BooleanNetwork::new(graph);
 
-        // for boolean models should be always 1 (with exception of constants that we handle later)
+        // collect max levels of variables
         let mut max_levels = HashMap::new();
-        for var in &self.model.variables {
-            max_levels.insert(var.id, var.range_to);
+        // for boolean models, this should be 1 with exception of zero constants 
+        // we deal with zero constants making into boolean variables with constant update 
+        let mut zero_constants = Vec::new();
+        for bma_var in &self.model.variables {
+            if bma_var.range_to == 0 {
+                zero_constants.push(bma_var.id); // remember to deal with these specially 
+                max_levels.insert(bma_var.id, 1); // standard boolean variable now
+            } else {
+                max_levels.insert(bma_var.id, bma_var.range_to);
+            }
         }
 
         // add update functions
-        for var in &self.model.variables {
-            let bn_var_name = BmaModel::canonical_var_name(var);
+        for bma_var in &self.model.variables {
+            // unwrap is safe in both cases here
+            let bn_var_name = var_name_mapping.get(&bma_var.id).unwrap();
             let bn_var_id = bn.as_graph().find_variable(&bn_var_name).unwrap();
 
-            if var.range_to == 0 {
+            if zero_constants.contains(&bma_var.id) {
                 // We can have zero constants and we must deal with these accordingly.
                 // BMA sets the update function to zero in this case regardless of the formula.
                 bn.add_string_update_function(&bn_var_name, "false")
@@ -134,17 +147,17 @@ impl BmaModel {
                 continue;
             }
 
-            if let Some(bma_formula) = var.formula.clone() {
+            if let Some(bma_formula) = bma_var.formula.clone() {
                 // We have a formula, so we need to convert it to a proper update function.
                 // todo: to_update_fn is not fully finished yet
-                let update_fn = bma_formula.to_update_fn(&max_levels);
+                let update_fn = bma_formula.to_update_fn(&max_levels, &var_name_mapping);
                 bn.set_update_function(bn_var_id, Some(update_fn))?;
             } else {
                 // The formula is empty, which means we have to build a default one
                 // the same way as BMA is doing this.
-                let default_bma_formula = self.create_default_update_fn(var.id);
+                let default_bma_formula = self.create_default_update_fn(bma_var.id);
                 // Convert this default BMA expression to a logical update fn.
-                let update_fn = default_bma_formula.to_update_fn(&max_levels);
+                let update_fn = default_bma_formula.to_update_fn(&max_levels, &var_name_mapping);
                 bn.set_update_function(bn_var_id, Some(update_fn))?;
             }
         }
