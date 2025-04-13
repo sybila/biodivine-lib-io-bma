@@ -219,6 +219,29 @@ pub(crate) struct JsonContainer {
 }
 
 impl JsonBmaModel {
+    /// Collects set of all variables in the model, creating ID-name mapping.
+    /// First collects all variables from the model. For those that have empty
+    /// names, it tries to find a name in the layout.
+    pub fn collect_all_variables(&self) -> HashMap<u32, String> {
+        let mut model_vars = self
+            .model
+            .variables
+            .iter()
+            .map(|var| (var.id, var.name.clone()))
+            .collect::<HashMap<u32, String>>();
+
+        let layout_named_vars = self.collect_named_layout_variables();
+        for (id, name_in_layout) in layout_named_vars {
+            if let Some(name_in_model) = model_vars.get(&id) {
+                if name_in_model.is_empty() {
+                    model_vars.insert(id, name_in_layout);
+                }
+            }
+        }
+
+        model_vars
+    }
+
     /// Collects set of all named variables from the layout, creating ID-name mapping.
     /// Variables without names (i.e., with empty name string) are ignored.
     pub fn collect_named_layout_variables(&self) -> HashMap<u32, String> {
@@ -231,5 +254,15 @@ impl JsonBmaModel {
                 .map(|layout_var| (layout_var.id, layout_var.name.clone()))
                 .collect(),
         }
+    }
+
+    /// Collects set of variables that regulate given variable.
+    pub fn get_regulators(&self, variable_id: u32) -> Vec<u32> {
+        self.model
+            .relationships
+            .iter()
+            .filter(|rel| rel.to_variable == variable_id)
+            .map(|rel| rel.from_variable)
+            .collect()
     }
 }

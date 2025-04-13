@@ -23,7 +23,7 @@ impl BmaFnUpdate {
     fn try_from_fn_update_rec(fn_update: &FnUpdate) -> Result<BmaFnUpdate, String> {
         let res = match fn_update {
             FnUpdate::Const(val) => BmaFnUpdate::mk_constant(if *val { 1 } else { 0 }),
-            FnUpdate::Var(var_id) => BmaFnUpdate::mk_variable(&format!("{}", var_id.to_index())),
+            FnUpdate::Var(var_id) => BmaFnUpdate::mk_variable(var_id.to_index() as u32),
             FnUpdate::Not(child) => {
                 // NOT: map !A to (1 - A)
                 let child_expr = Self::try_from_fn_update_rec(child)?;

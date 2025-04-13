@@ -1,6 +1,6 @@
 use crate::enums::{RelationshipType, VariableType};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 /// Custom deserializer function for (potentially) quoted integers (like "42").
 ///
@@ -209,4 +209,25 @@ pub(crate) struct XmlRelationship {
         deserialize_with = "deser_quoted_int_optional"
     )]
     pub container_id: Option<u32>,
+}
+
+impl XmlBmaModel {
+    /// Collects set of all variables in the model, creating ID-name mapping.
+    pub fn collect_all_variables(&self) -> HashMap<u32, String> {
+        self.variables
+            .variable
+            .iter()
+            .map(|var| (var.id, var.name.clone()))
+            .collect::<HashMap<u32, String>>()
+    }
+
+    /// Collects set of variables that regulate given variable.
+    pub fn get_regulators(&self, variable_id: u32) -> Vec<u32> {
+        self.relationships
+            .relationship
+            .iter()
+            .filter(|rel| rel.to_variable_id == variable_id)
+            .map(|rel| rel.from_variable_id)
+            .collect()
+    }
 }

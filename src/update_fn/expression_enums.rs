@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// An atomic expression that can be either an integer or a variable.
-/// The variable is referenced by its ID.
+///
+/// There are some weird format differences, and a variable can be referenced by
+/// either its ID or its name. We convert everything to IDs for easier processing.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Literal {
     Const(i32),
-    Var(String),
+    Var(u32),
 }
 
 impl fmt::Display for Literal {

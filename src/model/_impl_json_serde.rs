@@ -1,6 +1,4 @@
-use crate::json_model::{
-    JsonBmaModel, JsonContainer, JsonLayoutVariable, JsonRelationship, JsonVariable,
-};
+use crate::json_model::*;
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_tree::BmaFnUpdate;
 
@@ -35,28 +33,33 @@ impl BmaModel {
     /// If the update function has incorrect format, we return an error.
     fn convert_json_variable(
         json_var: JsonVariable,
-        layout_var_names: &HashMap<u32, String>,
+        json_model: &JsonBmaModel,
+        all_vars: &HashMap<u32, String>,
     ) -> Result<BmaVariable, String> {
-        // If there is no name, we try to find it in the layout variables
-        let name = if json_var.name.is_empty() {
-            layout_var_names
-                .get(&json_var.id)
-                .cloned()
-                .unwrap_or_default()
-        } else {
-            json_var.name
-        };
+        // We have already precomputed set of all ID-name mappings in the model and layout
+        let name = all_vars.get(&json_var.id).unwrap();
+
+        // Get a set of regulators for the variable that we'll pass to update fn parser
+        let regulators = json_model.get_regulators(json_var.id);
+        let named_regulators = all_vars
+            .clone()
+            .into_iter()
+            .filter(|(id, _)| regulators.contains(id))
+            .collect::<HashMap<u32, String>>();
 
         // Try to parse the update function from the JSON variable
         let formula = if !json_var.formula.is_empty() {
-            Some(BmaFnUpdate::parse_from_str(&json_var.formula)?)
+            Some(BmaFnUpdate::parse_from_str(
+                &json_var.formula,
+                &named_regulators,
+            )?)
         } else {
             None
         };
 
         Ok(BmaVariable {
             id: json_var.id,
-            name,
+            name: name.clone(),
             range_from: json_var.range_from,
             range_to: json_var.range_to,
             formula,
@@ -111,17 +114,16 @@ impl TryFrom<JsonBmaModel> for BmaModel {
     ///
     /// Returns error if the update function has incorrect format.
     fn try_from(json_model: JsonBmaModel) -> Result<BmaModel, String> {
-        // Collect named variables from layout into ID-name mapping
-        let layout_var_names: HashMap<u32, String> = json_model.collect_named_layout_variables();
+        // For all variables, collect ID-name mapping (combining info from model and layout)
+        let all_variables: HashMap<u32, String> = json_model.collect_all_variables();
 
         // Convert the model
         let model = BmaNetwork {
-            name: json_model.model.name,
             variables: json_model
                 .model
                 .variables
-                .into_iter()
-                .map(|var| Self::convert_json_variable(var, &layout_var_names))
+                .iter()
+                .map(|var| Self::convert_json_variable(var.clone(), &json_model, &all_variables))
                 .collect::<Result<Vec<BmaVariable>, String>>()?,
             relationships: json_model
                 .model
@@ -129,6 +131,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                 .into_iter()
                 .map(Self::convert_json_relationship)
                 .collect(),
+            name: json_model.model.name,
         };
 
         // Convert the layout

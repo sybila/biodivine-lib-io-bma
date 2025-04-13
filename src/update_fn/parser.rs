@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::update_fn::bma_fn_tree::*;
 use crate::update_fn::expression_enums::*;
 use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
@@ -5,9 +7,14 @@ use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
 /// Parse an BMA update function formula string representation into an actual expression tree.
 /// Basically a wrapper for tokenize+parse (used often for testing/debug purposes).
 ///
-/// NEEDS to call [validate_props] to fully finish the preprocessing step.
-pub fn parse_bma_formula(formula: &str) -> Result<BmaFnUpdate, String> {
-    let tokens = try_tokenize_bma_formula(formula.to_string())?;
+/// Arg `variables` is a map of variable IDs to their names. It is needed because there are
+/// some weird format differences between different variants, and a variable can be referenced
+/// by either its ID or its name. We convert everything to IDs for easier processing.
+pub fn parse_bma_formula(
+    formula: &str,
+    variables: &HashMap<u32, String>,
+) -> Result<BmaFnUpdate, String> {
+    let tokens = try_tokenize_bma_formula(formula.to_string(), variables)?;
     let tree = parse_bma_fn_tokens(&tokens)?;
     Ok(tree)
 }
@@ -88,8 +95,8 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
             // This should be name (var/function) or a parenthesis group, anything
             // else does not make sense.
             match &tokens[0] {
-                BmaFnToken::Atomic(Literal::Var(name)) => {
-                    return Ok(BmaFnUpdate::mk_variable(name.as_str()));
+                BmaFnToken::Atomic(Literal::Var(var_id)) => {
+                    return Ok(BmaFnUpdate::mk_variable(*var_id));
                 }
                 BmaFnToken::Atomic(Literal::Const(num)) => {
                     return Ok(BmaFnUpdate::mk_constant(*num));
@@ -143,7 +150,8 @@ mod tests {
     #[test]
     fn test_parse_simple_addition() {
         let input = "3 + 5";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_arithmetic(
             BmaFnUpdate::mk_constant(3),
             BmaFnUpdate::mk_constant(5),
@@ -155,7 +163,8 @@ mod tests {
     #[test]
     fn test_parse_simple_subtraction() {
         let input = "10 - 7";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_arithmetic(
             BmaFnUpdate::mk_constant(10),
             BmaFnUpdate::mk_constant(7),
@@ -167,7 +176,8 @@ mod tests {
     #[test]
     fn test_parse_multiplication_and_division() {
         let input = "8 * 4 / 2";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_arithmetic(
             BmaFnUpdate::mk_arithmetic(
                 BmaFnUpdate::mk_constant(8),
@@ -183,7 +193,8 @@ mod tests {
     #[test]
     fn test_parse_nested_arithmetic() {
         let input = "3 + (5 * 2)";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_arithmetic(
             BmaFnUpdate::mk_constant(3),
             BmaFnUpdate::mk_arithmetic(
@@ -199,7 +210,8 @@ mod tests {
     #[test]
     fn test_parse_abs_function() {
         let input = "abs(5)";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_unary(BmaFnUpdate::mk_constant(5), UnaryFn::Abs);
         assert_eq!(result, Ok(expected));
     }
@@ -207,7 +219,8 @@ mod tests {
     #[test]
     fn test_parse_aggregate_min() {
         let input = "min(3, 5, 5 + var(a))";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::from([(42, "a".to_string())]);
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_aggregation(
             AggregateFn::Min,
             vec![
@@ -215,7 +228,7 @@ mod tests {
                 BmaFnUpdate::mk_constant(5),
                 BmaFnUpdate::mk_arithmetic(
                     BmaFnUpdate::mk_constant(5),
-                    BmaFnUpdate::mk_variable("a"),
+                    BmaFnUpdate::mk_variable(42),
                     ArithOp::Plus,
                 ),
             ],
@@ -226,7 +239,8 @@ mod tests {
     #[test]
     fn test_parse_unmatched_parentheses() {
         let input = "3 + (5 * 2";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         assert!(result.is_err());
         assert_eq!(
             result,
@@ -237,7 +251,8 @@ mod tests {
     #[test]
     fn test_parse_invalid_token() {
         let input = "5 + @";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         assert!(result.is_err());
         assert_eq!(result, Err("Unexpected character: '@'".to_string()));
     }
@@ -245,7 +260,8 @@ mod tests {
     #[test]
     fn test_parse_function_with_multiple_arguments() {
         let input = "max(3, 5, 10)";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         let expected = BmaFnUpdate::mk_aggregation(
             AggregateFn::Max,
             vec![
@@ -260,7 +276,8 @@ mod tests {
     #[test]
     fn test_parse_empty_formula() {
         let input = "";
-        let result = parse_bma_formula(input);
+        let vars = HashMap::new();
+        let result = parse_bma_formula(input, &vars);
         assert!(result.is_err());
         assert_eq!(result, Err("Expected formula, found nothing.".to_string()));
     }

@@ -10,8 +10,8 @@ impl BmaFnUpdate {
     /// [biodivine_lib_param_bn] library.
     ///
     /// TODO: implementation via explicit construction of the function table
-    pub fn to_update_fn(&self, max_levels: &HashMap<String, u32>) -> FnUpdate {
-        let mut variables: Vec<String> = self.collect_variables().into_iter().collect();
+    pub fn to_update_fn(&self, max_levels: &HashMap<u32, u32>) -> FnUpdate {
+        let mut variables: Vec<u32> = self.collect_variables().into_iter().collect();
         variables.sort();
         let _function_table = self.build_function_table(&variables, max_levels);
 
@@ -22,7 +22,7 @@ impl BmaFnUpdate {
     /// A valuation assigns values to all variables.
     pub fn evaluate_in_valuation(
         &self,
-        valuation: &HashMap<String, Rational32>,
+        valuation: &HashMap<u32, Rational32>,
     ) -> Result<Rational32, String> {
         match &self.expression_tree {
             BmaFnNodeType::Terminal(Literal::Var(name)) => {
@@ -80,11 +80,12 @@ impl BmaFnUpdate {
         }
     }
 
-    fn collect_variables(&self) -> HashSet<String> {
+    /// Collect all variable IDs used in the BMA function expression.
+    fn collect_variables(&self) -> HashSet<u32> {
         match &self.expression_tree {
-            BmaFnNodeType::Terminal(Literal::Var(name)) => {
+            BmaFnNodeType::Terminal(Literal::Var(var_id)) => {
                 let mut set = HashSet::new();
-                set.insert(name.clone());
+                set.insert(*var_id);
                 set
             }
             BmaFnNodeType::Terminal(Literal::Const(_)) => HashSet::new(),
@@ -104,9 +105,9 @@ impl BmaFnUpdate {
     /// Build a function table that maps all input combinations (valuations) to output values.
     pub fn build_function_table(
         &self,
-        variables: &[String],
-        max_levels: &HashMap<String, u32>,
-    ) -> Vec<(HashMap<String, Rational32>, Rational32)> {
+        variables: &[u32],
+        max_levels: &HashMap<u32, u32>,
+    ) -> Vec<(HashMap<u32, Rational32>, Rational32)> {
         let input_combinations = generate_input_combinations(variables, max_levels);
         let mut function_table = Vec::new();
 
@@ -124,9 +125,9 @@ impl BmaFnUpdate {
 
 /// Generate all possible input combinations for the given variables, respecting their possible levels.
 pub fn generate_input_combinations(
-    variables: &[String],
-    max_levels: &HashMap<String, u32>,
-) -> Vec<HashMap<String, Rational32>> {
+    variables: &[u32],
+    max_levels: &HashMap<u32, u32>,
+) -> Vec<HashMap<u32, Rational32>> {
     let mut results = Vec::new();
     let mut current_combination = HashMap::new();
     generate_input_combinations_rec(
@@ -141,22 +142,22 @@ pub fn generate_input_combinations(
 
 /// Recursive helper function to generate input combinations.
 pub fn generate_input_combinations_rec(
-    variables: &[String],
-    max_levels: &HashMap<String, u32>,
-    current: &mut HashMap<String, Rational32>,
+    variables: &[u32],
+    max_levels: &HashMap<u32, u32>,
+    current: &mut HashMap<u32, Rational32>,
     index: usize,
-    results: &mut Vec<HashMap<String, Rational32>>,
+    results: &mut Vec<HashMap<u32, Rational32>>,
 ) {
     if index == variables.len() {
         results.push(current.clone());
         return;
     }
 
-    let var_name = &variables[index];
-    let max_level = max_levels.get(var_name).cloned().unwrap_or(0);
+    let var_id = &variables[index];
+    let max_level = max_levels.get(var_id).cloned().unwrap_or(0);
 
     for level in 0..=max_level {
-        current.insert(var_name.clone(), Rational32::new(level as i32, 1));
+        current.insert(*var_id, Rational32::new(level as i32, 1));
         generate_input_combinations_rec(variables, max_levels, current, index + 1, results);
     }
 }
@@ -169,8 +170,9 @@ mod tests {
 
     #[test]
     fn test_evaluate_terminal_str() {
-        let expression = parse_bma_formula("var(x)").unwrap();
-        let valuation = HashMap::from([("x".to_string(), Rational32::new(5, 1))]);
+        let vars = HashMap::from([(1, "x".to_string())]);
+        let expression = parse_bma_formula("var(x)", &vars).unwrap();
+        let valuation = HashMap::from([(1, Rational32::new(5, 1))]);
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), Rational32::new(5, 1));
@@ -178,7 +180,8 @@ mod tests {
 
     #[test]
     fn test_evaluate_terminal_int() {
-        let expression = parse_bma_formula("7").unwrap();
+        let vars = HashMap::new();
+        let expression = parse_bma_formula("7", &vars).unwrap();
         let valuation = HashMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -187,7 +190,8 @@ mod tests {
 
     #[test]
     fn test_evaluate_arithmetic_plus() {
-        let expression = parse_bma_formula("2 + 3").unwrap();
+        let vars = HashMap::new();
+        let expression = parse_bma_formula("2 + 3", &vars).unwrap();
         let valuation = HashMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -196,8 +200,9 @@ mod tests {
 
     #[test]
     fn test_evaluate_arithmetic_mult() {
-        let expression = parse_bma_formula("4 * var(x)").unwrap();
-        let valuation = HashMap::from([("x".to_string(), Rational32::new(2, 1))]);
+        let vars = HashMap::from([(1, "x".to_string())]);
+        let expression = parse_bma_formula("4 * var(x)", &vars).unwrap();
+        let valuation = HashMap::from([(1, Rational32::new(2, 1))]);
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), Rational32::new(8, 1));
@@ -205,7 +210,8 @@ mod tests {
 
     #[test]
     fn test_evaluate_unary_abs() {
-        let expression = parse_bma_formula("abs(5 - 10)").unwrap();
+        let vars = HashMap::new();
+        let expression = parse_bma_formula("abs(5 - 10)", &vars).unwrap();
         let valuation = HashMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -214,7 +220,8 @@ mod tests {
 
     #[test]
     fn test_evaluate_aggregation_avg() {
-        let expression = parse_bma_formula("avg(1, 2, 3)").unwrap();
+        let vars = HashMap::new();
+        let expression = parse_bma_formula("avg(1, 2, 3)", &vars).unwrap();
         let valuation = HashMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -223,7 +230,8 @@ mod tests {
 
     #[test]
     fn test_evaluate_aggregation_max() {
-        let expression = parse_bma_formula("max(1, 4, 3)").unwrap();
+        let vars = HashMap::new();
+        let expression = parse_bma_formula("max(1, 4, 3)", &vars).unwrap();
         let valuation = HashMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -232,7 +240,8 @@ mod tests {
 
     #[test]
     fn test_evaluate_aggregation_min() {
-        let expression = parse_bma_formula("min(1, 2 - 4, 3)").unwrap();
+        let vars = HashMap::new();
+        let expression = parse_bma_formula("min(1, 2 - 4, 3)", &vars).unwrap();
         let valuation = HashMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());

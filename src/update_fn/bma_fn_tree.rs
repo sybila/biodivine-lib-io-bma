@@ -3,6 +3,7 @@ use crate::update_fn::parser::parse_bma_fn_tokens;
 use crate::update_fn::tokenizer::BmaFnToken;
 use serde::{Deserialize, Serialize};
 use std::cmp;
+use std::collections::HashMap;
 use std::fmt;
 
 use super::parser::parse_bma_formula;
@@ -42,8 +43,15 @@ impl BmaFnUpdate {
     }
 
     /// Parse new [BmaFnUpdate] tree directly from a string representation.
-    pub fn parse_from_str(function_str: &str) -> Result<BmaFnUpdate, String> {
-        parse_bma_formula(function_str)
+    ///
+    /// Arg `variables` is a map of variable IDs to their names. It is needed because there are
+    /// some weird format differences between different variants, and a variable can be referenced
+    /// by either its ID or its name. We convert everything to IDs for easier processing.
+    pub fn parse_from_str(
+        function_str: &str,
+        variables: &HashMap<u32, String>,
+    ) -> Result<BmaFnUpdate, String> {
+        parse_bma_formula(function_str, variables)
     }
 
     /// Create an "unary" [BmaFnUpdate] from the given arguments.
@@ -79,8 +87,8 @@ impl BmaFnUpdate {
     /// Create a [BmaFnUpdate] representing a variable.
     ///
     /// See also [BmaFnNodeType::Terminal] and [Literal::Var].
-    pub fn mk_variable(var_name: &str) -> BmaFnUpdate {
-        Self::mk_literal(Literal::Var(var_name.to_string()))
+    pub fn mk_variable(var_id: u32) -> BmaFnUpdate {
+        Self::mk_literal(Literal::Var(var_id))
     }
 
     /// A helper function which creates a new [BmaFnUpdate] for the given [Literal] value.
