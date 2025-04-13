@@ -11,6 +11,11 @@ impl BmaFnUpdate {
     ///
     /// TODO: implementation via explicit construction of the function table
     pub fn to_update_fn(&self, max_levels: &HashMap<u32, u32>) -> FnUpdate {
+        // To convert the BMA expression into an update function, we essetially create
+        // an explicit function table mapping all valuations of inputs to output values.
+        // In BNs, this corresponds to a truth table.
+        // We can then use this function table to create a new `FnUpdate` instance.
+
         let mut variables: Vec<u32> = self.collect_variables().into_iter().collect();
         variables.sort();
         let _function_table = self.build_function_table(&variables, max_levels);
@@ -19,17 +24,17 @@ impl BmaFnUpdate {
     }
 
     /// Evaluate the BMA function expression in a given valuation.
-    /// A valuation assigns values to all variables.
+    /// A `valuation`` assigns values to all variables (ID-value mapping).
     pub fn evaluate_in_valuation(
         &self,
         valuation: &HashMap<u32, Rational32>,
     ) -> Result<Rational32, String> {
         match &self.expression_tree {
-            BmaFnNodeType::Terminal(Literal::Var(name)) => {
-                if let Some(value) = valuation.get(name) {
+            BmaFnNodeType::Terminal(Literal::Var(var_id)) => {
+                if let Some(value) = valuation.get(var_id) {
                     Ok(*value)
                 } else {
-                    Err(format!("Variable `{name}` not found in the valuation."))
+                    Err(format!("Variable `{var_id}` not found in the valuation."))
                 }
             }
             BmaFnNodeType::Terminal(Literal::Const(value)) => Ok(Rational32::new(*value, 1)),
@@ -80,7 +85,7 @@ impl BmaFnUpdate {
         }
     }
 
-    /// Collect all variable IDs used in the BMA function expression.
+    /// Collect all variable IDs used in this BMA function's expression.
     fn collect_variables(&self) -> HashSet<u32> {
         match &self.expression_tree {
             BmaFnNodeType::Terminal(Literal::Var(var_id)) => {
@@ -102,7 +107,15 @@ impl BmaFnUpdate {
         }
     }
 
-    /// Build a function table that maps all input combinations (valuations) to output values.
+    /// Build a "function table" mapping all input value combinations (valuations)
+    /// to output values.
+    ///
+    /// For Boolean networks, the function table will essentially be a truth table,
+    /// mapping boolean combinations of input variables to the output value.
+    ///
+    /// This method can also handle multi-valued variables (arg `max_levels` specifies
+    /// maximum level for each variable), but the table needs to be further binarized
+    /// to be used in a Boolean network.
     pub fn build_function_table(
         &self,
         variables: &[u32],
@@ -123,7 +136,11 @@ impl BmaFnUpdate {
     }
 }
 
-/// Generate all possible input combinations for the given variables, respecting their possible levels.
+/// Generate all possible input combinations for the given variables, respecting their
+/// possible levels.
+///
+/// This function can handle multi-valued variables (arg `max_levels` specifies maximum
+/// level for each variable).
 pub fn generate_input_combinations(
     variables: &[u32],
     max_levels: &HashMap<u32, u32>,
@@ -140,7 +157,11 @@ pub fn generate_input_combinations(
     results
 }
 
-/// Recursive helper function to generate input combinations.
+/// Recursive helper function to generate input value combinations.
+/// It builds combinations by iterating through each variable and its possible levels.
+///
+/// This function can handle multi-valued variables (arg `max_levels` specifies maximum
+/// level for each variable).
 pub fn generate_input_combinations_rec(
     variables: &[u32],
     max_levels: &HashMap<u32, u32>,

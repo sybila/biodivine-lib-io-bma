@@ -20,7 +20,7 @@ impl BmaModel {
     /// See [Self::canonical_var_name] for how we create variable names.
     ///
     // TODO: decide how to handle "doubled" regulations (of the same vs of different type)
-    // TODO: for now, we ignore observability (making it `false` for all regulations)
+    // TODO: for now, we do not specify observability (making it `false` for all regulations)
     pub fn to_regulatory_graph(&self) -> Result<RegulatoryGraph, String> {
         let mut variables_map: HashMap<u32, String> = HashMap::new();
         for var in &self.model.variables {
@@ -103,7 +103,8 @@ impl BmaModel {
     /// See [Self::canonical_var_name] for how we create variable names.
     /// The update functions are transformed using [BmaFnUpdate::to_update_fn].
     ///
-    /// TODO: For now, we do not handle multi-valued models.
+    /// TODO: For now, we do not handle multi-valued models. However, some internal
+    /// methods are made general to deal with multi-valued networks in future.
     pub fn to_boolean_network(&self) -> Result<BooleanNetwork, String> {
         if !self.is_boolean_model() {
             return Err(
@@ -114,6 +115,7 @@ impl BmaModel {
         let graph = self.to_regulatory_graph()?;
         let mut bn = BooleanNetwork::new(graph);
 
+        // for boolean models should be always 1 (with exception of constants that we handle later)
         let mut max_levels = HashMap::new();
         for var in &self.model.variables {
             max_levels.insert(var.id, var.range_to);
@@ -121,25 +123,29 @@ impl BmaModel {
 
         // add update functions
         for var in &self.model.variables {
-            let var_name = BmaModel::canonical_var_name(var);
-            let var_id = bn.as_graph().find_variable(&var_name).unwrap();
+            let bn_var_name = BmaModel::canonical_var_name(var);
+            let bn_var_id = bn.as_graph().find_variable(&bn_var_name).unwrap();
 
             if var.range_to == 0 {
                 // We can have zero constants and we must deal with these accordingly.
-                bn.add_string_update_function(&var_name, "false").unwrap()
+                // BMA sets the update function to zero in this case regardless of the formula.
+                bn.add_string_update_function(&bn_var_name, "false")
+                    .unwrap();
+                continue;
             }
 
             if let Some(bma_formula) = var.formula.clone() {
+                // We have a formula, so we need to convert it to a proper update function.
                 // todo: to_update_fn is not fully finished yet
                 let update_fn = bma_formula.to_update_fn(&max_levels);
-                bn.set_update_function(var_id, Some(update_fn))?;
+                bn.set_update_function(bn_var_id, Some(update_fn))?;
             } else {
                 // The formula is empty, which means we have to build a default one
                 // the same way as BMA is doing this.
-                // We then convert this default BMA expression to a logical formula.
                 let default_bma_formula = self.create_default_update_fn(var.id);
+                // Convert this default BMA expression to a logical update fn.
                 let update_fn = default_bma_formula.to_update_fn(&max_levels);
-                bn.set_update_function(var_id, Some(update_fn))?;
+                bn.set_update_function(bn_var_id, Some(update_fn))?;
             }
         }
 
