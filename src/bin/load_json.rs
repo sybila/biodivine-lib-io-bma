@@ -46,4 +46,16 @@ fn main() {
     test_parse_all_models_in_dir("models/json-repo/");
     test_parse_all_models_in_dir("models/json-export-from-repo/");
     test_parse_all_models_in_dir("models/json-export-from-tool/");
+
+    // 3) first, let's just check fully converting a small boolean example
+    let boolean_model_paths = vec!["models/json-repo/ionChannel.json"];
+    for model_path in boolean_model_paths {
+        println!("Processing selected boolean model {:?}:", model_path);
+        let json_data = read_to_string(model_path).expect("Unable to read file");
+        let bma_model = BmaModel::from_json_str(&json_data).expect("JSON was not well-formatted");
+        let bn = bma_model
+            .to_boolean_network()
+            .expect("Failed to convert to BN");
+        println!("Resulting BN:\n{bn}");
+    }
 }

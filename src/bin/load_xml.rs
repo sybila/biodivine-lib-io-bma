@@ -41,4 +41,16 @@ fn main() {
     // 2) now let's iterate through all models and see if they at least parse without error
     test_parse_all_models_in_dir("models/xml-repo/");
     test_parse_all_models_in_dir("models/xml-trap-mvn/");
+
+    // 3) first, let's just check fully converting a small boolean example
+    let boolean_model_paths = vec!["models/xml-trap-mvn/BooleanLoopAnalysisInput.xml"];
+    for model_path in boolean_model_paths {
+        println!("Processing selected boolean model {:?}:", model_path);
+        let xml_data = read_to_string(model_path).expect("Unable to read file");
+        let bma_model = BmaModel::from_xml_str(&xml_data).expect("XML was not well-formatted");
+        let bn = bma_model
+            .to_boolean_network()
+            .expect("Failed to convert to BN");
+        println!("Resulting BN:\n{bn}");
+    }
 }

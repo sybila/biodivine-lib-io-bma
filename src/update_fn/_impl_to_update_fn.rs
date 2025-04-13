@@ -1,36 +1,78 @@
 use crate::update_fn::bma_fn_tree::{BmaFnNodeType, BmaFnUpdate};
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
-use biodivine_lib_param_bn::FnUpdate;
 use num_rational::Rational32;
 use num_traits::sign::Signed;
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::{dec, Decimal};
+use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 
+/// A function table is a vector of tuples, where each tuple contains a variable valuation
+/// and output value. Variable valuation is a mapping of variable IDs to their values (as
+/// a HashMap).
+type FunctionTable = Vec<(HashMap<u32, u32>, u32)>;
+
 impl BmaFnUpdate {
-    /// Convert the BMA expression into corresponding `FnUpdate` instance of
-    /// [biodivine_lib_param_bn] library.
+    /// Convert the BMA expression into corresponding BN update function string
+    /// matching the format of the [biodivine_lib_param_bn] library.
     ///
-    /// Max levels indicate the maximum level for each variable in the model. For
+    /// Note that currently, WE ONLY SUPPORT BOOLEAN MODELS, even though some methods
+    /// are already implemented to handle more general multi-valued cases as well.
+    ///
+    /// Map `max_levels` indicates the maximum level for each variable in the model. For
     /// Boolean networks, this is set to 1 for all variables.
     /// Arg `var_name_mapping` maps each BMA variable ID to its canonical name in the
     /// constructed BN.
+    /// Arg `this_var_max_lvl` is the maximum level of the variable for which we are  
+    /// creating the update function.
     ///
     /// TODO: implementation via explicit construction of the function table
-    pub fn to_update_fn(
+    pub fn to_update_fn_boolean(
         &self,
         max_levels: &HashMap<u32, u32>,
-        _var_name_mapping: &HashMap<u32, String>,
-    ) -> FnUpdate {
+        var_name_mapping: &HashMap<u32, String>,
+        this_var_max_lvl: u32,
+    ) -> Result<String, String> {
         // To convert the BMA expression into an update function, we essetially create
         // an explicit function table mapping all valuations of inputs to output values.
         // In BNs, this corresponds to a truth table.
-        // We can then use this function table to create a new `FnUpdate` instance.
+        // We can then use this function table to create a new logical update formula.
 
         // Collect all variable IDs used in the expression, and sort them
-        let mut variables: Vec<u32> = self.collect_variables().into_iter().collect();
-        variables.sort();
-        let _function_table = self.build_function_table(&variables, max_levels);
+        let mut variables_in_fn: Vec<u32> = self.collect_variables().into_iter().collect();
+        variables_in_fn.sort();
 
-        todo!()
+        // Create a function table and convert it into DNF formula
+        let function_table =
+            self.build_function_table(&variables_in_fn, max_levels, this_var_max_lvl)?;
+        let mut conjunction_clauses = Vec::new();
+        for (valuation, fn_value) in function_table {
+            if fn_value == 1 {
+                let conjunction_str = valuation
+                    .iter()
+                    .map(|(id, value)| {
+                        let bn_var_name = var_name_mapping.get(id).unwrap(); // unwrap is safe here
+                                                                             // create positive or negative literal based on the value
+                        if *value == 0 {
+                            format!("!{bn_var_name}")
+                        } else {
+                            bn_var_name.clone()
+                        }
+                    })
+                    .collect::<Vec<String>>()
+                    .join(" & ");
+
+                conjunction_clauses.push(format!("({conjunction_str})"));
+            }
+        }
+
+        let dnf_formula = if conjunction_clauses.is_empty() {
+            "false".to_string()
+        } else {
+            conjunction_clauses.join(" | ")
+        };
+
+        Ok(dnf_formula)
     }
 
     /// Evaluate the BMA function expression in a given valuation.
@@ -117,32 +159,67 @@ impl BmaFnUpdate {
         }
     }
 
-    /// Build a "function table" mapping all input value combinations (valuations)
-    /// to output values.
-    ///
+    /// Build a "function table" mapping all input valuations to the corresponding function
+    /// value.
     /// For Boolean networks, the function table will essentially be a truth table,
     /// mapping boolean combinations of input variables to the output value.
     ///
+    /// Arg `variables_in_fn` specifies the variables used in the function expression in order.
+    /// Arg `this_var_max_lvl` specifies the maximum level of the variable for which we are
+    /// creating the function table.
+    ///
     /// This method can also handle multi-valued variables (arg `max_levels` specifies
-    /// maximum level for each variable), but the table needs to be further binarized
+    /// maximum level for all model variable), but the table needs to be further binarized
     /// to be used in a Boolean network.
     pub fn build_function_table(
         &self,
-        variables: &[u32],
+        variables_in_fn: &[u32],
         max_levels: &HashMap<u32, u32>,
-    ) -> Vec<(HashMap<u32, Rational32>, Rational32)> {
-        let input_combinations = generate_input_combinations(variables, max_levels);
+        this_var_max_lvl: u32,
+    ) -> Result<FunctionTable, String> {
+        let input_valuations = generate_input_combinations(variables_in_fn, max_levels);
         let mut function_table = Vec::new();
 
-        // Evaluate the function for each combination.
-        for combination in input_combinations {
-            match self.evaluate_in_valuation(&combination) {
-                Ok(output_value) => function_table.push((combination, output_value)),
-                Err(err) => eprintln!("Error evaluating function: {err}"),
-            }
+        // Evaluate the function for each valuation, and round the result to an integer
+        for valuation in input_valuations {
+            // Evaluate the function, with result as a rational number
+            let rational_result = self
+                .evaluate_in_valuation(&valuation)
+                .map_err(|err| format!("Internal error during function evaluation: {err}"))?;
+
+            // Convert the valuation values to u32 (all input values are natural nums by design anyway)
+            let int_valuation = valuation
+                .iter()
+                .map(|(var_id, value)| (*var_id, value.to_integer() as u32))
+                .collect::<HashMap<u32, u32>>();
+
+            // Convert the result to integer (rounding if necessary)
+            let mut result_int = if rational_result.is_integer() {
+                // Ideally, most numbers will not actually be fractions, and we dont have to round
+                rational_result.to_integer()
+            } else {
+                // Otherwise, we need to convert the fraction into integer by rounding.
+                // Note that BMA is written in C/C# which performs "round half up" arithemtic.
+                // However, Rust performs "round half even" airthmetic, meaning we might return
+                // a different value compared to BMA. We have to run it through this magic
+                // formula that will actually perform a proper "round half up" rounding.
+
+                let numerator_decimal = Decimal::from(*rational_result.numer());
+                let denominator_decimal = Decimal::from(*rational_result.denom());
+                let result_decimal = numerator_decimal / denominator_decimal;
+                if result_decimal.fract() >= dec!(0.5) {
+                    result_decimal.ceil().to_i32().unwrap()
+                } else {
+                    result_decimal.floor().to_i32().unwrap()
+                }
+            };
+
+            // Ensure the result is non-negative, and in the valid range
+            result_int = max(0, result_int);
+            function_table.push((int_valuation, min(result_int as u32, this_var_max_lvl)));
         }
 
-        function_table
+        Ok(function_table)
     }
 }
 
