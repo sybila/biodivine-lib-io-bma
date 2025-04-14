@@ -20,6 +20,10 @@ impl BmaFnUpdate {
 
     /// Recursively converts the `FnUpdate` Boolean formula into a corresponding `BmaFnUpdate`
     /// real-number expression.
+    ///
+    /// At the end, must ensure each result will fall into [0, 1] range. For example, when
+    /// using + for logical OR, we need to subtract the product of both operands to avoid
+    /// exceeding 1.
     fn try_from_fn_update_rec(fn_update: &FnUpdate) -> Result<BmaFnUpdate, String> {
         let res = match fn_update {
             FnUpdate::Const(val) => BmaFnUpdate::mk_constant(if *val { 1 } else { 0 }),
