@@ -421,4 +421,42 @@ mod tests {
         assert!(result_table.is_ok());
         assert_eq!(result_table.unwrap(), expexted_table);
     }
+
+    #[test]
+    fn test_to_update_fn_boolean_binary() {
+        // prepare 2 boolean variables and a formula for their product
+        let vars = HashMap::from([(1, "a".to_string()), (2, "b".to_string())]);
+        let max_levels = HashMap::from([(1, 1), (2, 1)]);
+        let expression = parse_bma_formula("var(1) * var(2)", &vars).unwrap();
+
+        // DNF formula for the AND function is just "(a & b)" - only this one clause has function value 1
+        let expected_fn = "(a & b)".to_string();
+        let result_fn = expression.to_update_fn_boolean(&max_levels, &vars, 1);
+
+        assert!(result_fn.is_ok());
+        assert_eq!(result_fn.unwrap(), expected_fn);
+    }
+
+    #[test]
+    fn test_to_update_fn_boolean_ternary() {
+        // prepare 3 boolean variables and a formula for A | !(B | C)
+        let vars = HashMap::from([
+            (1, "a".to_string()),
+            (2, "b".to_string()),
+            (3, "c".to_string()),
+        ]);
+        let max_levels = HashMap::from([(1, 1), (2, 1), (3, 1)]);
+        let expression =
+            parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
+
+        // expected function values are [1, 0, 0, 0, 1, 1, 1, 1]
+        // that means DNF formula with 5 clauses (starting from zero valuation)
+        let expexted_fn =
+            "(!a & !b & !c) | (a & !b & !c) | (a & !b & c) | (a & b & !c) | (a & b & c)"
+                .to_string();
+        let result_fn = expression.to_update_fn_boolean(&max_levels, &vars, 1);
+
+        assert!(result_fn.is_ok());
+        assert_eq!(result_fn.unwrap(), expexted_fn);
+    }
 }

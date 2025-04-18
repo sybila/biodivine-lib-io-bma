@@ -3,7 +3,7 @@ use crate::update_fn::bma_fn_tree::BmaFnUpdate;
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp};
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 impl BmaModel {
     /// Generate a canonical name for a BMA variable by combining its ID and name.
@@ -16,17 +16,25 @@ impl BmaModel {
     }
 
     /// Extract a regulatory graph from this BMA model.
-    /// The graph will contain the same set of variables and regulations as this model.
     ///
-    /// Returns the RegulatoryGraph instance and a mapping of BMA variable IDs to their
-    /// canonical names used in the new graph.
-    /// See [Self::canonical_var_name] for how we create variable names.
+    /// Returns the RegulatoryGraph instance (extracting variables and regulations from
+    /// this model) and a mapping of BMA variable IDs to their canonical names used in
+    /// the new graph.
+    ///
+    /// See [Self::canonical_var_name] for how we create variable names. Varibles are sorted
+    /// by these canonical names, which means they are sorted by their BMA IDs as well.
+    /// Regulations are sorted by their regulator (first key) and their target (second key).
     ///
     // TODO: decide how to handle "doubled" regulations (of the same vs of different type)
     // TODO: for now, we do not specify observability (making it `false` for all regulations)
     pub fn to_regulatory_graph(&self) -> Result<(RegulatoryGraph, HashMap<u32, String>), String> {
-        let mut variables_map: HashMap<u32, String> = HashMap::new();
-        for var in &self.model.variables {
+        // Sort variables by their IDs before inserting them into the graph to ensure deterministic
+        // ordering. We use a BTreeMap to ensure variables remain sorted.
+        let mut variables_map: BTreeMap<u32, String> = BTreeMap::new();
+        let mut variables_sorted = self.model.variables.clone();
+        variables_sorted.sort_by_key(|var| (var.id, var.name.clone()));
+
+        for var in &variables_sorted {
             let inserted = variables_map.insert(var.id, BmaModel::canonical_var_name(var));
             if inserted.is_some() {
                 return Err(format!("Variable ID {} is not unique.", var.id));
@@ -35,24 +43,25 @@ impl BmaModel {
         let variables = variables_map.clone().into_values().collect();
         let mut graph = RegulatoryGraph::new(variables);
 
-        // add regulations
+        // add regulations (in the order of variables, first by regulator, then target)
+        let mut relationships_sorted = self.model.relationships.clone();
+        relationships_sorted.sort_by_key(|rel| (rel.from_variable, rel.to_variable));
         // TODO: decide how to handle "doubled" regulations and observability
-        self.model
-            .relationships
-            .iter()
-            .try_for_each(|relationship| {
-                let regulator_id = relationship.from_variable;
-                let target_id = relationship.to_variable;
-                let regulator = variables_map
-                    .get(&regulator_id)
-                    .ok_or(format!("Regulator var {} does not exist.", regulator_id))?;
-                let target = variables_map
-                    .get(&target_id)
-                    .ok_or(format!("Target var {} does not exist.", target_id))?;
-                let monotonicity = Some(relationship.relationship_type.into());
-                graph.add_regulation(regulator, target, false, monotonicity)
-            })?;
+        relationships_sorted.iter().try_for_each(|relationship| {
+            let regulator_id = relationship.from_variable;
+            let target_id = relationship.to_variable;
+            let regulator = variables_map
+                .get(&regulator_id)
+                .ok_or(format!("Regulator var {} does not exist.", regulator_id))?;
+            let target = variables_map
+                .get(&target_id)
+                .ok_or(format!("Target var {} does not exist.", target_id))?;
+            let monotonicity = Some(relationship.relationship_type.into());
+            graph.add_regulation(regulator, target, false, monotonicity)
+        })?;
 
+        // return variables_map as well, but as a standard HashMap
+        let variables_map = variables_map.into_iter().collect::<HashMap<_, _>>();
         Ok((graph, variables_map))
     }
 
@@ -170,5 +179,170 @@ impl BmaModel {
         }
 
         Ok(bn)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::model::BmaModel;
+    use biodivine_lib_param_bn::BooleanNetwork;
+    use biodivine_lib_param_bn::RegulatoryGraph;
+
+    /// Wrapper to get a simple BMA model for testing.
+    fn get_simple_test_model() -> BmaModel {
+        let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
+        <AnalysisInput ModelName="New Model">
+            <Variables>
+                <Variable Id="1">
+                    <Name>a</Name>
+                    <RangeFrom>0</RangeFrom>
+                    <RangeTo>1</RangeTo>
+                    <Function>var(2)</Function>
+                </Variable>
+                <Variable Id="2">
+                    <Name>b</Name>
+                    <RangeFrom>0</RangeFrom>
+                    <RangeTo>1</RangeTo>
+                    <Function>1-var(1)</Function>
+                </Variable>
+            </Variables>
+            <Relationships>
+                <Relationship Id="1">
+                    <FromVariableId>1</FromVariableId>
+                    <ToVariableId>2</ToVariableId>
+                    <Type>Inhibitor</Type>
+                </Relationship>
+                <Relationship Id="2">
+                    <FromVariableId>2</FromVariableId>
+                    <ToVariableId>1</ToVariableId>
+                    <Type>Activator</Type>
+                </Relationship>
+            </Relationships>
+        </AnalysisInput>"#;
+        BmaModel::from_xml_str(model_str).expect("XML was not well-formatted")
+    }
+
+    /// Wrapper to get a little bit more complex BMA model for testing.
+    fn get_test_model() -> BmaModel {
+        let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
+        <AnalysisInput ModelName="New Model">
+            <Variables>
+                <Variable Id="1">
+                    <Name>a</Name>
+                    <RangeFrom>0</RangeFrom>
+                    <RangeTo>1</RangeTo>
+                    <Function>var(2)</Function>
+                </Variable>
+                <Variable Id="2">
+                    <Name>b</Name>
+                    <RangeFrom>0</RangeFrom>
+                    <RangeTo>1</RangeTo>
+                    <Function>1-var(1)</Function>
+                </Variable>
+                <Variable Id="3">
+                    <Name>c</Name>
+                    <RangeFrom>0</RangeFrom>
+                    <RangeTo>1</RangeTo>
+                    <Function>var(1) * var(2) * var(3)</Function>
+                </Variable>
+            </Variables>
+            <Relationships>
+                <Relationship Id="1">
+                    <FromVariableId>1</FromVariableId>
+                    <ToVariableId>2</ToVariableId>
+                    <Type>Inhibitor</Type>
+                </Relationship>
+                <Relationship Id="2">
+                    <FromVariableId>2</FromVariableId>
+                    <ToVariableId>1</ToVariableId>
+                    <Type>Activator</Type>
+                </Relationship>
+                <Relationship Id="3">
+                    <FromVariableId>1</FromVariableId>
+                    <ToVariableId>3</ToVariableId>
+                    <Type>Activator</Type>
+                </Relationship>
+                <Relationship Id="4">
+                    <FromVariableId>2</FromVariableId>
+                    <ToVariableId>3</ToVariableId>
+                    <Type>Activator</Type>
+                </Relationship>
+                <Relationship Id="5">
+                    <FromVariableId>3</FromVariableId>
+                    <ToVariableId>3</ToVariableId>
+                    <Type>Activator</Type>
+                </Relationship>
+            </Relationships>
+        </AnalysisInput>"#;
+        BmaModel::from_xml_str(model_str).expect("XML was not well-formatted")
+    }
+
+    #[test]
+    fn test_to_reg_graph_simple() {
+        let bma_model = get_simple_test_model();
+        let (result_graph, _) = bma_model.to_regulatory_graph().unwrap();
+
+        let expected_regulations =
+            vec!["v_1_a -|? v_2_b".to_string(), "v_2_b ->? v_1_a".to_string()];
+        let expected_graph =
+            RegulatoryGraph::try_from_string_regulations(expected_regulations).unwrap();
+
+        assert_eq!(result_graph, expected_graph);
+    }
+
+    #[test]
+    fn test_to_reg_graph() {
+        let bma_model = get_test_model();
+        let (result_graph, _) = bma_model.to_regulatory_graph().unwrap();
+
+        let expected_regulations = vec![
+            "v_1_a -|? v_2_b".to_string(),
+            "v_1_a ->? v_3_c".to_string(),
+            "v_2_b ->? v_1_a".to_string(),
+            "v_2_b ->? v_3_c".to_string(),
+            "v_3_c ->? v_3_c".to_string(),
+        ];
+        let expected_graph =
+            RegulatoryGraph::try_from_string_regulations(expected_regulations).unwrap();
+
+        assert_eq!(result_graph, expected_graph);
+    }
+
+    #[test]
+    fn test_to_bn_simple() {
+        let bma_model = get_simple_test_model();
+        let result_bn = bma_model.to_boolean_network();
+
+        let bn_str = r#"
+            v_1_a -|? v_2_b
+            v_2_b ->? v_1_a
+            $v_1_a: v_2_b
+            $v_2_b: !v_1_a
+        "#;
+        let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
+
+        assert!(result_bn.is_ok());
+        assert_eq!(result_bn.unwrap(), expected_bn);
+    }
+
+    #[test]
+    fn test_to_bn() {
+        let bma_model = get_test_model();
+        let result_bn = bma_model.to_boolean_network();
+
+        let bn_str = r#"
+            v_1_a -|? v_2_b
+            v_1_a ->? v_3_c
+            v_2_b ->? v_1_a
+            v_2_b ->? v_3_c
+            v_3_c ->? v_3_c
+            $v_1_a: v_2_b
+            $v_2_b: !v_1_a
+            $v_3_c: (v_1_a & v_2_b & v_3_c)
+        "#;
+        let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
+
+        assert!(result_bn.is_ok());
+        assert_eq!(result_bn.unwrap(), expected_bn);
     }
 }
