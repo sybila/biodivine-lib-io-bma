@@ -1,5 +1,5 @@
 use crate::model::bma_model::*;
-use crate::update_fn::bma_fn_tree::BmaFnUpdate;
+use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp};
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
 use regex::Regex;
@@ -189,6 +189,13 @@ mod tests {
     use biodivine_lib_param_bn::RegulatoryGraph;
 
     /// Wrapper to get a simple BMA model for testing.
+    ///
+    /// The model has:
+    /// - two variables (a=1, b=2)
+    /// - two relationships (a -| b, b -> a)
+    /// - the following update functions: (a: var(2), b: 1-var(a))
+    ///
+    /// There is no layout or additional information in the model.
     fn get_simple_test_model() -> BmaModel {
         let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
         <AnalysisInput ModelName="New Model">
@@ -223,6 +230,11 @@ mod tests {
     }
 
     /// Wrapper to get a little bit more complex BMA model for testing.
+    ///
+    /// The model has:
+    /// - three variables (a=1, b=2, c=3)
+    /// - five relationships (a -| b, b -> a, a -> c, b -> c, c -> c)
+    /// - the following update functions: (a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))
     fn get_test_model() -> BmaModel {
         let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
         <AnalysisInput ModelName="New Model">

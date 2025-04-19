@@ -1,5 +1,5 @@
 use crate::enums::{RelationshipType, VariableType};
-use crate::update_fn::bma_fn_tree::BmaFnUpdate;
+use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use std::collections::HashMap;

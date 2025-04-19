@@ -1,4 +1,4 @@
-use crate::update_fn::bma_fn_tree::{BmaFnNodeType, BmaFnUpdate};
+use crate::update_fn::bma_fn_update::{BmaFnNodeType, BmaFnUpdate};
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use num_rational::Rational32;
 use num_traits::sign::Signed;
@@ -307,7 +307,29 @@ pub fn prepare_truth_table(mut var_ids: Vec<u32>, fn_values: Vec<u32>) -> Functi
 mod tests {
     use crate::update_fn::{_impl_to_update_fn::prepare_truth_table, parser::parse_bma_formula};
     use num_rational::Rational32;
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::{BTreeMap, HashMap, HashSet};
+
+    #[test]
+    fn test_collect_variables() {
+        let vars = HashMap::from([
+            (1, "a".to_string()),
+            (2, "b".to_string()),
+            (3, "c".to_string()),
+        ]);
+        // this one references all three variables by IDs
+        let expression =
+            parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
+        assert_eq!(expression.collect_variables(), HashSet::from([1, 2, 3]));
+
+        // this one references all three variables by names
+        let expression =
+            parse_bma_formula("var(a) + (1 - min((var(b) + var(c)), 1))", &vars).unwrap();
+        assert_eq!(expression.collect_variables(), HashSet::from([1, 2, 3]));
+
+        // this one only references two variables
+        let expression = parse_bma_formula("(1 - min((var(b) + var(c)), 1))", &vars).unwrap();
+        assert_eq!(expression.collect_variables(), HashSet::from([2, 3]));
+    }
 
     #[test]
     fn test_evaluate_terminal_str() {

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::update_fn::bma_fn_tree::*;
+use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::update_fn::expression_enums::*;
 use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
 
@@ -144,7 +144,7 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::update_fn::bma_fn_tree::BmaFnUpdate;
+    use crate::update_fn::bma_fn_update::BmaFnUpdate;
     use crate::update_fn::expression_enums::{AggregateFn, ArithOp, UnaryFn};
 
     #[test]

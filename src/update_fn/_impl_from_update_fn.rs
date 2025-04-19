@@ -1,4 +1,4 @@
-use crate::update_fn::bma_fn_tree::BmaFnUpdate;
+use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::update_fn::expression_enums::ArithOp;
 use biodivine_lib_param_bn::{BinaryOp, FnUpdate};
 

@@ -1,6 +1,6 @@
 use crate::json_model::*;
 use crate::model::bma_model::*;
-use crate::update_fn::bma_fn_tree::BmaFnUpdate;
+use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
 use std::collections::HashMap;
 

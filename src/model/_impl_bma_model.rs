@@ -1,6 +1,6 @@
 use crate::enums::RelationshipType;
 use crate::model::bma_model::*;
-use crate::update_fn::bma_fn_tree::BmaFnUpdate;
+use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use biodivine_lib_param_bn::BooleanNetwork;
 use std::cmp::max;
 use std::collections::HashMap;
