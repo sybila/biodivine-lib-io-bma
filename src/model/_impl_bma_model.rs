@@ -1,7 +1,7 @@
 use crate::enums::RelationshipType;
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use biodivine_lib_param_bn::BooleanNetwork;
+use biodivine_lib_param_bn::{BooleanNetwork, Regulation};
 use std::cmp::max;
 use std::collections::HashMap;
 
@@ -57,11 +57,17 @@ impl BmaModel {
     /// The Boolean network MUST NOT contain parameters in any of its update functions,
     /// explicit or implicit. Only fully specified BNs can be converted into BMA format.
     ///
-    /// TODO: for now, we only utilize monotonic regulations (and ignore the rest)
-    /// TODO: we do not consider observability
+    /// All monotonic regulations are carried over as they are. For each regulation with
+    /// unspecified monotonicity, both a positive and a negative regulation are added.
+    /// This may have some side effects, but BMA does not support non-monotonic regulations.
+    ///
+    /// Information about observability of regulations is lost (but this should have no effect
+    /// for fully specified BNs anyway).
     pub fn from_boolean_network(bn: &BooleanNetwork, name: &str) -> Result<BmaModel, String> {
         if bn.num_parameters() > 0 {
-            return Err("Boolean network with parameters can not be translated.".to_string());
+            return Err(
+                "Boolean network with parameters can not be transfromed to BMA.".to_string(),
+            );
         }
 
         // transform variables and update functions
@@ -86,9 +92,9 @@ impl BmaModel {
             })
             .collect::<Result<Vec<BmaVariable>, String>>()?;
 
-        // transform monotonic regulations into relationships, ignore non-monotonic
+        // transform monotonic regulations into relationships, ignore non-monotonic for now
         // TODO: deal with non-monotonic regulations (ignored for now)
-        let relationships = bn
+        let mut relationships: Vec<BmaRelationship> = bn
             .as_graph()
             .regulations()
             .filter(|reg| reg.monotonicity.is_some())
@@ -100,6 +106,32 @@ impl BmaModel {
                 relationship_type: RelationshipType::from(reg.monotonicity.unwrap()),
             })
             .collect();
+
+        // for each non-monotonic regulation, add regulations of both signs
+        let non_monotonic_regs: Vec<Regulation> = bn
+            .as_graph()
+            .regulations()
+            .filter(|reg| reg.monotonicity.is_none())
+            .cloned()
+            .collect();
+        let num_regs_before = relationships.len();
+        for (base_idx, reg) in non_monotonic_regs.iter().enumerate() {
+            relationships.push(BmaRelationship {
+                id: (num_regs_before + base_idx * 2) as u32,
+                from_variable: reg.regulator.to_index() as u32,
+                to_variable: reg.target.to_index() as u32,
+                relationship_type: RelationshipType::Activator,
+            });
+            relationships.push(BmaRelationship {
+                id: (num_regs_before + base_idx * 2 + 1) as u32,
+                from_variable: reg.regulator.to_index() as u32,
+                to_variable: reg.target.to_index() as u32,
+                relationship_type: RelationshipType::Inhibitor,
+            });
+        }
+
+        // sort relationships for deterministic alphabetical order
+        relationships.sort_by_key(|rel| (rel.from_variable, rel.to_variable));
 
         let model = BmaNetwork {
             name: name.to_string(),
@@ -141,7 +173,7 @@ mod tests {
     use biodivine_lib_param_bn::BooleanNetwork;
 
     #[test]
-    fn test_from_boolean_network_aeon() {
+    fn test_from_bn() {
         let aeon_model = r#"
         $A: A & !B
         $B: A
@@ -172,9 +204,10 @@ mod tests {
         /* === RELATIONSHIPS === */
 
         assert_eq!(bma_model.model.relationships.len(), 3);
-        let rel_b_inhibits_a = &bma_model.model.relationships[0];
-        let rel_a_self_activates = &bma_model.model.relationships[1];
-        let rel_a_activates_b = &bma_model.model.relationships[2];
+        // relationships go alphabetically, sorted by regulator and then target
+        let rel_a_self_activates = &bma_model.model.relationships[0];
+        let rel_a_activates_b = &bma_model.model.relationships[1];
+        let rel_b_inhibits_a = &bma_model.model.relationships[2];
         assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
         assert_eq!(rel_b_inhibits_a.to_variable, 0);
         assert_eq!(
@@ -208,5 +241,73 @@ mod tests {
         assert_eq!(bma_model.layout.containers.len(), 1);
         let container = &bma_model.layout.containers[0];
         assert_eq!(container.id, 0);
+    }
+
+    #[test]
+    fn test_from_bn_non_monotonic() {
+        let aeon_model = r#"
+        $A: (A & B) | (!A & !B)
+        $B: A
+        B -? A
+        A -? A
+        A -> B
+        "#;
+        let bn = BooleanNetwork::try_from(aeon_model).unwrap();
+        let bma_model = BmaModel::from_boolean_network(&bn, "Test Model").unwrap();
+
+        // only check relationships here
+        // relationships go alphabetically, sorted by regulator and then target
+        assert_eq!(bma_model.model.relationships.len(), 5);
+        let rel_a_activates_a = &bma_model.model.relationships[0];
+        let rel_a_inhibits_a = &bma_model.model.relationships[1];
+        let rel_a_activates_b = &bma_model.model.relationships[2];
+        let rel_b_activates_a = &bma_model.model.relationships[3];
+        let rel_b_inhibits_a = &bma_model.model.relationships[4];
+        assert_eq!(rel_a_activates_a.from_variable, 0); // A -> A
+        assert_eq!(rel_a_activates_a.to_variable, 0);
+        assert_eq!(
+            rel_a_activates_a.relationship_type,
+            RelationshipType::Activator
+        );
+
+        assert_eq!(rel_a_inhibits_a.from_variable, 0); // A -| A
+        assert_eq!(rel_a_inhibits_a.to_variable, 0);
+        assert_eq!(
+            rel_a_inhibits_a.relationship_type,
+            RelationshipType::Inhibitor
+        );
+
+        assert_eq!(rel_a_activates_b.from_variable, 0); // A -> B
+        assert_eq!(rel_a_activates_b.to_variable, 1);
+        assert_eq!(
+            rel_a_activates_b.relationship_type,
+            RelationshipType::Activator
+        );
+
+        assert_eq!(rel_b_activates_a.from_variable, 1); // B -> A
+        assert_eq!(rel_b_activates_a.to_variable, 0);
+        assert_eq!(
+            rel_b_activates_a.relationship_type,
+            RelationshipType::Activator
+        );
+
+        assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
+        assert_eq!(rel_b_inhibits_a.to_variable, 0);
+        assert_eq!(
+            rel_b_inhibits_a.relationship_type,
+            RelationshipType::Inhibitor
+        );
+    }
+
+    #[test]
+    fn test_from_parametrized_bn() {
+        let aeon_model = r#"
+        $A: f(A)
+        A -?? A
+        "#;
+        let bn = BooleanNetwork::try_from(aeon_model).unwrap();
+
+        let result = BmaModel::from_boolean_network(&bn, "Test Model");
+        assert!(result.is_err());
     }
 }
