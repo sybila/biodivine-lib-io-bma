@@ -17,16 +17,18 @@ impl BmaModel {
 
     /// Extract a regulatory graph from this BMA model.
     ///
-    /// Returns the RegulatoryGraph instance (extracting variables and regulations from
+    /// Returns a `RegulatoryGraph` instance (extracting variables and regulations from
     /// this model) and a mapping of BMA variable IDs to their canonical names used in
     /// the new graph.
     ///
-    /// See [Self::canonical_var_name] for how we create variable names. Varibles are sorted
-    /// by these canonical names, which means they are sorted by their BMA IDs as well.
+    /// See [Self::canonical_var_name] for how the variable names are derived. Varibles are
+    /// sorted by these canonical names (which means they are basically sorted by their BMA IDs).
     /// Regulations are sorted by their regulator (first key) and their target (second key).
     ///
-    // TODO: decide how to handle "doubled" regulations (of the same vs of different type)
-    // TODO: for now, we do not specify observability (making it `false` for all regulations)
+    /// It is possible that the BMA model has more than one regulation between the same pair
+    /// of variables. If they have same type, we simply add it once. If they have different
+    /// signs, we add a regulation with unspecified monotonicity.
+    /// Moreover, all regulations are made observable by default.
     pub fn to_regulatory_graph(&self) -> Result<(RegulatoryGraph, HashMap<u32, String>), String> {
         // Sort variables by their IDs before inserting them into the graph to ensure deterministic
         // ordering. We use a BTreeMap to ensure variables remain sorted.
@@ -46,19 +48,32 @@ impl BmaModel {
         // add regulations (in the order of variables, first by regulator, then target)
         let mut relationships_sorted = self.model.relationships.clone();
         relationships_sorted.sort_by_key(|rel| (rel.from_variable, rel.to_variable));
-        // TODO: decide how to handle "doubled" regulations and observability
-        relationships_sorted.iter().try_for_each(|relationship| {
-            let regulator_id = relationship.from_variable;
-            let target_id = relationship.to_variable;
-            let regulator = variables_map
-                .get(&regulator_id)
-                .ok_or(format!("Regulator var {} does not exist.", regulator_id))?;
+        for bma_relationship in relationships_sorted {
+            let regulator_bma_id = bma_relationship.from_variable;
+            let target_bma_id = bma_relationship.to_variable;
+            let regulator = variables_map.get(&regulator_bma_id).ok_or(format!(
+                "Regulator var {} does not exist.",
+                regulator_bma_id
+            ))?;
             let target = variables_map
-                .get(&target_id)
-                .ok_or(format!("Target var {} does not exist.", target_id))?;
-            let monotonicity = Some(relationship.relationship_type.into());
-            graph.add_regulation(regulator, target, false, monotonicity)
-        })?;
+                .get(&target_bma_id)
+                .ok_or(format!("Target var {} does not exist.", target_bma_id))?;
+            let monotonicity = Some(bma_relationship.relationship_type.into());
+
+            // check for doubled regulations (BMA allows multiple regulations between same vars)
+            let regulator_aeon_id = graph.find_variable(regulator).unwrap(); // safe to unwrap
+            let target_aeon_id = graph.find_variable(target).unwrap(); // safe to unwrap
+            if let Some(existing_reg) = graph.find_regulation(regulator_aeon_id, target_aeon_id) {
+                // if the two regulations have different signs, add non-monotonic instead
+                // otherwise do nothing
+                if existing_reg.monotonicity != monotonicity {
+                    graph.remove_regulation(regulator_aeon_id, target_aeon_id)?;
+                    graph.add_regulation(regulator, target, true, None)?;
+                }
+            } else {
+                graph.add_regulation(regulator, target, true, monotonicity)?;
+            }
+        }
 
         // return variables_map as well, but as a standard HashMap
         let variables_map = variables_map.into_iter().collect::<HashMap<_, _>>();
@@ -109,15 +124,22 @@ impl BmaModel {
         BmaFnUpdate::mk_arithmetic(p_avr, n_avr, ArithOp::Minus)
     }
 
-    /// Convert BmaModel into a BooleanNetwork instance.
+    /// Convert BmaModel into a BooleanNetwork instance. At the moment, this only supports
+    /// pure Boolean models (not multi-valued that would need additional conversion).
     ///
     /// The network will contain the same set of variables and regulations as this model.
-    /// See [Self::canonical_var_name] for how we create variable names.
-    /// The update functions are transformed using [BmaFnUpdate::to_update_fn].
+    /// See [Self::to_regulatory_graph] for details on how the regulation graph is extracted,
+    /// and [Self::canonical_var_name] for how the variable names are derived.
+    /// The update functions are transformed using [BmaFnUpdate::to_update_fn_boolean].
+    ///
+    /// By default, all regulations are considered as observable, and their sign is taken from the
+    /// BMA model as is. This may be inconsistent with the update functions, which may or may not be
+    /// intended. If `repair_graph` is set to true, the regulation properties (observability and
+    /// monotonicity) are instead inferred from the upodate function BDDs directly.
     ///
     /// TODO: For now, we do not handle multi-valued models. However, some internal
     /// methods are made general to deal with multi-valued networks in future.
-    pub fn to_boolean_network(&self) -> Result<BooleanNetwork, String> {
+    pub fn to_boolean_network(&self, repair_graph: bool) -> Result<BooleanNetwork, String> {
         if !self.is_boolean_model() {
             return Err(
                 "Currently, converting multi-valued models into BNs is not supported.".to_string(),
@@ -178,7 +200,11 @@ impl BmaModel {
             }
         }
 
-        Ok(bn)
+        if repair_graph {
+            bn.infer_valid_graph()
+        } else {
+            Ok(bn)
+        }
     }
 }
 
@@ -294,8 +320,7 @@ mod tests {
         let bma_model = get_simple_test_model();
         let (result_graph, _) = bma_model.to_regulatory_graph().unwrap();
 
-        let expected_regulations =
-            vec!["v_1_a -|? v_2_b".to_string(), "v_2_b ->? v_1_a".to_string()];
+        let expected_regulations = vec!["v_1_a -| v_2_b".to_string(), "v_2_b -> v_1_a".to_string()];
         let expected_graph =
             RegulatoryGraph::try_from_string_regulations(expected_regulations).unwrap();
 
@@ -308,11 +333,11 @@ mod tests {
         let (result_graph, _) = bma_model.to_regulatory_graph().unwrap();
 
         let expected_regulations = vec![
-            "v_1_a -|? v_2_b".to_string(),
-            "v_1_a ->? v_3_c".to_string(),
-            "v_2_b ->? v_1_a".to_string(),
-            "v_2_b ->? v_3_c".to_string(),
-            "v_3_c ->? v_3_c".to_string(),
+            "v_1_a -| v_2_b".to_string(),
+            "v_1_a -> v_3_c".to_string(),
+            "v_2_b -> v_1_a".to_string(),
+            "v_2_b -> v_3_c".to_string(),
+            "v_3_c -> v_3_c".to_string(),
         ];
         let expected_graph =
             RegulatoryGraph::try_from_string_regulations(expected_regulations).unwrap();
@@ -323,11 +348,11 @@ mod tests {
     #[test]
     fn test_to_bn_simple() {
         let bma_model = get_simple_test_model();
-        let result_bn = bma_model.to_boolean_network();
+        let result_bn = bma_model.to_boolean_network(true);
 
         let bn_str = r#"
-            v_1_a -|? v_2_b
-            v_2_b ->? v_1_a
+            v_1_a -| v_2_b
+            v_2_b -> v_1_a
             $v_1_a: v_2_b
             $v_2_b: !v_1_a
         "#;
@@ -340,14 +365,14 @@ mod tests {
     #[test]
     fn test_to_bn() {
         let bma_model = get_test_model();
-        let result_bn = bma_model.to_boolean_network();
+        let result_bn = bma_model.to_boolean_network(true);
 
         let bn_str = r#"
-            v_1_a -|? v_2_b
-            v_1_a ->? v_3_c
-            v_2_b ->? v_1_a
-            v_2_b ->? v_3_c
-            v_3_c ->? v_3_c
+            v_1_a -| v_2_b
+            v_1_a -> v_3_c
+            v_2_b -> v_1_a
+            v_2_b -> v_3_c
+            v_3_c -> v_3_c
             $v_1_a: v_2_b
             $v_2_b: !v_1_a
             $v_3_c: (v_1_a & v_2_b & v_3_c)

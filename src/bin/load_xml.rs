@@ -49,7 +49,7 @@ fn main() {
         let xml_data = read_to_string(model_path).expect("Unable to read file");
         let bma_model = BmaModel::from_xml_str(&xml_data).expect("XML was not well-formatted");
         let bn = bma_model
-            .to_boolean_network()
+            .to_boolean_network(true)
             .expect("Failed to convert to BN");
         println!("Resulting BN:\n{bn}");
     }

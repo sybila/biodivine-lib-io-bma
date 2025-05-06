@@ -161,11 +161,11 @@ fn process_var_name_or_id(
         Ok(found_ids[0])
     } else if found_ids.is_empty() {
         Err(format!(
-            "ID for variable '{var_string}' (present in update fn) not found."
+            "Can't fint ID for variable '{var_string}' when processing update functions."
         ))
     } else {
         Err(format!(
-            "Multiple IDs are possible for variable '{var_string}' (present in update fn)."
+            "Found multiple possible IDs for variable '{var_string}' when processing update functions."
         ))
     }
 }

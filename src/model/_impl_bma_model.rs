@@ -52,9 +52,10 @@ impl BmaModel {
         (positive, negative)
     }
 
-    /// Construct `BmaModel` instance with a given name from a provided BooleanNetwork `bn`.
+    /// Construct `BmaModel` instance from a provided BooleanNetwork `bn`.
     ///
-    /// The Boolean network must contain parameters in any of its update functions.
+    /// The Boolean network MUST NOT contain parameters in any of its update functions,
+    /// explicit or implicit. Only fully specified BNs can be converted into BMA format.
     ///
     /// TODO: for now, we only utilize monotonic regulations (and ignore the rest)
     /// TODO: we do not consider observability
@@ -85,7 +86,7 @@ impl BmaModel {
             })
             .collect::<Result<Vec<BmaVariable>, String>>()?;
 
-        // transform regulations into relationships
+        // transform monotonic regulations into relationships, ignore non-monotonic
         // TODO: deal with non-monotonic regulations (ignored for now)
         let relationships = bn
             .as_graph()
