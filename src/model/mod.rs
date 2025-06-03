@@ -20,4 +20,5 @@ pub use bma_network::BmaNetwork;
 pub use bma_relationship::BmaRelationship;
 pub use bma_variable::BmaVariable;
 pub use layout::bma_layout::BmaLayout;
+pub use layout::bma_layout_container::BmaContainer;
 pub use layout::bma_layout_variable::BmaLayoutVariable;
