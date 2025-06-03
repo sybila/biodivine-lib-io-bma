@@ -11,3 +11,18 @@ pub struct BmaNetwork {
     pub variables: Vec<BmaVariable>,
     pub relationships: Vec<BmaRelationship>,
 }
+impl BmaNetwork {
+    /// Create a new [`BmaNetwork`] from the provided data.
+    pub fn new(variables: Vec<BmaVariable>, relationships: Vec<BmaRelationship>) -> Self {
+        BmaNetwork {
+            name: "".to_string(),
+            variables,
+            relationships,
+        }
+    }
+
+    /// Find an instances of [`BmaVariable`] stored in this network, assuming it exists.
+    pub fn find_variable(&self, id: u32) -> Option<&BmaVariable> {
+        self.variables.iter().find(|v| v.id == id)
+    }
+}

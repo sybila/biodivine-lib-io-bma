@@ -1,4 +1,4 @@
-use crate::enums::RelationshipType;
+use crate::RelationshipType;
 use crate::model::bma_model::*;
 use crate::model::bma_relationship::BmaRelationship;
 use crate::model::layout::bma_layout_container::BmaLayoutContainer;
@@ -169,7 +169,7 @@ impl BmaModel {
 #[cfg(test)]
 mod tests {
     use crate::BmaModel;
-    use crate::enums::RelationshipType;
+    use crate::RelationshipType;
     use biodivine_lib_param_bn::BooleanNetwork;
 
     #[test]
