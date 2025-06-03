@@ -143,9 +143,7 @@ fn process_var_name_or_id(
 ) -> Result<u32, String> {
     // Check if the string is a valid ID
     if let Ok(id) = var_string.parse::<u32>() {
-        if variables.contains_key(&id) {
-            return Ok(id);
-        }
+        return Ok(id);
     }
 
     // Look for all IDs that match the variable name
