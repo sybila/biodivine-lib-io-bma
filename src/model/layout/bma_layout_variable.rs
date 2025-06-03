@@ -1,4 +1,3 @@
-use crate::enums::VariableType;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -41,4 +40,12 @@ impl BmaLayoutVariable {
             .clone()
             .unwrap_or_else(|| format!("v_{}", self.id))
     }
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq)]
+pub enum VariableType {
+    #[default]
+    Default,
+    Constant,
+    MembraneReceptor,
 }

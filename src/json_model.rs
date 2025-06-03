@@ -1,5 +1,5 @@
 use crate::RelationshipType;
-use crate::enums::VariableType;
+use crate::VariableType;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 

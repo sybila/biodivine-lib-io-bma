@@ -5,8 +5,6 @@ pub(crate) mod model;
 /// Structures and utilities for parsing/evaluating update functions.
 pub mod update_fn;
 
-/// Enums for BMA variable and relationship types.
-mod enums;
 /// Intermediate struct `JsonBmaModel` for (de)serializing JSON.
 mod json_model;
 /// Intermediate struct `XmlBmaModel` for (de)serializing XML.
@@ -18,7 +16,7 @@ pub use crate::model::bma_relationship::{BmaRelationship, BmaRelationshipError, 
 pub use crate::model::bma_variable::{BmaVariable, BmaVariableError};
 pub use crate::model::layout::bma_layout::BmaLayout;
 pub use crate::model::layout::bma_layout_container::BmaLayoutContainer;
-pub use crate::model::layout::bma_layout_variable::BmaLayoutVariable;
+pub use crate::model::layout::bma_layout_variable::{BmaLayoutVariable, VariableType};
 
 mod validation;
 pub use validation::{
