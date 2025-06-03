@@ -6,19 +6,8 @@ mod _impl_json_serde;
 mod _impl_to_bn;
 /// Implementation of deserialization from XML format.
 mod _impl_xml_serde;
-/// Main BMA model struct and its components.
-mod bma_model;
-
-mod bma_network;
-mod bma_relationship;
-mod bma_variable;
-
-mod layout;
-
-pub use bma_model::BmaModel;
-pub use bma_network::BmaNetwork;
-pub use bma_relationship::BmaRelationship;
-pub use bma_variable::BmaVariable;
-pub use layout::bma_layout::BmaLayout;
-pub use layout::bma_layout_container::BmaLayoutContainer;
-pub use layout::bma_layout_variable::BmaLayoutVariable;
+pub(crate) mod bma_model;
+pub(crate) mod bma_network;
+pub(crate) mod bma_relationship;
+pub(crate) mod bma_variable;
+pub(crate) mod layout;

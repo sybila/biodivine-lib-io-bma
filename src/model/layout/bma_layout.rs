@@ -1,5 +1,4 @@
-use crate::model::BmaLayoutContainer;
-use crate::model::BmaLayoutVariable;
+use crate::{BmaLayoutContainer, BmaLayoutVariable};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 

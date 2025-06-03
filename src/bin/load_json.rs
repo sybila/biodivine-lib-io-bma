@@ -1,4 +1,4 @@
-use biodivine_lib_io_bma::model::BmaModel;
+use biodivine_lib_io_bma::BmaModel;
 use std::fs::{read_dir, read_to_string};
 
 /// Iterate through all models and see if they are parse without error.

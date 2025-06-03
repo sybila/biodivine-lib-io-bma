@@ -1,4 +1,4 @@
-use crate::model::{BmaLayout, BmaNetwork};
+use crate::{BmaLayout, BmaNetwork};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::HashMap;

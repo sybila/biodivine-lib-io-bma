@@ -1,9 +1,9 @@
-use crate::model::bma_model::*;
-use crate::model::bma_relationship::BmaRelationship;
-use crate::model::layout::bma_layout_container::BmaLayoutContainer;
-use crate::model::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::xml_model::*;
+use crate::{
+    BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
+    BmaVariable,
+};
 use std::collections::HashMap;
 
 impl BmaModel {

@@ -2,8 +2,8 @@ use crate::enums::RelationshipType;
 use crate::model::bma_model::*;
 use crate::model::bma_relationship::BmaRelationship;
 use crate::model::layout::bma_layout_container::BmaLayoutContainer;
-use crate::model::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
+use crate::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use biodivine_lib_param_bn::{BooleanNetwork, Regulation};
 use std::cmp::max;
 use std::collections::HashMap;
@@ -170,8 +170,8 @@ impl BmaModel {
 
 #[cfg(test)]
 mod tests {
+    use crate::BmaModel;
     use crate::enums::RelationshipType;
-    use crate::model::BmaModel;
     use biodivine_lib_param_bn::BooleanNetwork;
 
     #[test]

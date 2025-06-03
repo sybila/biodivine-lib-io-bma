@@ -1,7 +1,6 @@
-use crate::model::BmaVariable;
-use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp};
+use crate::{BmaModel, BmaVariable};
 use biodivine_lib_param_bn::{BooleanNetwork, RegulatoryGraph};
 use regex::Regex;
 use std::collections::{BTreeMap, HashMap};
@@ -211,7 +210,7 @@ impl BmaModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::BmaModel;
+    use crate::BmaModel;
     use biodivine_lib_param_bn::BooleanNetwork;
     use biodivine_lib_param_bn::RegulatoryGraph;
 
