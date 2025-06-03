@@ -5,8 +5,8 @@ use serde_with::skip_serializing_none;
 /// Additional layout information regarding a [`crate::BmaVariable`].
 ///
 /// Expected invariants (checked during validation):
-///  - The `id` must be unique within the layout variable IDs, but is unrelated to the ID of
-///    the associated [`crate::BmaVariable`].
+///  - The `id` must be unique within the layout variable IDs, and it must correspond to the
+///    `id` of one [`crate::BmaVariable`] in the same model.
 ///  - If `container_id` is set, it must refer to an existing [`crate::BmaLayoutContainer`].
 ///  - If `name` is set, it must not be empty.
 ///  - If `description` is set, it must not be empty.
@@ -29,16 +29,15 @@ pub struct BmaLayoutVariable {
 }
 
 impl BmaLayoutVariable {
-    /// Create a default layout for a variable with a given name and ID.
-    /// Container ID is optional and can be set to `None`.
+    /// Create a layout variable for a [`crate::BmaVariable`] referenced by the given `id`
+    /// and `name`, with an optional `container_id`.
     ///
-    /// The default position is `(0, 0)`, the angle is `0.0`, and the cell / description is empty.
-    /// Cell values are set to `None`.
-    pub fn new_default(id: u32, name: String, container_id: Option<u32>) -> Self {
+    /// Remaining values are set to default.
+    pub fn new(id: u32, name: &str, container_id: Option<u32>) -> Self {
         BmaLayoutVariable {
             id,
             container_id,
-            name: Some(name),
+            name: Some(name.to_string()),
             ..Default::default()
         }
     }

@@ -145,8 +145,8 @@ impl BmaModel {
             .variables()
             .map(|var_id| {
                 let id = var_id.to_index() as u32;
-                let name = bn.get_variable_name(var_id).clone();
-                BmaLayoutVariable::new_default(id, name, Some(container_id))
+                let name = bn.get_variable_name(var_id);
+                BmaLayoutVariable::new(id, name, Some(container_id))
             })
             .collect();
 
