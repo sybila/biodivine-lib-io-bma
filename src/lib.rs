@@ -5,10 +5,7 @@ pub(crate) mod model;
 /// Structures and utilities for parsing/evaluating update functions.
 pub mod update_fn;
 
-/// Intermediate struct `JsonBmaModel` for (de)serializing JSON.
-mod json_model;
-/// Intermediate struct `XmlBmaModel` for (de)serializing XML.
-mod xml_model;
+pub(crate) mod data;
 
 pub use crate::model::bma_model::{BmaModel, BmaModelError};
 pub use crate::model::bma_network::{BmaNetwork, BmaNetworkError};

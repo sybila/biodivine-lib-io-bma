@@ -1,5 +1,5 @@
+use crate::data::xml_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use crate::xml_model::*;
 use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
     BmaVariable,
