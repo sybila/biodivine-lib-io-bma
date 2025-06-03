@@ -5,6 +5,8 @@ use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaNetwork, BmaRelationship, BmaVariable,
 };
+use num_rational::Rational64;
+use num_traits::FromPrimitive;
 use std::collections::HashMap;
 
 impl BmaModel {
@@ -92,9 +94,12 @@ impl BmaModel {
             name: Some(json_var.name),
             container_id: json_var.container_id,
             r#type: json_var.r#type,
-            position: (json_var.position_x, json_var.position_y),
+            position: (
+                Rational64::from_f64(json_var.position_x).unwrap(),
+                Rational64::from_f64(json_var.position_y).unwrap(),
+            ),
             cell,
-            angle: json_var.angle,
+            angle: Rational64::from_f64(json_var.angle).unwrap(),
             description: Some(json_var.description),
         }
     }

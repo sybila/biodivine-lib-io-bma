@@ -4,6 +4,8 @@ use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
     BmaVariable,
 };
+use num_rational::Rational64;
+use num_traits::FromPrimitive;
 use std::collections::HashMap;
 
 impl BmaModel {
@@ -73,11 +75,11 @@ impl BmaModel {
             r#type: xml_var.r#type,
             container_id: xml_var.container_id,
             position: (
-                xml_var.position_x.unwrap_or_default(),
-                xml_var.position_y.unwrap_or_default(),
+                Rational64::from_f64(xml_var.position_x.unwrap_or_default()).unwrap(),
+                Rational64::from_f64(xml_var.position_y.unwrap_or_default()).unwrap(),
             ),
             cell,
-            angle: xml_var.angle.unwrap_or_default(),
+            angle: Rational64::from_f64(xml_var.angle.unwrap_or_default()).unwrap(),
             description: None,
         }
     }

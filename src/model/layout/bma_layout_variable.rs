@@ -1,21 +1,30 @@
+use num_rational::Rational64;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-/// Additional layout information regarding a model variable.
+/// Additional layout information regarding a [`crate::BmaVariable`].
 ///
-/// If some information is not provided, it can be set to default values (like
-/// position and angle values 0, default type, empty description, ...).
-/// Other missing information is set to `None` (like cell or container ID).
+/// Expected invariants (checked during validation):
+///  - The `id` must be unique within the layout variable IDs, but is unrelated to the ID of
+///    the associated [`crate::BmaVariable`].
+///  - If `container_id` is set, it must refer to an existing [`crate::BmaLayoutContainer`].
+///  - If `name` is set, it must not be empty.
+///  - If `description` is set, it must not be empty.
+///
+/// Note that variable `name` is also stored in [`crate::BmaVariable`]. Typically, these values
+/// are the same, but this is not a verified invariant (i.e., in theory, you could use one name
+/// for the variable, and another name for its layout counterpart).
+///
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct BmaLayoutVariable {
     pub id: u32,
     pub container_id: Option<u32>,
-    pub r#type: VariableType,        // Corresponds to "Type" in JSON/XML
-    pub name: Option<String>,        // duplicated with Variable.name, but that's what JSON BMA does
-    pub description: Option<String>, // can be empty (by default if not provided)
-    pub position: (f64, f64),
-    pub angle: f64,
+    pub r#type: VariableType,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub position: (Rational64, Rational64),
+    pub angle: Rational64,
     pub cell: Option<(u32, u32)>,
 }
 
@@ -42,7 +51,7 @@ impl BmaLayoutVariable {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VariableType {
     #[default]
     Default,
