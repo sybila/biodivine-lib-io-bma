@@ -64,7 +64,7 @@ fn try_tokenize_recursive(
                     Ok((output, ')'))
                 } else {
                     Err("Unexpected ')' without opening counterpart.".to_string())
-                }
+                };
             }
             ',' if top_fn_level => {
                 // in case we are collecting something inside a function, a comma is valid delimiter
@@ -283,7 +283,7 @@ fn collect_fn_arguments(
 #[cfg(test)]
 mod tests {
     use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
-    use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
+    use crate::update_fn::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
     use std::collections::HashMap;
 
     #[test]

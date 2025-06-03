@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::update_fn::expression_enums::*;
-use crate::update_fn::tokenizer::{try_tokenize_bma_formula, BmaFnToken};
+use crate::update_fn::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
 
 /// Parse an BMA update function formula string representation into an actual expression tree.
 /// Basically a wrapper for tokenize+parse (used often for testing/debug purposes).
@@ -128,7 +128,7 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
                         return Err(
                             "Function must be applied on `BmaFnToken::TokenList` args.".to_string()
                         );
-                    }
+                    };
                 }
                 // recursively solve sub-formulae in parentheses
                 BmaFnToken::TokenList(inner) => {

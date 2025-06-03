@@ -3,7 +3,7 @@ use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn}
 use num_rational::Rational32;
 use num_traits::sign::Signed;
 use rust_decimal::prelude::ToPrimitive;
-use rust_decimal::{dec, Decimal};
+use rust_decimal::{Decimal, dec};
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -50,7 +50,7 @@ impl BmaFnUpdate {
                     .iter()
                     .map(|(id, value)| {
                         let bn_var_name = var_name_mapping.get(id).unwrap(); // unwrap is safe here
-                                                                             // create positive or negative literal based on the value
+                        // create positive or negative literal based on the value
                         if *value == 0 {
                             format!("!{bn_var_name}")
                         } else {
