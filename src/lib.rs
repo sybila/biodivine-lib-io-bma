@@ -19,3 +19,8 @@ pub use crate::model::bma_variable::BmaVariable;
 pub use crate::model::layout::bma_layout::BmaLayout;
 pub use crate::model::layout::bma_layout_container::BmaLayoutContainer;
 pub use crate::model::layout::bma_layout_variable::BmaLayoutVariable;
+
+mod validation;
+pub use validation::{
+    ContextualValidation, ErrorReporter, ReporterWrapper, Validation, VecReporter,
+};
