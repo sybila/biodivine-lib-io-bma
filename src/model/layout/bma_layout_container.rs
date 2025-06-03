@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 
 /// Layout information about a container.
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
 pub struct BmaLayoutContainer {
     pub id: u32,
     pub name: String, // can be empty if not provided

@@ -1,13 +1,14 @@
 use crate::enums::VariableType;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 /// Additional layout information regarding a model variable.
 ///
 /// If some information is not provided, it can be set to default values (like
 /// position and angle values 0, default type, empty description, ...).
 /// Other missing information is set to `None` (like cell or container ID).
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
 pub struct BmaLayoutVariable {
     pub id: u32,
     pub name: String, // duplicated with Variable.name, but that's what JSON BMA does

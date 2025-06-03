@@ -8,7 +8,6 @@ use serde_with::skip_serializing_none;
 /// Set of variables here should be a subset of the variables in the model.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(rename_all = "PascalCase")]
 pub struct BmaLayout {
     pub variables: Vec<BmaLayoutVariable>,
     pub containers: Vec<BmaLayoutContainer>,

@@ -14,7 +14,6 @@ use std::collections::HashMap;
 /// For serialization to JSON, use custom methods `to_json_str`, or `to_pretty_json_str`.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
 pub struct BmaModel {
     /// Main data with variables and relationships.
     pub model: BmaNetwork,

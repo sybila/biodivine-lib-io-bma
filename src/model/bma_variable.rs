@@ -1,5 +1,6 @@
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 /// A discrete variable with ID and name, range of possible values, and an update expression
 /// that dictates how the variable evolves. Name string can be empty.
@@ -9,8 +10,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// The update expression is optional. The `None` variant is used when an empty update expression
 /// is provided. Update expressions are serialized using a custom ` serialize_update_fn ` function.
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
 pub struct BmaVariable {
     pub id: u32,
     pub name: String,
