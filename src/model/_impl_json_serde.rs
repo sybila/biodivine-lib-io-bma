@@ -3,7 +3,7 @@ use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
 use crate::model::bma_relationship::BmaRelationship;
-use crate::model::layout::bma_layout_container::BmaContainer;
+use crate::model::layout::bma_layout_container::BmaLayoutContainer;
 use crate::model::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use std::collections::HashMap;
 
@@ -99,8 +99,8 @@ impl BmaModel {
 
     /// Convert JsonContainer instance into a proper BmaContainer instance.
     /// If there was no name in the JSON container, we use a default empty string.
-    fn convert_json_container(json_container: JsonContainer) -> BmaContainer {
-        BmaContainer {
+    fn convert_json_container(json_container: JsonContainer) -> BmaLayoutContainer {
+        BmaLayoutContainer {
             id: json_container.id,
             name: json_container.name,
             size: json_container.size,

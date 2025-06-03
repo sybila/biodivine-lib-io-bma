@@ -1,6 +1,6 @@
 use crate::model::bma_model::*;
 use crate::model::bma_relationship::BmaRelationship;
-use crate::model::layout::bma_layout_container::BmaContainer;
+use crate::model::layout::bma_layout_container::BmaLayoutContainer;
 use crate::model::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::xml_model::*;
@@ -78,8 +78,8 @@ impl BmaModel {
     }
 
     /// Convert XmlContainer instance into a BmaContainer.
-    fn convert_xml_container(xml_container: XmlContainer) -> BmaContainer {
-        BmaContainer {
+    fn convert_xml_container(xml_container: XmlContainer) -> BmaLayoutContainer {
+        BmaLayoutContainer {
             id: xml_container.id,
             name: xml_container.name,
             size: xml_container.size,

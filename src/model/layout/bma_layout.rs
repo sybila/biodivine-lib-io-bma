@@ -1,4 +1,4 @@
-use crate::model::BmaContainer;
+use crate::model::BmaLayoutContainer;
 use crate::model::BmaLayoutVariable;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -12,7 +12,7 @@ use serde_with::skip_serializing_none;
 #[serde(rename_all = "PascalCase")]
 pub struct BmaLayout {
     pub variables: Vec<BmaLayoutVariable>,
-    pub containers: Vec<BmaContainer>,
+    pub containers: Vec<BmaLayoutContainer>,
     pub description: String, // can be empty (by default if not provided)
     pub zoom_level: Option<f64>,
     pub pan_x: Option<f64>,
