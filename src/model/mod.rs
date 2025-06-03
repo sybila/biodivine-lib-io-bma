@@ -9,4 +9,7 @@ mod _impl_xml_serde;
 /// Main BMA model struct and its components.
 mod bma_model;
 
+mod bma_network;
+
 pub use bma_model::BmaModel;
+pub use bma_network::BmaNetwork;

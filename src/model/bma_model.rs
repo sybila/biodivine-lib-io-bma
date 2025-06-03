@@ -1,4 +1,5 @@
 use crate::enums::{RelationshipType, VariableType};
+use crate::model::BmaNetwork;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
@@ -26,16 +27,6 @@ pub struct BmaModel {
     /// Metadata are usually empty.
     #[serde(flatten)]
     pub metadata: HashMap<String, String>,
-}
-
-/// Named model with several `variables` that have various `relationships`.
-/// This is the main part of the BMA model, and it is always required.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct BmaNetwork {
-    pub name: String,
-    pub variables: Vec<BmaVariable>,
-    pub relationships: Vec<BmaRelationship>,
 }
 
 /// A discrete variable with ID and name, range of possible values, and an update expression

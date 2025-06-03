@@ -1,4 +1,5 @@
 use crate::enums::RelationshipType;
+use crate::model::BmaNetwork;
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use biodivine_lib_param_bn::{BooleanNetwork, Regulation};
