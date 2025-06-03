@@ -1,6 +1,6 @@
 use crate::{BmaNetwork, BmaVariable, ContextualValidation, ErrorReporter};
 use biodivine_lib_param_bn::Monotonicity;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// A relationship of a given [`RelationshipType`] between two [`BmaVariable`] objects.
@@ -114,11 +114,45 @@ pub enum BmaRelationshipError {
 }
 
 /// The type of [`BmaRelationship`] between two variables in a [`BmaNetwork`].
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RelationshipType {
     #[default]
     Activator,
     Inhibitor,
+}
+
+/*
+   For serialization, we need to override the default behavior, which in XML is to
+   serialize/deserialize using tags, not string values.
+*/
+
+impl Serialize for RelationshipType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            RelationshipType::Activator => serializer.serialize_str("Activator"),
+            RelationshipType::Inhibitor => serializer.serialize_str("Inhibitor"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for RelationshipType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: String = String::deserialize(deserializer)?;
+        match s.to_lowercase().as_str() {
+            "activator" => Ok(RelationshipType::Activator),
+            "inhibitor" => Ok(RelationshipType::Inhibitor),
+            _ => {
+                let message = format!("Unknown relationship type: `{}`", s);
+                Err(serde::de::Error::custom(message))
+            }
+        }
+    }
 }
 
 impl From<RelationshipType> for Monotonicity {

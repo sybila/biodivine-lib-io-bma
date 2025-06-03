@@ -4,21 +4,6 @@ use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-fn deser_relationship_type<'de, D>(deserializer: D) -> Result<RelationshipType, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: String = String::deserialize(deserializer)?;
-    match s.to_lowercase().as_str() {
-        "activator" => Ok(RelationshipType::Activator),
-        "inhibitor" => Ok(RelationshipType::Inhibitor),
-        _ => {
-            let message = format!("Unknown relationship type: `{}`", s);
-            Err(serde::de::Error::custom(message))
-        }
-    }
-}
-
 fn default_pan_val() -> f64 {
     0.0
 }
@@ -180,7 +165,7 @@ pub(crate) struct XmlRelationship {
     pub from_variable_id: QuoteNum,
     #[serde(rename = "ToVariableId")]
     pub to_variable_id: QuoteNum,
-    #[serde(rename = "Type", deserialize_with = "deser_relationship_type")]
+    #[serde(rename = "Type")]
     pub r#type: RelationshipType,
     #[serde(default, rename = "ContainerId")]
     pub container_id: Option<QuoteNum>,
