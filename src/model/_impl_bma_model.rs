@@ -156,10 +156,9 @@ impl BmaModel {
         let layout = BmaLayout {
             variables: layout_vars,
             containers: vec![container],
-            description: "".to_string(),
+            description: None,
             zoom_level: None,
-            pan_x: None,
-            pan_y: None,
+            pan: None,
         };
 
         Ok(BmaModel::new(model, layout, HashMap::new()))

@@ -127,6 +127,14 @@ impl TryFrom<XmlBmaModel> for BmaModel {
         };
 
         // Convert the layout
+        let (zoom_level, pan) = if let Some(layout) = xml_model.layout.as_ref() {
+            let zoom_level = Rational64::from_f64(layout.zoom_level).unwrap();
+            let pan_x = Rational64::from_f64(layout.pan_x).unwrap();
+            let pan_y = Rational64::from_f64(layout.pan_y).unwrap();
+            (Some(zoom_level), Some((pan_x, pan_y)))
+        } else {
+            (None, None)
+        };
         let layout = BmaLayout {
             variables: xml_model
                 .variables
@@ -143,10 +151,9 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .into_iter()
                 .map(Self::convert_xml_container)
                 .collect(),
-            description: xml_model.description,
-            zoom_level: xml_model.layout.as_ref().map(|l| l.zoom_level),
-            pan_x: xml_model.layout.as_ref().map(|l| l.pan_x),
-            pan_y: xml_model.layout.as_ref().map(|l| l.pan_y),
+            description: Some(xml_model.description),
+            zoom_level,
+            pan,
         };
 
         // Metadata can be constructed from various XML fields

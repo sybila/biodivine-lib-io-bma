@@ -1,4 +1,5 @@
 use crate::{BmaLayoutContainer, BmaLayoutVariable};
+use num_rational::Rational64;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -7,14 +8,13 @@ use serde_with::skip_serializing_none;
 ///
 /// Set of variables here should be a subset of the variables in the model.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct BmaLayout {
     pub variables: Vec<BmaLayoutVariable>,
     pub containers: Vec<BmaLayoutContainer>,
-    pub description: String, // can be empty (by default if not provided)
-    pub zoom_level: Option<f64>,
-    pub pan_x: Option<f64>,
-    pub pan_y: Option<f64>,
+    pub description: Option<String>,
+    pub zoom_level: Option<Rational64>,
+    pub pan: Option<(Rational64, Rational64)>,
 }
 
 impl BmaLayout {

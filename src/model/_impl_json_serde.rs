@@ -160,10 +160,9 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                     .into_iter()
                     .map(Self::convert_json_container)
                     .collect(),
-                description: layout.description,
+                description: Some(layout.description),
                 zoom_level: None,
-                pan_x: None,
-                pan_y: None,
+                pan: None,
             })
             .unwrap_or_default(); // Default empty layout, if layout is not provided.
 
