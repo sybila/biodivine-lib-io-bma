@@ -13,7 +13,10 @@ mod bma_network;
 mod bma_relationship;
 mod bma_variable;
 
+mod layout;
+
 pub use bma_model::BmaModel;
 pub use bma_network::BmaNetwork;
 pub use bma_relationship::BmaRelationship;
 pub use bma_variable::BmaVariable;
+pub use layout::bma_layout::BmaLayout;

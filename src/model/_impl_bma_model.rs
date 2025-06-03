@@ -1,7 +1,7 @@
 use crate::enums::RelationshipType;
 use crate::model::bma_model::*;
 use crate::model::bma_relationship::BmaRelationship;
-use crate::model::{BmaNetwork, BmaVariable};
+use crate::model::{BmaLayout, BmaNetwork, BmaVariable};
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use biodivine_lib_param_bn::{BooleanNetwork, Regulation};
 use std::cmp::max;
