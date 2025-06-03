@@ -24,15 +24,12 @@ name = "load-xml"
 path = "src/bin/load_xml.rs"
 
 [dependencies]
-biodivine-lib-bdd = ">=0.5.22, <1.0.0"
-biodivine-lib-param-bn = ">=0.5.13, <1.0.0"
-clap = { version = "4.1.4", features = ["derive"] }
-rand = "0.8.5"
-regex = "1.10.2"
+biodivine-lib-param-bn = ">=0.5.14, <1.0.0"
+regex = "1.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "3.9.0"
-serde-xml-rs = "0.6.0"
-num-rational = "0.4.2"
-num-traits = "0.2.19"
-rust_decimal = { version = "1.37.1", features = ["macros"] }
+serde_with = "3.12.0"
+serde-xml-rs = "0.8"
+num-rational = "0.4"
+num-traits = "0.2"
+rust_decimal = { version = "1.37", features = ["macros"] }
