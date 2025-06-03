@@ -85,4 +85,23 @@ mod tests {
         };
         assert_eq!(variable.name_or_default(), "v_3");
     }
+
+    #[test]
+    fn default_serde() {
+        let some_function =
+            BmaFnUpdate::parse_from_str("var(0) - var(1)", &HashMap::new()).unwrap();
+        let variable = BmaVariable {
+            id: 5,
+            name: Some("foo".to_string()),
+            range: (1, 3),
+            formula: Some(some_function),
+        };
+        let serialized = serde_json::to_string(&variable).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"id":5,"name":"foo","range":[1,3],"formula":"(var(0) - var(1))"}"#
+        );
+        let deserialized: BmaVariable = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(variable, deserialized);
+    }
 }
