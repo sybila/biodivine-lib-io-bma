@@ -1,4 +1,5 @@
 use crate::model::bma_relationship::BmaRelationshipError;
+use crate::utils::is_blank;
 use crate::{
     BmaRelationship, BmaVariable, BmaVariableError, ContextualValidation, ErrorReporter, Validation,
 };
@@ -54,10 +55,8 @@ impl Validation for BmaNetwork {
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, reporter: &mut R) {
         // Ensure that the name is not empty.
-        if let Some(name) = self.name.as_ref() {
-            if name.is_empty() {
-                reporter.report(BmaNetworkError::NameEmpty);
-            }
+        if is_blank(&self.name) {
+            reporter.report(BmaNetworkError::NameEmpty);
         }
 
         // Check all variables.

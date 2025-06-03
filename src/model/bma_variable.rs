@@ -1,4 +1,5 @@
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
+use crate::utils::{is_blank, is_unique_id};
 use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -97,10 +98,8 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaNetwork, reporter: &mut R) {
         // Ensure that the variable name is not empty.
-        if let Some(name) = self.name.as_ref() {
-            if name.is_empty() {
-                reporter.report(BmaVariableError::NameEmpty { id: self.id });
-            }
+        if is_blank(&self.name) {
+            reporter.report(BmaVariableError::NameEmpty { id: self.id });
         }
 
         // Ensure that the variable range is a valid, non-empty interval.
@@ -112,23 +111,11 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
         }
 
         // Ensure that the variable id is unique within the enclosing BmaNetwork.
-        let mut count = 0;
-        let mut found_self = false;
-        for var in &context.variables {
-            if var.id == self.id {
-                count += 1;
-                if var == self {
-                    found_self = true;
-                }
-            }
-        }
+        let Ok(is_unique) = is_unique_id(&context.variables, self, |x| x.id) else {
+            panic!("Validation called on a variable that is not part of the BmaNetwork")
+        };
 
-        assert!(
-            found_self,
-            "Validation called on a variable that is not part of the BmaNetwork"
-        );
-
-        if count > 1 {
+        if !is_unique {
             reporter.report(BmaVariableError::IdNotUnique { id: self.id });
         }
     }

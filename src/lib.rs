@@ -22,3 +22,5 @@ mod validation;
 pub use validation::{
     ContextualValidation, ErrorReporter, ReporterWrapper, Validation, VecReporter,
 };
+
+pub(crate) mod utils;
