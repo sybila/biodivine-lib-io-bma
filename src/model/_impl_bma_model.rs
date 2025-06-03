@@ -24,7 +24,7 @@ impl BmaModel {
         self.get_max_var_level() <= 1
     }
 
-    /// Get maximum level of any variable in the BMA model.
+    /// Get the maximum level of any variable in the BMA model.
     pub fn get_max_var_level(&self) -> u32 {
         let mut max_level = 0;
         self.model.variables.iter().for_each(|v| {
@@ -55,21 +55,21 @@ impl BmaModel {
         (positive, negative)
     }
 
-    /// Construct `BmaModel` instance from a provided BooleanNetwork `bn`.
+    /// Construct a ` BmaModel ` instance from a provided BooleanNetwork `bn`.
     ///
     /// The Boolean network MUST NOT contain parameters in any of its update functions,
     /// explicit or implicit. Only fully specified BNs can be converted into BMA format.
     ///
     /// All monotonic regulations are carried over as they are. For each regulation with
-    /// unspecified monotonicity, both a positive and a negative regulation are added.
+    /// unspecified monotonicity, both positive and negative regulations are added.
     /// This may have some side effects, but BMA does not support non-monotonic regulations.
     ///
-    /// Information about observability of regulations is lost (but this should have no effect
+    /// Information about the observability of regulations is lost (but this should have no effect
     /// for fully specified BNs anyway).
     pub fn from_boolean_network(bn: &BooleanNetwork, name: &str) -> Result<BmaModel, String> {
         if bn.num_parameters() > 0 {
             return Err(
-                "Boolean network with parameters can not be transfromed to BMA.".to_string(),
+                "Boolean network with parameters can not be transformed to BMA.".to_string(),
             );
         }
 
@@ -78,7 +78,6 @@ impl BmaModel {
             .variables()
             .map(|var_id| {
                 let formula = if let Some(update_fn) = bn.get_update_function(var_id) {
-                    // we unwrap since we already checked BN has no parameters
                     let bma_function = BmaFnUpdate::try_from_fn_update(update_fn)?;
                     Some(bma_function)
                 } else {

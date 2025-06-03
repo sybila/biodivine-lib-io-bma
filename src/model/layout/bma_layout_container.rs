@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-/// A layout information about a container.
+/// Layout information about a container.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -14,7 +14,7 @@ pub struct BmaLayoutContainer {
 }
 
 impl BmaLayoutContainer {
-    /// Create a default empty container. Default position is (0, 0), and size is 1.
+    /// Create a default empty container. The default position is `(0, 0)`, and the size is `1`.
     pub fn new_default(id: u32, name: String) -> Self {
         BmaLayoutContainer {
             id,

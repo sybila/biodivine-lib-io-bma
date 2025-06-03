@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Additional layout information regarding a model variable.
 ///
-/// If some information is not provided, it cab be set to default values (like
+/// If some information is not provided, it can be set to default values (like
 /// position and angle values 0, default type, empty description, ...).
 /// Other missing information is set to `None` (like cell or container ID).
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -23,10 +23,10 @@ pub struct BmaLayoutVariable {
 }
 
 impl BmaLayoutVariable {
-    /// Create a default layout for a variable with given name and ID.
-    /// Container ID is optional, and can be set to `None`.
+    /// Create a default layout for a variable with a given name and ID.
+    /// Container ID is optional and can be set to `None`.
     ///
-    /// Default position is (0, 0), angle is 0.0, and cell/description is empty.
+    /// The default position is `(0, 0)`, the angle is `0.0`, and the cell / description is empty.
     /// Cell values are set to `None`.
     pub fn new_default(id: u32, name: String, container_id: Option<u32>) -> Self {
         BmaLayoutVariable {

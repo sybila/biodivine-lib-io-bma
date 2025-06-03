@@ -22,12 +22,12 @@ impl BmaModel {
     /// this model) and a mapping of BMA variable IDs to their canonical names used in
     /// the new graph.
     ///
-    /// See [Self::canonical_var_name] for how the variable names are derived. Varibles are
+    /// See [Self::canonical_var_name] for how the variable names are derived. Variables are
     /// sorted by these canonical names (which means they are basically sorted by their BMA IDs).
     /// Regulations are sorted by their regulator (first key) and their target (second key).
     ///
     /// It is possible that the BMA model has more than one regulation between the same pair
-    /// of variables. If they have same type, we simply add it once. If they have different
+    /// of variables. If they have the same type, we simply add it once. If they have different
     /// signs, we add a regulation with unspecified monotonicity.
     /// Moreover, all regulations are made observable by default.
     pub fn to_regulatory_graph(&self) -> Result<(RegulatoryGraph, HashMap<u32, String>), String> {
@@ -61,7 +61,7 @@ impl BmaModel {
                 .ok_or(format!("Target var {} does not exist.", target_bma_id))?;
             let monotonicity = Some(bma_relationship.relationship_type.into());
 
-            // check for doubled regulations (BMA allows multiple regulations between same vars)
+            // check for doubled regulations (BMA allows multiple regulations between the same vars)
             let regulator_aeon_id = graph.find_variable(regulator).unwrap(); // safe to unwrap
             let target_aeon_id = graph.find_variable(target).unwrap(); // safe to unwrap
             if let Some(existing_reg) = graph.find_regulation(regulator_aeon_id, target_aeon_id) {
@@ -82,7 +82,7 @@ impl BmaModel {
     }
 
     /// Create a default update function for a variable in the BMA model with
-    /// originally empty formula.
+    ///  an originally empty formula.
     ///
     /// This function is created the same way as BMA does it, even though that
     /// can feel weird at times.
@@ -96,7 +96,7 @@ impl BmaModel {
 
         // We build the default function the same way as BMA does.
 
-        // First we average the positive regulators
+        // First, we average the positive regulators
         let p_avr = if !positive.is_empty() {
             let p_args = positive
                 .iter()
@@ -104,7 +104,7 @@ impl BmaModel {
                 .collect();
             BmaFnUpdate::mk_aggregation(AggregateFn::Avg, p_args)
         } else {
-            // This does not make much sense, because it means any variable with only negative
+            // This makes little sense because it means any variable with only negative
             // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
             // that's what we are doing as well...
             BmaFnUpdate::mk_constant(0)
@@ -136,7 +136,7 @@ impl BmaModel {
     /// By default, all regulations are considered as observable, and their sign is taken from the
     /// BMA model as is. This may be inconsistent with the update functions, which may or may not be
     /// intended. If `repair_graph` is set to true, the regulation properties (observability and
-    /// monotonicity) are instead inferred from the upodate function BDDs directly.
+    /// monotonicity) are instead inferred from the update function BDDs directly.
     ///
     /// TODO: For now, we do not handle multi-valued models. However, some internal
     /// methods are made general to deal with multi-valued networks in future.
@@ -153,7 +153,7 @@ impl BmaModel {
 
         // collect max levels of variables
         let mut max_levels = HashMap::new();
-        // for boolean models, this should be 1 with exception of zero constants
+        // for boolean models, this should be `1` except for zero constants
         // we deal with zero constants making into boolean variables with constant update
         let mut zero_constants = Vec::new();
         for bma_var in &self.model.variables {
@@ -172,7 +172,7 @@ impl BmaModel {
             let var_max_lvl = max_levels.get(&bma_var.id).unwrap();
 
             if zero_constants.contains(&bma_var.id) {
-                // We can have zero constants and we must deal with these accordingly.
+                // We can have zero constants, and we must deal with these accordingly.
                 // BMA sets the update function to zero in this case regardless of the formula.
                 bn.add_string_update_function(bn_var_name, "false").unwrap();
                 continue;
@@ -218,9 +218,9 @@ mod tests {
     /// Wrapper to get a simple BMA model for testing.
     ///
     /// The model has:
-    /// - two variables (a=1, b=2)
-    /// - two relationships (a -| b, b -> a)
-    /// - the following update functions: (a: var(2), b: 1-var(a))
+    /// - two variables `(a=1, b=2)`
+    /// - two relationships `(a -| b, b -> a)`
+    /// - the following update functions: `(a: var(2), b: 1-var(a))`
     ///
     /// There is no layout or additional information in the model.
     fn get_simple_test_model() -> BmaModel {
@@ -259,9 +259,9 @@ mod tests {
     /// Wrapper to get a little bit more complex BMA model for testing.
     ///
     /// The model has:
-    /// - three variables (a=1, b=2, c=3)
-    /// - five relationships (a -| b, b -> a, a -> c, b -> c, c -> c)
-    /// - the following update functions: (a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))
+    /// - three variables `(a=1, b=2, c=3)`
+    /// - five relationships `(a -| b, b -> a, a -> c, b -> c, c -> c)`
+    /// - the following update functions: `(a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))`
     fn get_test_model() -> BmaModel {
         let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
         <AnalysisInput ModelName="New Model">

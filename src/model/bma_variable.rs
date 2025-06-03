@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize, Serializer};
 /// A discrete variable with ID and name, range of possible values, and an update expression
 /// that dictates how the variable evolves. Name string can be empty.
 ///
-/// Additional not-functional information like variable's position, description, or type are
+/// Additional non-functional information like a variable position, description, or type are
 /// present as part of the layout (as is usual in BMA JSON format).
 ///
-/// The update expression is optional. The `None` variant is used when empty update expression
-/// is provided. Update expressions are serialized using custom `serialize_update_fn` function.
+/// The update expression is optional. The `None` variant is used when an empty update expression
+/// is provided. Update expressions are serialized using a custom ` serialize_update_fn ` function.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct BmaVariable {

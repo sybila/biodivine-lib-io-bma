@@ -20,7 +20,7 @@ impl BmaModel {
         serde_json::to_string_pretty(self).unwrap()
     }
 
-    /// Create new BMA model from a model string in JSON format.
+    /// Create a new BMA model from a model string in JSON format.
     /// Internally, we use json_serde serialization into an intermediate `JsonBmaModel` structure.
     pub fn from_json_str(json_str: &str) -> Result<Self, String> {
         let json_model: JsonBmaModel = serde_json::from_str(json_str).map_err(|e| e.to_string())?;
@@ -33,13 +33,13 @@ impl BmaModel {
     /// If there is no name in the JSON variable, we try to find it in the layout variables.
     /// If there is no name in the layout either, we use a default empty string.
     ///
-    /// If the update function has incorrect format, we return an error.
+    /// If the update function has an incorrect format, we return an error.
     fn convert_json_variable(
         json_var: JsonVariable,
         json_model: &JsonBmaModel,
         all_vars: &HashMap<u32, String>,
     ) -> Result<BmaVariable, String> {
-        // We have already precomputed set of all ID-name mappings in the model and layout
+        // We have already precomputed a set of all ID-name mappings in the model and layout
         let name = all_vars.get(&json_var.id).unwrap();
 
         // Get a set of regulators for the variable that we'll pass to update fn parser
@@ -69,7 +69,7 @@ impl BmaModel {
         })
     }
 
-    /// Convert JSON relationship into a proper BmaRelationship instance.
+    /// Convert a JSON relationship into a proper BmaRelationship instance.
     fn convert_json_relationship(json_rel: JsonRelationship) -> BmaRelationship {
         BmaRelationship {
             id: json_rel.id,
@@ -79,7 +79,7 @@ impl BmaModel {
         }
     }
 
-    /// Convert JsonLayoutVariable instance into a proper BmaLayoutVariable
+    /// Convert the JsonLayoutVariable instance into a proper BmaLayoutVariable
     /// instance. If there was no name or description in the JSON layout variable, we use
     /// a default empty string.
     fn convert_json_layout_variable(json_var: JsonLayoutVariable) -> BmaLayoutVariable {
@@ -97,7 +97,7 @@ impl BmaModel {
         }
     }
 
-    /// Convert JsonContainer instance into a proper BmaContainer instance.
+    /// Convert a JsonContainer instance into a proper BmaContainer instance.
     /// If there was no name in the JSON container, we use a default empty string.
     fn convert_json_container(json_container: JsonContainer) -> BmaLayoutContainer {
         BmaLayoutContainer {
@@ -115,7 +115,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
 
     /// Convert JsonBmaModel instance into a proper BmaModel instance.
     ///
-    /// Returns error if the update function has incorrect format.
+    /// Returns error if the update function has an incorrect format.
     fn try_from(json_model: JsonBmaModel) -> Result<BmaModel, String> {
         // For all variables, collect ID-name mapping (combining info from model and layout)
         let all_variables: HashMap<u32, String> = json_model.collect_all_variables();
@@ -158,7 +158,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
             })
             .unwrap_or_default(); // Default empty layout if not provided
 
-        // Metadata not present in JsonBmaModel
+        // Metadata is not present in JsonBmaModel
         let metadata = HashMap::new();
 
         Ok(BmaModel::new(model, layout, metadata))

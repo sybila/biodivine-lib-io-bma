@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 /// A layout describing positions and types of variables and containers.
-/// Most fields are optional, as layout contains mostly complementary information.
+/// Most fields are optional, as the layout contains mostly complementary information.
 ///
 /// Set of variables here should be a subset of the variables in the model.
 #[skip_serializing_none]

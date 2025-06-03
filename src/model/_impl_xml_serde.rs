@@ -7,7 +7,7 @@ use crate::xml_model::*;
 use std::collections::HashMap;
 
 impl BmaModel {
-    /// Create new BMA model from a model string in XML format.
+    /// Create a new BMA model from a model string in XML format.
     /// Internally, we use serde_xml_rs serialization into an intermediate `XmlBmaModel` structure.
     pub fn from_xml_str(xml_str: &str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
@@ -16,9 +16,9 @@ impl BmaModel {
 }
 
 impl BmaModel {
-    /// Convert XmlVariable instance into a proper BmaVariable.
+    /// Convert an XmlVariable instance into a proper BmaVariable.
     ///
-    /// If the update function has incorrect format, we return an error.
+    /// If the update function has an incorrect format, we return an error.
     fn convert_xml_variable(
         xml_var: XmlVariable,
         xml_model: &XmlBmaModel,
@@ -77,7 +77,7 @@ impl BmaModel {
         }
     }
 
-    /// Convert XmlContainer instance into a BmaContainer.
+    /// Convert an XmlContainer instance into a BmaContainer.
     fn convert_xml_container(xml_container: XmlContainer) -> BmaLayoutContainer {
         BmaLayoutContainer {
             id: xml_container.id,
@@ -94,7 +94,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
 
     /// Convert JsonBmaModel instance into a proper BmaModel instance.
     ///
-    /// Returns error if the update function has incorrect format.
+    /// Returns error if the update function has an incorrect format.
     fn try_from(xml_model: XmlBmaModel) -> Result<BmaModel, String> {
         // Precompute ID-name mapping of all variables
         let all_variables: HashMap<u32, String> = xml_model.collect_all_variables();
