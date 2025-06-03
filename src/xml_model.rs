@@ -98,7 +98,7 @@ pub(crate) struct XmlLayout {
 /// for actual containers list needed due to the weird xml structure...
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlContainers {
-    #[serde(rename = "Container")]
+    #[serde(default, rename = "Container")]
     pub container: Vec<XmlContainer>,
 }
 
@@ -124,7 +124,7 @@ pub(crate) struct XmlContainer {
 /// for actual variables list needed due to the weird xml structure...
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlVariables {
-    #[serde(rename = "Variable")]
+    #[serde(default, rename = "Variable")]
     pub variable: Vec<XmlVariable>,
 }
 
@@ -183,7 +183,7 @@ pub(crate) struct XmlVariable {
 /// for actual relationships list needed due to the weird xml structure...
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlRelationships {
-    #[serde(rename = "Relationship")]
+    #[serde(default, rename = "Relationship")]
     pub relationship: Vec<XmlRelationship>,
 }
 
