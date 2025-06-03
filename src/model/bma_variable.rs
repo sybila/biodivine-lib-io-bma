@@ -31,6 +31,26 @@ pub struct BmaVariable {
 }
 
 impl BmaVariable {
+    /// Create a new *boolean* [`BmaVariable`] with the given `name`.
+    pub fn new_boolean(id: u32, name: &str, formula: Option<BmaFnUpdate>) -> Self {
+        Self::new(id, name, (0, 1), formula)
+    }
+
+    /// Create a a new [`BmaVariable`] with the given `name` and `range`.
+    pub fn new(
+        id: u32,
+        name: &str,
+        range: (u32, u32),
+        formula: Option<BmaFnUpdate>,
+    ) -> BmaVariable {
+        BmaVariable {
+            id,
+            name: Some(name.to_string()),
+            range,
+            formula,
+        }
+    }
+
     /// The minimum value this variable can take.
     pub fn min_level(&self) -> u32 {
         self.range.0
@@ -157,14 +177,9 @@ mod tests {
 
     #[test]
     fn default_serde() {
-        let some_function =
-            BmaFnUpdate::parse_from_str("var(0) - var(1)", &HashMap::new()).unwrap();
-        let variable = BmaVariable {
-            id: 5,
-            name: Some("foo".to_string()),
-            range: (1, 3),
-            formula: Some(some_function),
-        };
+        let empty = HashMap::new();
+        let formula = BmaFnUpdate::parse_from_str("var(0) - var(1)", &empty).unwrap();
+        let variable = BmaVariable::new(5, "foo", (1, 3), Some(formula));
         let serialized = serde_json::to_string(&variable).unwrap();
         assert_eq!(
             serialized,
@@ -192,10 +207,7 @@ mod tests {
     /// Empty variable names are not allowed.
     #[test]
     fn empty_name() {
-        let variable = BmaVariable {
-            name: Some("".to_string()),
-            ..Default::default()
-        };
+        let variable = BmaVariable::new_boolean(0, "", None);
         let network = network_for_variable(&variable);
 
         let issues = variable.validate(&network).unwrap_err();
@@ -205,10 +217,7 @@ mod tests {
     /// Empty ranges are allowed (represents a constant variable).
     #[test]
     fn range_empty() {
-        let variable = BmaVariable {
-            range: (1, 1),
-            ..Default::default()
-        };
+        let variable = BmaVariable::new(0, "v1", (1, 1), None);
         let network = network_for_variable(&variable);
 
         assert!(variable.validate(&network).is_ok());
@@ -217,10 +226,7 @@ mod tests {
     /// Invalid ranges are not allowed.
     #[test]
     fn range_invalid() {
-        let variable = BmaVariable {
-            range: (3, 1),
-            ..Default::default()
-        };
+        let variable = BmaVariable::new(0, "v1", (3, 1), None);
         let network = network_for_variable(&variable);
 
         let issues = variable.validate(&network).unwrap_err();
