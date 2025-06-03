@@ -44,9 +44,8 @@ impl BmaModel {
 
         Ok(BmaVariable {
             id: xml_var.id,
-            name: xml_var.name,
-            range_from: xml_var.range_from,
-            range_to: xml_var.range_to,
+            name: Some(xml_var.name),
+            range: (xml_var.range_from, xml_var.range_to),
             formula,
         })
     }

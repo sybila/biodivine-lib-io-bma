@@ -9,10 +9,14 @@ impl BmaModel {
     /// Generate a canonical name for a BMA variable by combining its ID and name.
     /// This canonical name will be used in a BooleanNetwork.
     fn canonical_var_name(var: &BmaVariable) -> String {
-        // Regex that matches non-alphanumeric and non-underscore characters
-        let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
-        let sanitized_name = re.replace_all(&var.name, "");
-        format!("v_{}_{}", var.id, sanitized_name)
+        if let Some(name) = var.name.as_ref() {
+            // Regex that matches non-alphanumeric and non-underscore characters
+            let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
+            let sanitized_name = re.replace_all(name, "");
+            format!("v_{}_{}", var.id, sanitized_name)
+        } else {
+            format!("v_{}", var.id)
+        }
     }
 
     /// Extract a regulatory graph from this BMA model.
@@ -156,11 +160,11 @@ impl BmaModel {
         // we deal with zero constants making into boolean variables with constant update
         let mut zero_constants = Vec::new();
         for bma_var in &self.model.variables {
-            if bma_var.range_to == 0 {
+            if bma_var.max_level() == 0 {
                 zero_constants.push(bma_var.id); // remember to deal with these specially
                 max_levels.insert(bma_var.id, 1); // standard boolean variable now
             } else {
-                max_levels.insert(bma_var.id, bma_var.range_to);
+                max_levels.insert(bma_var.id, bma_var.max_level());
             }
         }
 

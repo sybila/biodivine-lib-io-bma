@@ -62,9 +62,8 @@ impl BmaModel {
 
         Ok(BmaVariable {
             id: json_var.id,
-            name: name.clone(),
-            range_from: json_var.range_from,
-            range_to: json_var.range_to,
+            name: Some(name.clone()),
+            range: (json_var.range_from, json_var.range_to),
             formula,
         })
     }
