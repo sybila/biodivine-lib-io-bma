@@ -2,7 +2,7 @@
 name = "biodivine-lib-io-bma"
 version = "0.0.1"
 authors = ["Ondřej Huvar <xhuvar@fi.muni.cz>", "Samuel Pastva <sam.pastva@gmail.com>"]
-edition = "2021"
+edition = "2024"
 description = "Library for working with models in the BMA format."
 homepage = "https://github.com/sybila/biodivine-lib-io-bma"
 repository = "https://github.com/sybila/biodivine-lib-io-bma"
