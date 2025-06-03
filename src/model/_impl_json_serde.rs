@@ -133,7 +133,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                 .into_iter()
                 .map(Self::convert_json_relationship)
                 .collect(),
-            name: json_model.model.name,
+            name: Some(json_model.model.name),
         };
 
         // Convert the layout
@@ -155,7 +155,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                 pan_x: None,
                 pan_y: None,
             })
-            .unwrap_or_default(); // Default empty layout if not provided
+            .unwrap_or_default(); // Default empty layout, if layout is not provided.
 
         // Metadata is not present in JsonBmaModel
         let metadata = HashMap::new();

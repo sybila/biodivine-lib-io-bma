@@ -113,7 +113,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .into_iter()
                 .map(Self::convert_xml_relationship)
                 .collect(),
-            name: xml_model.name,
+            name: Some(xml_model.name),
         };
 
         // Convert the layout
