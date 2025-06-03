@@ -105,16 +105,11 @@ impl ContextualValidation<BmaNetwork> for BmaRelationship {
 /// Possible validation errors for [`BmaRelationship`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaRelationshipError {
-    /// Caused by the relationship ID not being unique.
-    #[error("(Relationship id: `{id}`) Id must be unique within the enclosing `BmaNetwork`")]
+    #[error("(Relationship: `{id}`) Id must be unique in the `BmaNetwork`")]
     IdNotUnique { id: u32 },
-    #[error(
-        "(Relationship id: `{id}`) Regulator (`{from_variable}`) not found in the enclosing `BmaNetwork`"
-    )]
+    #[error("(Relationship: `{id}`) Regulator (`{from_variable}`) not found in the `BmaNetwork`")]
     RegulatorVariableNotFound { id: u32, from_variable: u32 },
-    #[error(
-        "(Relationship id: `{id}`) Target (`{to_variable}`) not found in the enclosing `BmaNetwork`"
-    )]
+    #[error("(Relationship: `{id}`) Target (`{to_variable}`) not found in the `BmaNetwork`")]
     TargetVariableNotFound { id: u32, to_variable: u32 },
 }
 

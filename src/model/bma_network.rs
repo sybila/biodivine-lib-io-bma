@@ -41,7 +41,7 @@ impl BmaNetwork {
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaNetworkError {
-    #[error("Name of the `BmaNetwork` is empty; use `None` instead")]
+    #[error("Name of the `BmaNetwork` cannot be empty; use `None` instead")]
     NameEmpty,
     #[error(transparent)]
     Variable(#[from] BmaVariableError),

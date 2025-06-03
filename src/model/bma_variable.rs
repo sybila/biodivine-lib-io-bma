@@ -84,13 +84,10 @@ impl Default for BmaVariable {
 /// Possible validation errors for [BmaVariable].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaVariableError {
-    /// Caused by the variable ID not being unique.
-    #[error("(Variable id: `{id}`) Id must be unique within the enclosing `BmaNetwork`")]
+    #[error("(Variable id: `{id}`) Id must be unique in the `BmaNetwork`")]
     IdNotUnique { id: u32 },
-    /// Caused by the variable range not being a valid, non-empty interval.
-    #[error("(Variable id: `{id}`) Range `{range:?}` is invalid; must be a non-empty interval")]
+    #[error("(Variable id: `{id}`) Range `{range:?}` is invalid; must be an interval")]
     RangeInvalid { id: u32, range: (u32, u32) },
-    /// Caused by the variable name being empty.
     #[error("(Variable id: `{id}`) Name cannot be empty; use `None` instead")]
     NameEmpty { id: u32 },
 }
