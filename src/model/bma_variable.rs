@@ -9,7 +9,7 @@ use thiserror::Error;
 /// formula (optional) which describes its evolution in time.
 ///
 /// Expected invariants (checked during validation):
-///  - Variable `id` must be unique within the enclosing [crate::BmaModel].
+///  - Variable `id` must be unique within the variables of the enclosing [crate::BmaNetwork].
 ///  - Variable `name` cannot be empty but is not required to be unique.
 ///  - Variable `range` must be a valid range. However, a range that only contains a single
 ///    value is allowed, in which case the variable is considered constant.

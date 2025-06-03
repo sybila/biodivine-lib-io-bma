@@ -64,7 +64,7 @@ impl BmaModel {
     /// This may have some side effects, but BMA does not support non-monotonic regulations.
     ///
     /// Information about the observability of regulations is lost (but this should have no effect
-    /// for fully specified BNs anyway).
+    /// on fully specified BNs anyway).
     pub fn from_boolean_network(bn: &BooleanNetwork, name: &str) -> Result<BmaModel, String> {
         if bn.num_parameters() > 0 {
             return Err(
