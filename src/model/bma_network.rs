@@ -1,4 +1,5 @@
-use crate::model::bma_model::{BmaRelationship, BmaVariable};
+use crate::model::BmaVariable;
+use crate::model::bma_model::BmaRelationship;
 use serde::{Deserialize, Serialize};
 
 /// Named model with several `variables` that have various `relationships`.

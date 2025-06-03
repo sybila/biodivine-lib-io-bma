@@ -1,3 +1,4 @@
+use crate::model::BmaVariable;
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp};
