@@ -225,8 +225,8 @@ mod tests {
         assert_eq!(bma_model.layout.variables.len(), 2);
         let layout_var_a = &bma_model.layout.variables[0];
         let layout_var_b = &bma_model.layout.variables[1];
-        assert_eq!(layout_var_a.name, "A");
-        assert_eq!(layout_var_b.name, "B");
+        assert_eq!(layout_var_a.name_or_default(), "A");
+        assert_eq!(layout_var_b.name_or_default(), "B");
 
         // Verify that there is a default container
         assert_eq!(bma_model.layout.containers.len(), 1);

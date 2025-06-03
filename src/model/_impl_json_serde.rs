@@ -82,17 +82,20 @@ impl BmaModel {
     /// instance. If there was no name or description in the JSON layout variable, we use
     /// a default empty string.
     fn convert_json_layout_variable(json_var: JsonLayoutVariable) -> BmaLayoutVariable {
+        let cell = if let (Some(x), Some(y)) = (json_var.cell_x, json_var.cell_y) {
+            Some((x, y))
+        } else {
+            None
+        };
         BmaLayoutVariable {
             id: json_var.id,
-            name: json_var.name,
+            name: Some(json_var.name),
             container_id: json_var.container_id,
-            variable_type: json_var.r#type,
-            position_x: json_var.position_x,
-            position_y: json_var.position_y,
-            cell_x: json_var.cell_x,
-            cell_y: json_var.cell_y,
+            r#type: json_var.r#type,
+            position: (json_var.position_x, json_var.position_y),
+            cell,
             angle: json_var.angle,
-            description: json_var.description,
+            description: Some(json_var.description),
         }
     }
 

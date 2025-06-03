@@ -62,17 +62,23 @@ impl BmaModel {
 
     /// Convert XmlVariable instance into a BmaLayoutVariable.
     fn convert_xml_layout_var(xml_var: XmlVariable) -> BmaLayoutVariable {
+        let cell = if let (Some(x), Some(y)) = (xml_var.cell_x, xml_var.cell_y) {
+            Some((x, y))
+        } else {
+            None
+        };
         BmaLayoutVariable {
             id: xml_var.id,
-            name: xml_var.name,
-            variable_type: xml_var.r#type,
+            name: Some(xml_var.name),
+            r#type: xml_var.r#type,
             container_id: xml_var.container_id,
-            position_x: xml_var.position_x.unwrap_or_default(),
-            position_y: xml_var.position_y.unwrap_or_default(),
-            cell_x: xml_var.cell_x,
-            cell_y: xml_var.cell_y,
+            position: (
+                xml_var.position_x.unwrap_or_default(),
+                xml_var.position_y.unwrap_or_default(),
+            ),
+            cell,
             angle: xml_var.angle.unwrap_or_default(),
-            description: String::default(),
+            description: None,
         }
     }
 
