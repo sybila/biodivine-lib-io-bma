@@ -4,14 +4,6 @@ use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-fn default_position_val() -> f64 {
-    0.0
-}
-
-fn default_angle_val() -> f64 {
-    0.0
-}
-
 /// An intermediate structure purely for deserializing JSON BMA models.
 ///
 /// The functional part of the model is stored in `model` field. The additional `layout`
@@ -118,19 +110,11 @@ pub(crate) struct JsonLayoutVariable {
     pub name: String,
     #[serde(default, rename = "Type", alias = "type")]
     pub r#type: VariableType,
-    #[serde(
-        default = "default_position_val",
-        rename = "PositionX",
-        alias = "positionX"
-    )]
+    #[serde(default, rename = "PositionX", alias = "positionX")]
     pub position_x: f64,
-    #[serde(
-        default = "default_position_val",
-        rename = "PositionY",
-        alias = "positionY"
-    )]
+    #[serde(default, rename = "PositionY", alias = "positionY")]
     pub position_y: f64,
-    #[serde(default = "default_angle_val", rename = "Angle", alias = "angle")]
+    #[serde(default, rename = "Angle", alias = "angle")]
     pub angle: f64,
     #[serde(default, rename = "Description", alias = "description")]
     pub description: String,

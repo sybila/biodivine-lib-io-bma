@@ -4,14 +4,6 @@ use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-fn default_pan_val() -> f64 {
-    0.0
-}
-
-fn default_zoom_val() -> f64 {
-    1.0
-}
-
 /// An intermediate structure purely for deserializing XML BMA models.
 ///
 /// We require only the functional parts of the model - variables and relationships.
@@ -62,11 +54,11 @@ pub(crate) struct XmlLayout {
     pub columns: QuoteNum,
     #[serde(rename = "Rows")]
     pub rows: QuoteNum,
-    #[serde(default = "default_zoom_val", rename = "ZoomLevel")]
+    #[serde(default, rename = "ZoomLevel")]
     pub zoom_level: f64,
-    #[serde(default = "default_pan_val", rename = "PanX")]
+    #[serde(default, rename = "PanX")]
     pub pan_x: f64,
-    #[serde(default = "default_pan_val", rename = "PanY")]
+    #[serde(default, rename = "PanY")]
     pub pan_y: f64,
 }
 
