@@ -1,5 +1,5 @@
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 /// A discrete variable with ID and name, range of possible values, and an update expression
 /// that dictates how the variable evolves. Name string can be empty.
@@ -16,18 +16,5 @@ pub struct BmaVariable {
     pub name: String,
     pub range_from: u32,
     pub range_to: u32,
-    #[serde(serialize_with = "serialize_update_fn")]
     pub formula: Option<BmaFnUpdate>,
-}
-
-/// A utility to serialize update function by calling a custom parser.
-fn serialize_update_fn<S>(update_fn: &Option<BmaFnUpdate>, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    if let Some(update_fn_str) = update_fn {
-        s.serialize_str(update_fn_str.as_str())
-    } else {
-        s.serialize_str("")
-    }
 }

@@ -1,7 +1,7 @@
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use crate::update_fn::parser::parse_bma_fn_tokens;
 use crate::update_fn::tokenizer::BmaFnToken;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
@@ -15,7 +15,7 @@ use super::parser::parse_bma_formula;
 ///     - A "unary" node with a `UnaryFn` and a sub-expression.
 ///     - A binary "arithmetic" node, with a `BinaryOp` and two sub-expressions.
 ///     - An "aggregation" node with a `AggregateFn` op and a list of sub-expressions.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum BmaFnNodeType {
     Terminal(Literal),
     Unary(UnaryFn, Box<BmaFnUpdate>),
@@ -29,11 +29,33 @@ pub enum BmaFnNodeType {
 ///     - `height`; A positive integer starting from 0 (for term nodes).
 ///     - `expression_tree`; A parse tree for the expression`.
 ///     - `function_str`; A canonical string representation of the expression.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct BmaFnUpdate {
     pub function_str: String,
     pub height: u32,
     pub expression_tree: BmaFnNodeType,
+}
+
+impl Serialize for BmaFnUpdate {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for BmaFnUpdate {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        match BmaFnUpdate::parse_from_str(&value, &Default::default()) {
+            Ok(tree) => Ok(tree),
+            Err(e) => Err(serde::de::Error::custom(e)),
+        }
+    }
 }
 
 impl BmaFnUpdate {
