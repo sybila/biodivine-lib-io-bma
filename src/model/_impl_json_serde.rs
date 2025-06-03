@@ -74,7 +74,7 @@ impl BmaModel {
             id: json_rel.id,
             from_variable: json_rel.from_variable,
             to_variable: json_rel.to_variable,
-            relationship_type: json_rel.r#type,
+            r#type: json_rel.r#type,
         }
     }
 

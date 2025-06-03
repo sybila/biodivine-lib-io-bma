@@ -21,8 +21,7 @@ pub struct BmaRelationship {
     pub id: u32,
     pub from_variable: u32,
     pub to_variable: u32,
-    #[serde(rename = "Type")]
-    pub relationship_type: RelationshipType, // Corresponds to "Type" in JSON/XML
+    pub r#type: RelationshipType, // Corresponds to "Type" in JSON/XML
 }
 
 impl BmaRelationship {
@@ -32,7 +31,7 @@ impl BmaRelationship {
             id,
             from_variable: from,
             to_variable: to,
-            relationship_type: RelationshipType::Activator,
+            r#type: RelationshipType::Activator,
         }
     }
 
@@ -42,7 +41,7 @@ impl BmaRelationship {
             id,
             from_variable: from,
             to_variable: to,
-            relationship_type: RelationshipType::Inhibitor,
+            r#type: RelationshipType::Inhibitor,
         }
     }
 
@@ -184,6 +183,18 @@ mod tests {
             RelationshipType::from(Monotonicity::Inhibition),
             RelationshipType::Inhibitor
         );
+    }
+
+    #[test]
+    fn relationship_serialization() {
+        let relationship = BmaRelationship::new_inhibitor(5, 3, 6);
+        let serialized = serde_json::to_string(&relationship).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"id":5,"from_variable":3,"to_variable":6,"type":"Inhibitor"}"#
+        );
+        let deserialized: BmaRelationship = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(relationship, deserialized);
     }
 
     #[test]

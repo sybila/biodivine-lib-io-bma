@@ -62,7 +62,7 @@ impl BmaModel {
             let target = variables_map
                 .get(&target_bma_id)
                 .ok_or(format!("Target var {} does not exist.", target_bma_id))?;
-            let monotonicity = Some(bma_relationship.relationship_type.into());
+            let monotonicity = Some(bma_relationship.r#type.into());
 
             // check for doubled regulations (BMA allows multiple regulations between the same vars)
             let regulator_aeon_id = graph.find_variable(regulator).unwrap(); // safe to unwrap

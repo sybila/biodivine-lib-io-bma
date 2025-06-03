@@ -45,9 +45,9 @@ impl BmaModel {
             .iter()
             .filter(|rel| rel.to_variable == target_var)
             .for_each(|rel| {
-                if rel.relationship_type == RelationshipType::Activator {
+                if rel.r#type == RelationshipType::Activator {
                     positive.push(rel.from_variable);
-                } else if rel.relationship_type == RelationshipType::Inhibitor {
+                } else if rel.r#type == RelationshipType::Inhibitor {
                     negative.push(rel.from_variable);
                 }
             });
@@ -103,7 +103,7 @@ impl BmaModel {
                 id: idx as u32,
                 from_variable: reg.regulator.to_index() as u32,
                 to_variable: reg.target.to_index() as u32,
-                relationship_type: RelationshipType::from(reg.monotonicity.unwrap()),
+                r#type: RelationshipType::from(reg.monotonicity.unwrap()),
             })
             .collect();
 
@@ -120,13 +120,13 @@ impl BmaModel {
                 id: (num_regs_before + base_idx * 2) as u32,
                 from_variable: reg.regulator.to_index() as u32,
                 to_variable: reg.target.to_index() as u32,
-                relationship_type: RelationshipType::Activator,
+                r#type: RelationshipType::Activator,
             });
             relationships.push(BmaRelationship {
                 id: (num_regs_before + base_idx * 2 + 1) as u32,
                 from_variable: reg.regulator.to_index() as u32,
                 to_variable: reg.target.to_index() as u32,
-                relationship_type: RelationshipType::Inhibitor,
+                r#type: RelationshipType::Inhibitor,
             });
         }
 
@@ -210,24 +210,15 @@ mod tests {
         let rel_b_inhibits_a = &bma_model.model.relationships[2];
         assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
         assert_eq!(rel_b_inhibits_a.to_variable, 0);
-        assert_eq!(
-            rel_b_inhibits_a.relationship_type,
-            RelationshipType::Inhibitor
-        );
+        assert_eq!(rel_b_inhibits_a.r#type, RelationshipType::Inhibitor);
 
         assert_eq!(rel_a_self_activates.from_variable, 0); // A -> A
         assert_eq!(rel_a_self_activates.to_variable, 0);
-        assert_eq!(
-            rel_a_self_activates.relationship_type,
-            RelationshipType::Activator
-        );
+        assert_eq!(rel_a_self_activates.r#type, RelationshipType::Activator);
 
         assert_eq!(rel_a_activates_b.from_variable, 0); // A -> B
         assert_eq!(rel_a_activates_b.to_variable, 1);
-        assert_eq!(
-            rel_a_activates_b.relationship_type,
-            RelationshipType::Activator
-        );
+        assert_eq!(rel_a_activates_b.r#type, RelationshipType::Activator);
 
         /* === LAYOUT === */
 
@@ -265,38 +256,23 @@ mod tests {
         let rel_b_inhibits_a = &bma_model.model.relationships[4];
         assert_eq!(rel_a_activates_a.from_variable, 0); // A -> A
         assert_eq!(rel_a_activates_a.to_variable, 0);
-        assert_eq!(
-            rel_a_activates_a.relationship_type,
-            RelationshipType::Activator
-        );
+        assert_eq!(rel_a_activates_a.r#type, RelationshipType::Activator);
 
         assert_eq!(rel_a_inhibits_a.from_variable, 0); // A -| A
         assert_eq!(rel_a_inhibits_a.to_variable, 0);
-        assert_eq!(
-            rel_a_inhibits_a.relationship_type,
-            RelationshipType::Inhibitor
-        );
+        assert_eq!(rel_a_inhibits_a.r#type, RelationshipType::Inhibitor);
 
         assert_eq!(rel_a_activates_b.from_variable, 0); // A -> B
         assert_eq!(rel_a_activates_b.to_variable, 1);
-        assert_eq!(
-            rel_a_activates_b.relationship_type,
-            RelationshipType::Activator
-        );
+        assert_eq!(rel_a_activates_b.r#type, RelationshipType::Activator);
 
         assert_eq!(rel_b_activates_a.from_variable, 1); // B -> A
         assert_eq!(rel_b_activates_a.to_variable, 0);
-        assert_eq!(
-            rel_b_activates_a.relationship_type,
-            RelationshipType::Activator
-        );
+        assert_eq!(rel_b_activates_a.r#type, RelationshipType::Activator);
 
         assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
         assert_eq!(rel_b_inhibits_a.to_variable, 0);
-        assert_eq!(
-            rel_b_inhibits_a.relationship_type,
-            RelationshipType::Inhibitor
-        );
+        assert_eq!(rel_b_inhibits_a.r#type, RelationshipType::Inhibitor);
     }
 
     #[test]

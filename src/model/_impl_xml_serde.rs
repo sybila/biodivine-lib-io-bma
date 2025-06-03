@@ -56,7 +56,7 @@ impl BmaModel {
             id: xml_rel.id,
             from_variable: xml_rel.from_variable_id,
             to_variable: xml_rel.to_variable_id,
-            relationship_type: xml_rel.r#type,
+            r#type: xml_rel.r#type,
         }
     }
 
