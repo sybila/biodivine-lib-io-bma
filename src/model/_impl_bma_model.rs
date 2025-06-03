@@ -11,9 +11,9 @@ use std::collections::HashMap;
 impl BmaModel {
     /// Create a new BMA model with a given network, layout, and metadata.
     /// This is just a wrapper, it does not check the validity of the model.
-    pub fn new(model: BmaNetwork, layout: BmaLayout, metadata: HashMap<String, String>) -> Self {
+    pub fn new(network: BmaNetwork, layout: BmaLayout, metadata: HashMap<String, String>) -> Self {
         BmaModel {
-            model,
+            network,
             layout,
             metadata,
         }
@@ -27,7 +27,7 @@ impl BmaModel {
     /// Get the maximum level of any variable in the BMA model.
     pub fn get_max_var_level(&self) -> u32 {
         let mut max_level = 0;
-        self.model.variables.iter().for_each(|v| {
+        self.network.variables.iter().for_each(|v| {
             // just in case, lets check both `range_from` and `range_to`
             max_level = max(max_level, max(v.min_level(), v.max_level()));
         });
@@ -40,7 +40,7 @@ impl BmaModel {
     pub fn get_regulators(&self, target_var: u32) -> (Vec<u32>, Vec<u32>) {
         let mut positive = Vec::new();
         let mut negative = Vec::new();
-        self.model
+        self.network
             .relationships
             .iter()
             .filter(|rel| rel.to_variable == target_var)
@@ -186,9 +186,9 @@ mod tests {
 
         /* === VARIABLES AND UPDATE FUNCTIONS === */
 
-        assert_eq!(bma_model.model.variables.len(), 2);
-        let var_a_bma = &bma_model.model.variables[0];
-        let var_b_bma = &bma_model.model.variables[1];
+        assert_eq!(bma_model.network.variables.len(), 2);
+        let var_a_bma = &bma_model.network.variables[0];
+        let var_b_bma = &bma_model.network.variables[1];
 
         assert_eq!(var_a_bma.name_or_default(), "A");
         assert!(var_a_bma.formula.is_some());
@@ -202,11 +202,11 @@ mod tests {
 
         /* === RELATIONSHIPS === */
 
-        assert_eq!(bma_model.model.relationships.len(), 3);
+        assert_eq!(bma_model.network.relationships.len(), 3);
         // relationships go alphabetically, sorted by regulator and then target
-        let rel_a_self_activates = &bma_model.model.relationships[0];
-        let rel_a_activates_b = &bma_model.model.relationships[1];
-        let rel_b_inhibits_a = &bma_model.model.relationships[2];
+        let rel_a_self_activates = &bma_model.network.relationships[0];
+        let rel_a_activates_b = &bma_model.network.relationships[1];
+        let rel_b_inhibits_a = &bma_model.network.relationships[2];
         assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
         assert_eq!(rel_b_inhibits_a.to_variable, 0);
         assert_eq!(rel_b_inhibits_a.r#type, RelationshipType::Inhibitor);
@@ -247,12 +247,12 @@ mod tests {
 
         // only check relationships here
         // relationships go alphabetically, sorted by regulator and then target
-        assert_eq!(bma_model.model.relationships.len(), 5);
-        let rel_a_activates_a = &bma_model.model.relationships[0];
-        let rel_a_inhibits_a = &bma_model.model.relationships[1];
-        let rel_a_activates_b = &bma_model.model.relationships[2];
-        let rel_b_activates_a = &bma_model.model.relationships[3];
-        let rel_b_inhibits_a = &bma_model.model.relationships[4];
+        assert_eq!(bma_model.network.relationships.len(), 5);
+        let rel_a_activates_a = &bma_model.network.relationships[0];
+        let rel_a_inhibits_a = &bma_model.network.relationships[1];
+        let rel_a_activates_b = &bma_model.network.relationships[2];
+        let rel_b_activates_a = &bma_model.network.relationships[3];
+        let rel_b_inhibits_a = &bma_model.network.relationships[4];
         assert_eq!(rel_a_activates_a.from_variable, 0); // A -> A
         assert_eq!(rel_a_activates_a.to_variable, 0);
         assert_eq!(rel_a_activates_a.r#type, RelationshipType::Activator);

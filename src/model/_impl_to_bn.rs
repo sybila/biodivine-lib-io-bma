@@ -37,7 +37,7 @@ impl BmaModel {
         // Sort variables by their IDs before inserting them into the graph to ensure deterministic
         // ordering. We use a BTreeMap to ensure variables remain sorted.
         let mut variables_map: BTreeMap<u32, String> = BTreeMap::new();
-        let mut variables_sorted = self.model.variables.clone();
+        let mut variables_sorted = self.network.variables.clone();
         variables_sorted.sort_by_key(|var| (var.id, var.name.clone()));
 
         for var in &variables_sorted {
@@ -50,7 +50,7 @@ impl BmaModel {
         let mut graph = RegulatoryGraph::new(variables);
 
         // add regulations (in the order of variables, first by regulator, then target)
-        let mut relationships_sorted = self.model.relationships.clone();
+        let mut relationships_sorted = self.network.relationships.clone();
         relationships_sorted.sort_by_key(|rel| (rel.from_variable, rel.to_variable));
         for bma_relationship in relationships_sorted {
             let regulator_bma_id = bma_relationship.from_variable;
@@ -159,7 +159,7 @@ impl BmaModel {
         // for boolean models, this should be `1` except for zero constants
         // we deal with zero constants making into boolean variables with constant update
         let mut zero_constants = Vec::new();
-        for bma_var in &self.model.variables {
+        for bma_var in &self.network.variables {
             if bma_var.max_level() == 0 {
                 zero_constants.push(bma_var.id); // remember to deal with these specially
                 max_levels.insert(bma_var.id, 1); // standard boolean variable now
@@ -169,7 +169,7 @@ impl BmaModel {
         }
 
         // add update functions
-        for bma_var in &self.model.variables {
+        for bma_var in &self.network.variables {
             // unwrap is safe in both cases here
             let bn_var_name = var_name_mapping.get(&bma_var.id).unwrap();
             let var_max_lvl = max_levels.get(&bma_var.id).unwrap();

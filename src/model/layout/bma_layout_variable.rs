@@ -89,7 +89,7 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
         }
 
         // Ensure referenced IDs exist.
-        if context.model.find_variable(self.id).is_none() {
+        if context.network.find_variable(self.id).is_none() {
             reporter.report(BmaLayoutVariableError::VariableNotFound { id: self.id });
         }
 
@@ -131,7 +131,7 @@ mod tests {
         };
 
         BmaModel {
-            model: network,
+            network,
             layout,
             metadata: Default::default(),
         }
@@ -188,7 +188,7 @@ mod tests {
             ..Default::default()
         };
         let mut model = make_model_for_variable(&l_var);
-        model.model.variables.clear();
+        model.network.variables.clear();
         let issues = l_var.validate(&model).unwrap_err();
         assert_eq!(
             issues,

@@ -12,7 +12,7 @@ use thiserror::Error;
 ///
 /// This is the main part of [`crate::BmaModel`], and it is always required.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct BmaNetwork {
     pub name: Option<String>,
     pub variables: Vec<BmaVariable>,

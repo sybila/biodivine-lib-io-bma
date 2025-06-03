@@ -66,16 +66,13 @@ impl ContextualValidation<BmaModel> for BmaLayout {
 #[cfg(test)]
 mod tests {
     use crate::model::tests::{simple_layout, simple_network};
-    use crate::{
-        BmaLayout, BmaLayoutError, BmaModel, BmaNetwork,
-        ContextualValidation,
-    };
+    use crate::{BmaLayout, BmaLayoutError, BmaModel, BmaNetwork, ContextualValidation};
 
     #[test]
     fn default_layout_is_valid() {
         let layout = BmaLayout::default();
         let model = BmaModel {
-            model: BmaNetwork::default(),
+            network: BmaNetwork::default(),
             layout: layout.clone(),
             metadata: Default::default(),
         };
@@ -87,7 +84,7 @@ mod tests {
         let network = simple_network();
         let layout = simple_layout();
         let model = BmaModel {
-            model: network,
+            network,
             layout: layout.clone(),
             metadata: Default::default(),
         };
@@ -101,7 +98,7 @@ mod tests {
             ..BmaLayout::default()
         };
         let model = BmaModel {
-            model: simple_network(),
+            network: simple_network(),
             layout: layout.clone(),
             metadata: Default::default(),
         };

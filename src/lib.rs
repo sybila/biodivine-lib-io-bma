@@ -10,7 +10,7 @@ mod json_model;
 /// Intermediate struct `XmlBmaModel` for (de)serializing XML.
 mod xml_model;
 
-pub use crate::model::bma_model::BmaModel;
+pub use crate::model::bma_model::{BmaModel, BmaModelError};
 pub use crate::model::bma_network::{BmaNetwork, BmaNetworkError};
 pub use crate::model::bma_relationship::{BmaRelationship, BmaRelationshipError, RelationshipType};
 pub use crate::model::bma_variable::{BmaVariable, BmaVariableError};
