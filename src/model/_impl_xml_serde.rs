@@ -1,4 +1,5 @@
 use crate::model::bma_model::*;
+use crate::model::bma_relationship::BmaRelationship;
 use crate::model::{BmaNetwork, BmaVariable};
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::xml_model::*;

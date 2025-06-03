@@ -10,8 +10,10 @@ mod _impl_xml_serde;
 mod bma_model;
 
 mod bma_network;
+mod bma_relationship;
 mod bma_variable;
 
 pub use bma_model::BmaModel;
 pub use bma_network::BmaNetwork;
+pub use bma_relationship::BmaRelationship;
 pub use bma_variable::BmaVariable;

@@ -28,18 +28,6 @@ pub struct BmaModel {
     pub metadata: HashMap<String, String>,
 }
 
-/// A relationship of a given type between two variables.
-/// All fields are required.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct BmaRelationship {
-    pub id: u32,
-    pub from_variable: u32,
-    pub to_variable: u32,
-    #[serde(rename = "Type")]
-    pub relationship_type: RelationshipType, // Corresponds to "Type" in JSON/XML
-}
-
 /// A layout describing positions and types of variables and containers.
 /// Most fields are optional, as layout contains mostly complementary information.
 ///
