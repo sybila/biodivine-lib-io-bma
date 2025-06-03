@@ -1,52 +1,8 @@
 use crate::RelationshipType;
 use crate::VariableType;
+use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum StrOrNum<'a> {
-    Str(&'a str),
-    Num(u32),
-}
-
-/// Custom deserializer function for (potentially) quoted integers (like "42").
-///
-/// For some reason, this is JSON-specific, and we have to use different variant for XML.
-fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let raw = StrOrNum::deserialize(deserializer)?;
-
-    match raw {
-        StrOrNum::Str(s) => {
-            let trimmed = s.trim_matches('"');
-            u32::from_str(trimmed).map_err(serde::de::Error::custom)
-        }
-        StrOrNum::Num(num) => Ok(num),
-    }
-}
-
-/// Custom deserializer function for optional (potentially) quoted integers (like "42").
-///
-/// For some reason, this is JSON-specific, and we have to use different variant for XML.
-fn deser_quoted_int_optional<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let raw = StrOrNum::deserialize(deserializer)?;
-
-    match raw {
-        StrOrNum::Str(s) => {
-            let trimmed = s.trim_matches('"');
-            Ok(Some(
-                u32::from_str(trimmed).map_err(serde::de::Error::custom)?,
-            ))
-        }
-        StrOrNum::Num(num) => Ok(Some(num)),
-    }
-}
+use std::collections::HashMap;
 
 fn default_position_val() -> f64 {
     0.0
@@ -95,22 +51,14 @@ pub(crate) struct JsonModel {
 /// Name is optional and set to None is not provided.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonVariable {
-    #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
+    #[serde(rename = "Id", alias = "id")]
+    pub id: QuoteNum,
     #[serde(default, rename = "Name", alias = "name")]
     pub name: String,
-    #[serde(
-        rename = "RangeFrom",
-        alias = "rangeFrom",
-        deserialize_with = "deser_quoted_int"
-    )]
-    pub range_from: u32,
-    #[serde(
-        rename = "RangeTo",
-        alias = "rangeTo",
-        deserialize_with = "deser_quoted_int"
-    )]
-    pub range_to: u32,
+    #[serde(rename = "RangeFrom", alias = "rangeFrom")]
+    pub range_from: QuoteNum,
+    #[serde(rename = "RangeTo", alias = "rangeTo")]
+    pub range_to: QuoteNum,
     #[serde(rename = "Formula", alias = "formula")]
     pub formula: String,
 }
@@ -121,24 +69,22 @@ pub(crate) struct JsonVariable {
 /// variables.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonRelationship {
-    #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
+    #[serde(rename = "Id", alias = "id")]
+    pub id: QuoteNum,
     #[serde(
         rename = "FromVariable",
         alias = "fromVariable",
         alias = "fromVariableId",
-        alias = "FromVariableId",
-        deserialize_with = "deser_quoted_int"
+        alias = "FromVariableId"
     )]
-    pub from_variable: u32,
+    pub from_variable: QuoteNum,
     #[serde(
         rename = "ToVariable",
         alias = "toVariable",
         alias = "toVariableId",
-        alias = "ToVariableId",
-        deserialize_with = "deser_quoted_int"
+        alias = "ToVariableId"
     )]
-    pub to_variable: u32,
+    pub to_variable: QuoteNum,
     #[serde(rename = "Type", alias = "type")]
     pub r#type: RelationshipType,
 }
@@ -166,8 +112,8 @@ pub(crate) struct JsonLayout {
 /// Container ID and cell coordinates are optional, and set to None if not provided.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonLayoutVariable {
-    #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
+    #[serde(rename = "Id", alias = "id")]
+    pub id: QuoteNum,
     #[serde(default, rename = "Name", alias = "name")]
     pub name: String,
     #[serde(default, rename = "Type", alias = "type")]
@@ -188,13 +134,8 @@ pub(crate) struct JsonLayoutVariable {
     pub angle: f64,
     #[serde(default, rename = "Description", alias = "description")]
     pub description: String,
-    #[serde(
-        rename = "ContainerId",
-        alias = "containerId",
-        default,
-        deserialize_with = "deser_quoted_int_optional"
-    )]
-    pub container_id: Option<u32>,
+    #[serde(rename = "ContainerId", alias = "containerId", default)]
+    pub container_id: Option<QuoteNum>,
     #[serde(rename = "CellX", alias = "cellX")]
     pub cell_x: Option<u32>,
     #[serde(rename = "CellY", alias = "cellY")]
@@ -207,12 +148,12 @@ pub(crate) struct JsonLayoutVariable {
 /// we set it to an empty string.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonContainer {
-    #[serde(rename = "Id", alias = "id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
+    #[serde(rename = "Id", alias = "id")]
+    pub id: QuoteNum,
     #[serde(default, rename = "Name", alias = "name")]
     pub name: String,
-    #[serde(rename = "Size", alias = "size", deserialize_with = "deser_quoted_int")]
-    pub size: u32,
+    #[serde(rename = "Size", alias = "size")]
+    pub size: QuoteNum,
     #[serde(rename = "PositionX", alias = "positionX")]
     pub position_x: f64,
     #[serde(rename = "PositionY", alias = "positionY")]
@@ -228,7 +169,7 @@ impl JsonBmaModel {
             .model
             .variables
             .iter()
-            .map(|var| (var.id, var.name.clone()))
+            .map(|var| (var.id.into(), var.name.clone()))
             .collect::<HashMap<u32, String>>();
 
         let layout_named_vars = self.collect_named_layout_variables();
@@ -252,7 +193,7 @@ impl JsonBmaModel {
                 .variables
                 .iter()
                 .filter(|layout_var| !layout_var.name.is_empty())
-                .map(|layout_var| (layout_var.id, layout_var.name.clone()))
+                .map(|layout_var| (layout_var.id.into(), layout_var.name.clone()))
                 .collect(),
         }
     }
@@ -262,8 +203,8 @@ impl JsonBmaModel {
         self.model
             .relationships
             .iter()
-            .filter(|rel| rel.to_variable == variable_id)
-            .map(|rel| rel.from_variable)
+            .filter(|rel| u32::from(rel.to_variable) == variable_id)
+            .map(|rel| rel.from_variable.into())
             .collect()
     }
 }

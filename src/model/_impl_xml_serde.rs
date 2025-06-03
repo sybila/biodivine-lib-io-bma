@@ -27,7 +27,7 @@ impl BmaModel {
         all_vars: &HashMap<u32, String>,
     ) -> Result<BmaVariable, String> {
         // Get a set of regulators for the variable that we'll pass to update fn parser
-        let regulators = xml_model.get_regulators(xml_var.id);
+        let regulators = xml_model.get_regulators(xml_var.id.into());
         let named_regulators = all_vars
             .clone()
             .into_iter()
@@ -45,9 +45,9 @@ impl BmaModel {
         };
 
         Ok(BmaVariable {
-            id: xml_var.id,
+            id: xml_var.id.into(),
             name: Some(xml_var.name),
-            range: (xml_var.range_from, xml_var.range_to),
+            range: (xml_var.range_from.into(), xml_var.range_to.into()),
             formula,
         })
     }
@@ -55,9 +55,9 @@ impl BmaModel {
     /// Convert XmlRelationship instance into a proper BmaRelationship.
     fn convert_xml_relationship(xml_rel: XmlRelationship) -> BmaRelationship {
         BmaRelationship {
-            id: xml_rel.id,
-            from_variable: xml_rel.from_variable_id,
-            to_variable: xml_rel.to_variable_id,
+            id: xml_rel.id.into(),
+            from_variable: xml_rel.from_variable_id.into(),
+            to_variable: xml_rel.to_variable_id.into(),
             r#type: xml_rel.r#type,
         }
     }
@@ -65,15 +65,15 @@ impl BmaModel {
     /// Convert XmlVariable instance into a BmaLayoutVariable.
     fn convert_xml_layout_var(xml_var: XmlVariable) -> BmaLayoutVariable {
         let cell = if let (Some(x), Some(y)) = (xml_var.cell_x, xml_var.cell_y) {
-            Some((x, y))
+            Some((u32::from(x), u32::from(y)))
         } else {
             None
         };
         BmaLayoutVariable {
-            id: xml_var.id,
+            id: xml_var.id.into(),
             name: Some(xml_var.name),
             r#type: xml_var.r#type,
-            container_id: xml_var.container_id,
+            container_id: xml_var.container_id.map(|it| it.into()),
             position: (
                 Rational64::from_f64(xml_var.position_x.unwrap_or_default()).unwrap(),
                 Rational64::from_f64(xml_var.position_y.unwrap_or_default()).unwrap(),
@@ -87,9 +87,9 @@ impl BmaModel {
     /// Convert an XmlContainer instance into a BmaContainer.
     fn convert_xml_container(xml_container: XmlContainer) -> BmaLayoutContainer {
         BmaLayoutContainer {
-            id: xml_container.id,
+            id: xml_container.id.into(),
             name: Some(xml_container.name),
-            size: xml_container.size,
+            size: xml_container.size.into(),
             position: (
                 Rational64::from_f64(xml_container.position_x).unwrap(),
                 Rational64::from_f64(xml_container.position_y).unwrap(),

@@ -1,33 +1,8 @@
 use crate::RelationshipType;
 use crate::VariableType;
+use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
-
-/// Custom deserializer function for (potentially) quoted integers (like "42").
-///
-/// For some reason, this is XML-specific, and we have to use different variant for JSON.
-fn deser_quoted_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: String = String::deserialize(deserializer)?;
-    let trimmed = s.trim_matches('"');
-    u32::from_str(trimmed).map_err(serde::de::Error::custom)
-}
-
-/// Custom deserializer function for optional (potentially) quoted integers (like "42").
-///
-/// For some reason, this is XML-specific, and we have to use different variant for JSON.
-fn deser_quoted_int_optional<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: String = String::deserialize(deserializer)?;
-    let trimmed = s.trim_matches('"');
-    Ok(Some(
-        u32::from_str(trimmed).map_err(serde::de::Error::custom)?,
-    ))
-}
+use std::collections::HashMap;
 
 fn deser_relationship_type<'de, D>(deserializer: D) -> Result<RelationshipType, D::Error>
 where
@@ -98,10 +73,10 @@ pub(crate) struct XmlBmaModel {
 /// values are used.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlLayout {
-    #[serde(rename = "Columns", deserialize_with = "deser_quoted_int")]
-    pub columns: u32,
-    #[serde(rename = "Rows", deserialize_with = "deser_quoted_int")]
-    pub rows: u32,
+    #[serde(rename = "Columns")]
+    pub columns: QuoteNum,
+    #[serde(rename = "Rows")]
+    pub rows: QuoteNum,
     #[serde(default = "default_zoom_val", rename = "ZoomLevel")]
     pub zoom_level: f64,
     #[serde(default = "default_pan_val", rename = "PanX")]
@@ -124,16 +99,16 @@ pub(crate) struct XmlContainers {
 /// we set it to an empty string.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlContainer {
-    #[serde(rename = "@Id", alias = "Id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
+    #[serde(rename = "@Id", alias = "Id")]
+    pub id: QuoteNum,
     #[serde(default, rename = "@Name", alias = "Name")]
     pub name: String,
     #[serde(rename = "PositionX")]
     pub position_x: f64,
     #[serde(rename = "PositionY")]
     pub position_y: f64,
-    #[serde(rename = "Size", deserialize_with = "deser_quoted_int")]
-    pub size: u32,
+    #[serde(rename = "Size")]
+    pub size: QuoteNum,
 }
 
 /// Structure to deserialize XML info about variables list. Just a wrapper
@@ -156,14 +131,14 @@ pub(crate) struct XmlVariables {
 /// and some are set to default values later as needed.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlVariable {
-    #[serde(rename = "@Id", alias = "Id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
+    #[serde(rename = "@Id", alias = "Id")]
+    pub id: QuoteNum,
     #[serde(default, rename = "@Name", alias = "Name")]
     pub name: String,
-    #[serde(rename = "RangeFrom", deserialize_with = "deser_quoted_int")]
-    pub range_from: u32,
-    #[serde(rename = "RangeTo", deserialize_with = "deser_quoted_int")]
-    pub range_to: u32,
+    #[serde(rename = "RangeFrom")]
+    pub range_from: QuoteNum,
+    #[serde(rename = "RangeTo")]
+    pub range_to: QuoteNum,
     #[serde(rename = "Formula", alias = "Function")]
     pub formula: String,
 
@@ -175,24 +150,12 @@ pub(crate) struct XmlVariable {
     pub position_y: Option<f64>,
     #[serde(rename = "Angle")]
     pub angle: Option<f64>,
-    #[serde(
-        default,
-        rename = "ContainerId",
-        deserialize_with = "deser_quoted_int_optional"
-    )]
-    pub container_id: Option<u32>,
-    #[serde(
-        default,
-        rename = "CellX",
-        deserialize_with = "deser_quoted_int_optional"
-    )]
-    pub cell_x: Option<u32>,
-    #[serde(
-        default,
-        rename = "CellY",
-        deserialize_with = "deser_quoted_int_optional"
-    )]
-    pub cell_y: Option<u32>,
+    #[serde(default, rename = "ContainerId")]
+    pub container_id: Option<QuoteNum>,
+    #[serde(default, rename = "CellX")]
+    pub cell_x: Option<QuoteNum>,
+    #[serde(default, rename = "CellY")]
+    pub cell_y: Option<QuoteNum>,
 }
 
 /// Structure to deserialize XML info about relationships list. Just a wrapper
@@ -211,20 +174,16 @@ pub(crate) struct XmlRelationships {
 /// The container ID is optional, and is set to None if not provided.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlRelationship {
-    #[serde(rename = "@Id", alias = "Id", deserialize_with = "deser_quoted_int")]
-    pub id: u32,
-    #[serde(rename = "FromVariableId", deserialize_with = "deser_quoted_int")]
-    pub from_variable_id: u32,
-    #[serde(rename = "ToVariableId", deserialize_with = "deser_quoted_int")]
-    pub to_variable_id: u32,
+    #[serde(rename = "@Id", alias = "Id")]
+    pub id: QuoteNum,
+    #[serde(rename = "FromVariableId")]
+    pub from_variable_id: QuoteNum,
+    #[serde(rename = "ToVariableId")]
+    pub to_variable_id: QuoteNum,
     #[serde(rename = "Type", deserialize_with = "deser_relationship_type")]
     pub r#type: RelationshipType,
-    #[serde(
-        default,
-        rename = "ContainerId",
-        deserialize_with = "deser_quoted_int_optional"
-    )]
-    pub container_id: Option<u32>,
+    #[serde(default, rename = "ContainerId")]
+    pub container_id: Option<QuoteNum>,
 }
 
 impl XmlBmaModel {
@@ -233,7 +192,7 @@ impl XmlBmaModel {
         self.variables
             .variable
             .iter()
-            .map(|var| (var.id, var.name.clone()))
+            .map(|var| (var.id.into(), var.name.clone()))
             .collect::<HashMap<u32, String>>()
     }
 
@@ -242,8 +201,8 @@ impl XmlBmaModel {
         self.relationships
             .relationship
             .iter()
-            .filter(|rel| rel.to_variable_id == variable_id)
-            .map(|rel| rel.from_variable_id)
+            .filter(|rel| u32::from(rel.to_variable_id) == variable_id)
+            .map(|rel| rel.from_variable_id.into())
             .collect()
     }
 }

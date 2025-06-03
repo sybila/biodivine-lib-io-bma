@@ -42,10 +42,10 @@ impl BmaModel {
         all_vars: &HashMap<u32, String>,
     ) -> Result<BmaVariable, String> {
         // We have already precomputed a set of all ID-name mappings in the model and layout
-        let name = all_vars.get(&json_var.id).unwrap();
+        let name = all_vars.get(&json_var.id.into()).unwrap();
 
         // Get a set of regulators for the variable that we'll pass to update fn parser
-        let regulators = json_model.get_regulators(json_var.id);
+        let regulators = json_model.get_regulators(json_var.id.into());
         let named_regulators = all_vars
             .clone()
             .into_iter()
@@ -63,9 +63,9 @@ impl BmaModel {
         };
 
         Ok(BmaVariable {
-            id: json_var.id,
+            id: json_var.id.into(),
             name: Some(name.clone()),
-            range: (json_var.range_from, json_var.range_to),
+            range: (json_var.range_from.into(), json_var.range_to.into()),
             formula,
         })
     }
@@ -73,9 +73,9 @@ impl BmaModel {
     /// Convert a JSON relationship into a proper BmaRelationship instance.
     fn convert_json_relationship(json_rel: JsonRelationship) -> BmaRelationship {
         BmaRelationship {
-            id: json_rel.id,
-            from_variable: json_rel.from_variable,
-            to_variable: json_rel.to_variable,
+            id: json_rel.id.into(),
+            from_variable: json_rel.from_variable.into(),
+            to_variable: json_rel.to_variable.into(),
             r#type: json_rel.r#type,
         }
     }
@@ -90,9 +90,9 @@ impl BmaModel {
             None
         };
         BmaLayoutVariable {
-            id: json_var.id,
+            id: json_var.id.into(),
             name: Some(json_var.name),
-            container_id: json_var.container_id,
+            container_id: json_var.container_id.map(|it| it.into()),
             r#type: json_var.r#type,
             position: (
                 Rational64::from_f64(json_var.position_x).unwrap(),
@@ -108,9 +108,9 @@ impl BmaModel {
     /// If there was no name in the JSON container, we use a default empty string.
     fn convert_json_container(json_container: JsonContainer) -> BmaLayoutContainer {
         BmaLayoutContainer {
-            id: json_container.id,
+            id: json_container.id.into(),
             name: Some(json_container.name),
-            size: json_container.size,
+            size: json_container.size.into(),
             position: (
                 Rational64::from_f64(json_container.position_x).unwrap(),
                 Rational64::from_f64(json_container.position_y).unwrap(),
