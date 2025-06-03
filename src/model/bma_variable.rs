@@ -96,14 +96,18 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
 
         // Ensure that the variable id is unique within the enclosing BmaNetwork.
         let mut count = 0;
+        let mut found_self = false;
         for var in &context.variables {
             if var.id == self.id {
                 count += 1;
+                if var == self {
+                    found_self = true;
+                }
             }
         }
 
         assert!(
-            count > 0,
+            found_self,
             "Validation called on a variable that is not part of the BmaNetwork"
         );
 
@@ -175,6 +179,14 @@ mod tests {
         let variable = BmaVariable::default();
         let network = network_for_variable(&variable);
         assert!(variable.validate(&network).is_ok());
+    }
+
+    #[test]
+    #[should_panic]
+    fn cannot_validate_when_not_in_network() {
+        let variable = BmaVariable::default();
+        let network = BmaNetwork::default();
+        variable.validate(&network).unwrap();
     }
 
     /// Empty variable names are not allowed.
