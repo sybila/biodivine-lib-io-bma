@@ -16,3 +16,15 @@ pub struct BmaLayout {
     pub pan_x: Option<f64>,
     pub pan_y: Option<f64>,
 }
+
+impl BmaLayout {
+    /// Find an instances of [`BmaLayoutVariable`] stored in this layout, assuming it exists.
+    pub fn find_variable(&self, id: u32) -> Option<&BmaLayoutVariable> {
+        self.variables.iter().find(|v| v.id == id)
+    }
+
+    /// Find an instances of [`BmaLayoutContainer`] stored in this layout, assuming it exists.
+    pub fn find_container(&self, id: u32) -> Option<&BmaLayoutContainer> {
+        self.containers.iter().find(|v| v.id == id)
+    }
+}

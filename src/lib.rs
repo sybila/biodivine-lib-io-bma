@@ -17,6 +17,7 @@ pub use crate::model::bma_variable::{BmaVariable, BmaVariableError};
 pub use crate::model::layout::bma_layout::BmaLayout;
 pub use crate::model::layout::bma_layout_container::BmaLayoutContainer;
 pub use crate::model::layout::bma_layout_variable::{BmaLayoutVariable, VariableType};
+pub use crate::model::layout::bma_layout_variable::{BmaLayoutVariable, VariableType, BmaLayoutVariableError};
 
 mod validation;
 pub use validation::{
