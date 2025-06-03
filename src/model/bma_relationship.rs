@@ -1,6 +1,7 @@
-use crate::{BmaNetwork, BmaVariable};
+use crate::{BmaNetwork, BmaVariable, ContextualValidation, ErrorReporter};
 use biodivine_lib_param_bn::Monotonicity;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// A relationship of a given [`RelationshipType`] between two [`BmaVariable`] objects.
 ///
@@ -58,6 +59,66 @@ impl BmaRelationship {
     }
 }
 
+impl ContextualValidation<BmaNetwork> for BmaRelationship {
+    type Error = BmaRelationshipError;
+
+    fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaNetwork, reporter: &mut R) {
+        // Ensure that regulator and target exist in the enclosing BmaNetwork.
+
+        if self.find_regulator_variable(context).is_none() {
+            reporter.report(BmaRelationshipError::RegulatorVariableNotFound {
+                id: self.id,
+                from_variable: self.from_variable,
+            })
+        }
+
+        if self.find_target_variable(context).is_none() {
+            reporter.report(BmaRelationshipError::TargetVariableNotFound {
+                id: self.id,
+                to_variable: self.to_variable,
+            })
+        }
+
+        // Ensure that the relationship id is unique within the enclosing BmaNetwork.
+
+        let mut count = 0;
+        let mut found_self = false;
+        for relationship in &context.relationships {
+            if relationship.id == self.id {
+                count += 1;
+                if relationship == self {
+                    found_self = true;
+                }
+            }
+        }
+
+        assert!(
+            found_self,
+            "Validation called on a relationship that is not part of the BmaNetwork"
+        );
+
+        if count > 1 {
+            reporter.report(BmaRelationshipError::IdNotUnique { id: self.id });
+        }
+    }
+}
+
+/// Possible validation errors for [`BmaRelationship`].
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BmaRelationshipError {
+    /// Caused by the relationship ID not being unique.
+    #[error("(Relationship id: `{id}`) Id must be unique within the enclosing `BmaNetwork`")]
+    IdNotUnique { id: u32 },
+    #[error(
+        "(Relationship id: `{id}`) Regulator (`{from_variable}`) not found in the enclosing `BmaNetwork`"
+    )]
+    RegulatorVariableNotFound { id: u32, from_variable: u32 },
+    #[error(
+        "(Relationship id: `{id}`) Target (`{to_variable}`) not found in the enclosing `BmaNetwork`"
+    )]
+    TargetVariableNotFound { id: u32, to_variable: u32 },
+}
+
 /// The type of [`BmaRelationship`] between two variables in a [`BmaNetwork`].
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RelationshipType {
@@ -86,7 +147,8 @@ impl From<Monotonicity> for RelationshipType {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BmaNetwork, BmaRelationship, BmaVariable, RelationshipType};
+    use crate::model::bma_relationship::BmaRelationshipError;
+    use crate::{BmaNetwork, BmaRelationship, BmaVariable, ContextualValidation, RelationshipType};
     use biodivine_lib_param_bn::Monotonicity;
 
     #[test]
@@ -122,5 +184,53 @@ mod tests {
             RelationshipType::from(Monotonicity::Inhibition),
             RelationshipType::Inhibitor
         );
+    }
+
+    #[test]
+    #[should_panic]
+    fn cannot_validate_when_not_in_network() {
+        let relationship = BmaRelationship::default();
+        let network = BmaNetwork::default();
+        relationship.validate(&network).unwrap();
+    }
+
+    #[test]
+    fn default_relationship_is_valid() {
+        let v = BmaVariable::default();
+        let r = BmaRelationship::default();
+        let network = BmaNetwork::new(vec![v], vec![r.clone()]);
+        assert!(r.validate(&network).is_ok());
+    }
+
+    #[test]
+    fn unknown_regulator_variable() {
+        let v = BmaVariable::default();
+        let r = BmaRelationship::new_activator(0, 1, 0);
+        let network = BmaNetwork::new(vec![v], vec![r.clone()]);
+
+        let issues = r.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![BmaRelationshipError::RegulatorVariableNotFound {
+                id: 0,
+                from_variable: 1,
+            }]
+        )
+    }
+
+    #[test]
+    fn unknown_target_variable() {
+        let v = BmaVariable::default();
+        let r = BmaRelationship::new_activator(0, 0, 1);
+        let network = BmaNetwork::new(vec![v], vec![r.clone()]);
+
+        let issues = r.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![BmaRelationshipError::TargetVariableNotFound {
+                id: 0,
+                to_variable: 1,
+            }]
+        )
     }
 }

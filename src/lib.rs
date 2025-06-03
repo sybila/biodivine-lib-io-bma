@@ -14,7 +14,7 @@ mod xml_model;
 
 pub use crate::model::bma_model::BmaModel;
 pub use crate::model::bma_network::BmaNetwork;
-pub use crate::model::bma_relationship::{BmaRelationship, RelationshipType};
+pub use crate::model::bma_relationship::{BmaRelationship, BmaRelationshipError, RelationshipType};
 pub use crate::model::bma_variable::{BmaVariable, BmaVariableError};
 pub use crate::model::layout::bma_layout::BmaLayout;
 pub use crate::model::layout::bma_layout_container::BmaLayoutContainer;
