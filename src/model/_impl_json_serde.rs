@@ -3,7 +3,7 @@ use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
 use crate::model::bma_relationship::BmaRelationship;
-use crate::model::{BmaLayout, BmaNetwork, BmaVariable};
+use crate::model::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use std::collections::HashMap;
 
 impl BmaModel {
