@@ -88,10 +88,12 @@ impl BmaModel {
     fn convert_xml_container(xml_container: XmlContainer) -> BmaLayoutContainer {
         BmaLayoutContainer {
             id: xml_container.id,
-            name: xml_container.name,
+            name: Some(xml_container.name),
             size: xml_container.size,
-            position_x: xml_container.position_x,
-            position_y: xml_container.position_y,
+            position: (
+                Rational64::from_f64(xml_container.position_x).unwrap(),
+                Rational64::from_f64(xml_container.position_y).unwrap(),
+            ),
         }
     }
 }

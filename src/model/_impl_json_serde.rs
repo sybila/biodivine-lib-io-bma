@@ -109,10 +109,12 @@ impl BmaModel {
     fn convert_json_container(json_container: JsonContainer) -> BmaLayoutContainer {
         BmaLayoutContainer {
             id: json_container.id,
-            name: json_container.name,
+            name: Some(json_container.name),
             size: json_container.size,
-            position_x: json_container.position_x,
-            position_y: json_container.position_y,
+            position: (
+                Rational64::from_f64(json_container.position_x).unwrap(),
+                Rational64::from_f64(json_container.position_y).unwrap(),
+            ),
         }
     }
 }

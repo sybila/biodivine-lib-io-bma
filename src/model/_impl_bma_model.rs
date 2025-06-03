@@ -151,7 +151,7 @@ impl BmaModel {
             .collect();
 
         // a single default container for all the variables
-        let container = BmaLayoutContainer::new_default(container_id, "Default".to_string());
+        let container = BmaLayoutContainer::new(container_id, "Default");
 
         let layout = BmaLayout {
             variables: layout_vars,
