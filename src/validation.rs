@@ -24,32 +24,27 @@ pub trait ErrorReporter<E: StdError>: Sized {
 }
 
 /// A simple [`ErrorReporter`] implementation that collects all errors into a vector.
-pub struct VecReporter<E: std::error::Error> {
+pub struct VecReporter<E: StdError> {
     errors: Vec<E>,
 }
 
 /// A simple [`ErrorReporter`] implementation that defers to an internal [`ErrorReporter`]
 /// by performing type conversion from `E1` into `E2` using `Into`.
-pub struct ReporterWrapper<
-    'a,
-    E1: std::error::Error + Into<E2>,
-    E2: std::error::Error,
-    W: ErrorReporter<E2>,
-> {
+pub struct ReporterWrapper<'a, E1: StdError + Into<E2>, E2: StdError, W: ErrorReporter<E2>> {
     inner: &'a mut W,
     _e1: PhantomData<E1>,
     _e2: PhantomData<E2>,
 }
 
-impl<'a, E1: std::error::Error + Into<E2>, E2: std::error::Error, W: ErrorReporter<E2>>
-    ErrorReporter<E1> for ReporterWrapper<'a, E1, E2, W>
+impl<'a, E1: StdError + Into<E2>, E2: StdError, W: ErrorReporter<E2>> ErrorReporter<E1>
+    for ReporterWrapper<'a, E1, E2, W>
 {
     fn report<X: Into<E1>>(&mut self, error: X) {
         self.inner.report(error.into());
     }
 }
 
-impl<E: std::error::Error> ErrorReporter<E> for VecReporter<E> {
+impl<E: StdError> ErrorReporter<E> for VecReporter<E> {
     fn report<X: Into<E>>(&mut self, error: X) {
         self.errors.push(error.into());
     }
@@ -71,7 +66,7 @@ impl<E: std::error::Error> ErrorReporter<E> for VecReporter<E> {
 /// error is found. Instead, it collects all errors into a provided [ErrorReporter].
 pub trait ContextualValidation<Context> {
     /// The type of error that can be thrown during validation.
-    type Error: std::error::Error;
+    type Error: StdError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &Context, reporter: &mut R);
 
@@ -94,7 +89,7 @@ pub trait ContextualValidation<Context> {
 /// If you need to validate objects whose behavior (or validity) depends on some additional
 /// data, consider implementing [ContextualValidation].
 pub trait Validation {
-    type Error: std::error::Error;
+    type Error: StdError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, reporter: &mut R);
 
