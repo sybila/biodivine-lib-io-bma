@@ -226,7 +226,7 @@ mod tests {
                 id: 0,
                 from_variable: 1,
             }]
-        )
+        );
     }
 
     #[test]
@@ -242,6 +242,16 @@ mod tests {
                 id: 0,
                 to_variable: 1,
             }]
-        )
+        );
+    }
+
+    #[test]
+    fn duplicate_ids() {
+        let v = BmaVariable::default();
+        let r = BmaRelationship::default();
+        let network = BmaNetwork::new(vec![v], vec![r.clone(), r.clone()]);
+
+        let issues = r.validate(&network).unwrap_err();
+        assert_eq!(issues, vec![BmaRelationshipError::IdNotUnique { id: 0 }]);
     }
 }
