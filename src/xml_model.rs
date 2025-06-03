@@ -55,9 +55,9 @@ pub(crate) struct XmlBmaModel {
     #[serde(rename = "Relationships")]
     pub relationships: XmlRelationships,
 
-    #[serde(default, rename = "Id")]
+    #[serde(default, rename = "@Id", alias = "Id")]
     pub id: String,
-    #[serde(default, rename = "Name", alias = "ModelName")]
+    #[serde(default, rename = "@Name", alias = "Name", alias = "@ModelName")]
     pub name: String,
     #[serde(default, rename = "Description")]
     pub description: String,
@@ -66,7 +66,7 @@ pub(crate) struct XmlBmaModel {
     #[serde(rename = "Containers")]
     pub containers: Option<XmlContainers>,
 
-    #[serde(rename = "BioCheckVersion")]
+    #[serde(rename = "@BioCheckVersion", alias = "BioCheckVersion")]
     pub biocheck_version: Option<String>,
     #[serde(rename = "CreatedDate")]
     pub created_date: Option<String>,
@@ -108,9 +108,9 @@ pub(crate) struct XmlContainers {
 /// we set it to an empty string.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlContainer {
-    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    #[serde(rename = "@Id", alias = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
-    #[serde(default, rename = "Name")]
+    #[serde(default, rename = "@Name", alias = "Name")]
     pub name: String,
     #[serde(rename = "PositionX")]
     pub position_x: f64,
@@ -140,9 +140,9 @@ pub(crate) struct XmlVariables {
 /// and some are set to default values later as needed.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlVariable {
-    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    #[serde(rename = "@Id", alias = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
-    #[serde(default, rename = "Name")]
+    #[serde(default, rename = "@Name", alias = "Name")]
     pub name: String,
     #[serde(rename = "RangeFrom", deserialize_with = "deser_quoted_int")]
     pub range_from: u32,
@@ -195,7 +195,7 @@ pub(crate) struct XmlRelationships {
 /// The container ID is optional, and is set to None if not provided.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlRelationship {
-    #[serde(rename = "Id", deserialize_with = "deser_quoted_int")]
+    #[serde(rename = "@Id", alias = "Id", deserialize_with = "deser_quoted_int")]
     pub id: u32,
     #[serde(rename = "FromVariableId", deserialize_with = "deser_quoted_int")]
     pub from_variable_id: u32,
