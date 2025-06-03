@@ -1,6 +1,8 @@
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
+use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use thiserror::Error;
 
 /// A discrete variable identified by an integer `id`. Each [BmaVariable] consists
 /// of a `name` (optional), its value `range` (inclusive), and an [BmaFnUpdate] function
@@ -58,9 +60,72 @@ impl Default for BmaVariable {
         }
     }
 }
+
+/// Possible validation errors for [BmaVariable].
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BmaVariableError {
+    /// Caused by the variable ID not being unique.
+    #[error("(Variable id: `{id}`) Id must be unique within the enclosing `BmaNetwork`")]
+    IdNotUnique { id: u32 },
+    /// Caused by the variable range not being a valid, non-empty interval.
+    #[error("(Variable id: `{id}`) Range `{range:?}` is invalid; must be a non-empty interval")]
+    RangeInvalid { id: u32, range: (u32, u32) },
+    /// Caused by the variable name being empty.
+    #[error("(Variable id: `{id}`) Name cannot be empty; use `None` instead")]
+    NameEmpty { id: u32 },
+}
+
+impl ContextualValidation<BmaNetwork> for BmaVariable {
+    type Error = BmaVariableError;
+
+    fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaNetwork, reporter: &mut R) {
+        // Ensure that the variable name is not empty.
+        if let Some(name) = self.name.as_ref() {
+            if name.is_empty() {
+                reporter.report(BmaVariableError::NameEmpty { id: self.id });
+            }
+        }
+
+        // Ensure that the variable range is a valid, non-empty interval.
+        if self.range.0 > self.range.1 {
+            reporter.report(BmaVariableError::RangeInvalid {
+                id: self.id,
+                range: self.range,
+            });
+        }
+
+        // Ensure that the variable id is unique within the enclosing BmaNetwork.
+        let mut count = 0;
+        for var in &context.variables {
+            if var.id == self.id {
+                count += 1;
+            }
+        }
+
+        assert!(
+            count > 0,
+            "Validation called on a variable that is not part of the BmaNetwork"
+        );
+
+        if count > 1 {
+            reporter.report(BmaVariableError::IdNotUnique { id: self.id });
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::model::bma_variable::BmaVariableError;
+    use crate::update_fn::bma_fn_update::BmaFnUpdate;
     use crate::{BmaNetwork, BmaVariable, ContextualValidation};
+    use std::collections::HashMap;
+
+    fn network_for_variable(variable: &BmaVariable) -> BmaNetwork {
+        BmaNetwork {
+            variables: vec![variable.clone()],
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn range_getters() {
@@ -103,5 +168,70 @@ mod tests {
         );
         let deserialized: BmaVariable = serde_json::from_str(&serialized).unwrap();
         assert_eq!(variable, deserialized);
+    }
+
+    #[test]
+    fn default_variable_is_valid() {
+        let variable = BmaVariable::default();
+        let network = network_for_variable(&variable);
+        assert!(variable.validate(&network).is_ok());
+    }
+
+    /// Empty variable names are not allowed.
+    #[test]
+    fn empty_name() {
+        let variable = BmaVariable {
+            name: Some("".to_string()),
+            ..Default::default()
+        };
+        let network = network_for_variable(&variable);
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(issues, vec![BmaVariableError::NameEmpty { id: 0 }]);
+    }
+
+    /// Empty ranges are allowed (represents a constant variable).
+    #[test]
+    fn range_empty() {
+        let variable = BmaVariable {
+            range: (1, 1),
+            ..Default::default()
+        };
+        let network = network_for_variable(&variable);
+
+        assert!(variable.validate(&network).is_ok());
+    }
+
+    /// Invalid ranges are not allowed.
+    #[test]
+    fn range_invalid() {
+        let variable = BmaVariable {
+            range: (3, 1),
+            ..Default::default()
+        };
+        let network = network_for_variable(&variable);
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![BmaVariableError::RangeInvalid {
+                id: 0,
+                range: (3, 1)
+            }]
+        );
+    }
+
+    /// Two variables with the same ID are not allowed.
+    #[test]
+    fn duplicate_ids() {
+        let v1 = BmaVariable::default();
+        let v2 = BmaVariable::default();
+        let network = BmaNetwork {
+            variables: vec![v1.clone(), v2.clone()],
+            ..Default::default()
+        };
+
+        let issues = v1.validate(&network).unwrap_err();
+        assert_eq!(issues, vec![BmaVariableError::IdNotUnique { id: 0 }]);
     }
 }
