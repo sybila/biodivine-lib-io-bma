@@ -8,7 +8,7 @@ use serde_with::skip_serializing_none;
 /// position and angle values 0, default type, empty description, ...).
 /// Other missing information is set to `None` (like cell or container ID).
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BmaLayoutVariable {
     pub id: u32,
     pub name: String, // duplicated with Variable.name, but that's what JSON BMA does
@@ -33,14 +33,8 @@ impl BmaLayoutVariable {
         BmaLayoutVariable {
             id,
             name,
-            variable_type: VariableType::Default,
-            position_x: 0.0,
-            position_y: 0.0,
-            angle: 0.0,
             container_id,
-            cell_x: None,
-            cell_y: None,
-            description: "".to_string(),
+            ..Default::default()
         }
     }
 }
