@@ -40,6 +40,7 @@ impl BmaNetwork {
     }
 }
 
+/// Possible validation errors for [`BmaNetwork`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaNetworkError {
     #[error("Name of the `BmaNetwork` cannot be empty; use `None` instead")]
@@ -73,7 +74,8 @@ impl Validation for BmaNetwork {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BmaNetwork, BmaNetworkError, BmaRelationship, BmaVariable, Validation};
+    use crate::model::tests::simple_network;
+    use crate::{BmaNetwork, BmaNetworkError, Validation};
 
     #[test]
     fn default_network_is_valid() {
@@ -83,18 +85,7 @@ mod tests {
 
     #[test]
     fn simple_network_is_valid() {
-        let network = BmaNetwork {
-            name: Some("Some network".to_string()),
-            variables: vec![
-                BmaVariable::new_boolean(3, "var_B", None),
-                BmaVariable::new(0, "var_A", (1, 3), None),
-            ],
-            relationships: vec![
-                BmaRelationship::new_activator(0, 0, 3),
-                BmaRelationship::new_inhibitor(1, 3, 3),
-            ],
-            ..Default::default()
-        };
+        let network = simple_network();
         assert!(network.validate().is_ok());
     }
 
