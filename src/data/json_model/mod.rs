@@ -1,12 +1,13 @@
-use crate::VariableType;
 use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub(crate) mod json_container;
+pub(crate) mod json_layout_variable;
 pub(crate) mod json_relationship;
 
 pub(crate) use json_container::JsonContainer;
+pub(crate) use json_layout_variable::JsonLayoutVariable;
 pub(crate) use json_relationship::JsonRelationship;
 
 /// An intermediate structure purely for deserializing JSON BMA models.
@@ -73,36 +74,6 @@ pub(crate) struct JsonLayout {
     pub containers: Vec<JsonContainer>,
     #[serde(default, rename = "Description", alias = "description")]
     pub description: String,
-}
-
-/// Structure to deserialize JSON info about variable's layout information.
-///
-/// We require ID and position to be present in the JSON.
-/// If name and description are not provided, we set them to empty strings.
-/// If type and angle are not provided, we set it to default values.
-/// Container ID and cell coordinates are optional, and set to None if not provided.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonLayoutVariable {
-    #[serde(rename = "Id", alias = "id")]
-    pub id: QuoteNum,
-    #[serde(default, rename = "Name", alias = "name")]
-    pub name: String,
-    #[serde(default, rename = "Type", alias = "type")]
-    pub r#type: VariableType,
-    #[serde(default, rename = "PositionX", alias = "positionX")]
-    pub position_x: f64,
-    #[serde(default, rename = "PositionY", alias = "positionY")]
-    pub position_y: f64,
-    #[serde(default, rename = "Angle", alias = "angle")]
-    pub angle: f64,
-    #[serde(default, rename = "Description", alias = "description")]
-    pub description: String,
-    #[serde(rename = "ContainerId", alias = "containerId", default)]
-    pub container_id: Option<QuoteNum>,
-    #[serde(rename = "CellX", alias = "cellX")]
-    pub cell_x: Option<u32>,
-    #[serde(rename = "CellY", alias = "cellY")]
-    pub cell_y: Option<u32>,
 }
 
 impl JsonBmaModel {

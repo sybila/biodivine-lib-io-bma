@@ -1,10 +1,8 @@
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
-use crate::data::json_model::{JsonBmaModel, JsonLayoutVariable, JsonVariable};
-use crate::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
-use num_rational::Rational64;
-use num_traits::FromPrimitive;
+use crate::data::json_model::{JsonBmaModel, JsonVariable};
+use crate::{BmaLayout, BmaNetwork, BmaVariable};
 use std::collections::HashMap;
 
 impl BmaModel {
@@ -67,30 +65,6 @@ impl BmaModel {
             formula,
         })
     }
-
-    /// Convert the JsonLayoutVariable instance into a proper BmaLayoutVariable
-    /// instance. If there was no name or description in the JSON layout variable, we use
-    /// a default empty string.
-    fn convert_json_layout_variable(json_var: JsonLayoutVariable) -> BmaLayoutVariable {
-        let cell = if let (Some(x), Some(y)) = (json_var.cell_x, json_var.cell_y) {
-            Some((x, y))
-        } else {
-            None
-        };
-        BmaLayoutVariable {
-            id: json_var.id.into(),
-            name: Some(json_var.name),
-            container_id: json_var.container_id.map(|it| it.into()),
-            r#type: json_var.r#type,
-            position: (
-                Rational64::from_f64(json_var.position_x).unwrap(),
-                Rational64::from_f64(json_var.position_y).unwrap(),
-            ),
-            cell,
-            angle: Rational64::from_f64(json_var.angle).unwrap(),
-            description: Some(json_var.description),
-        }
-    }
 }
 
 impl TryFrom<JsonBmaModel> for BmaModel {
@@ -124,11 +98,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
         let layout = json_model
             .layout
             .map(|layout| BmaLayout {
-                variables: layout
-                    .variables
-                    .into_iter()
-                    .map(Self::convert_json_layout_variable)
-                    .collect(),
+                variables: layout.variables.into_iter().map(|it| it.into()).collect(),
                 containers: layout.containers.into_iter().map(|it| it.into()).collect(),
                 description: Some(layout.description),
                 zoom_level: None,
