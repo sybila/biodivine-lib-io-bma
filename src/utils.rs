@@ -18,6 +18,10 @@ pub fn take_if_not_blank(value: &str) -> Option<String> {
     }
 }
 
+pub fn clone_into_vec<A: Clone + Into<B>, B>(data: &[A]) -> Vec<B> {
+    data.iter().cloned().map(|it| it.into()).collect()
+}
+
 /// A helper method to check that a given `container` has the expected value, and it is the
 /// only value with such ID in the container.
 ///

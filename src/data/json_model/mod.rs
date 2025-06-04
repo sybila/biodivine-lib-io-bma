@@ -2,12 +2,15 @@ use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub(crate) mod json_layout;
 pub(crate) mod json_layout_container;
 pub(crate) mod json_layout_variable;
 pub(crate) mod json_relationship;
 
+pub(crate) use json_layout::JsonLayout;
 pub(crate) use json_layout_container::JsonLayoutContainer;
 pub(crate) use json_layout_variable::JsonLayoutVariable;
+
 pub(crate) use json_relationship::JsonRelationship;
 
 /// An intermediate structure purely for deserializing JSON BMA models.
@@ -59,21 +62,6 @@ pub(crate) struct JsonVariable {
     pub range_to: QuoteNum,
     #[serde(rename = "Formula", alias = "formula")]
     pub formula: String,
-}
-
-/// Structure to deserialize JSON info about layout, which contains variables,
-/// containers, and a description.
-///
-/// All of these can be missing in the JSON. If not provided, default empty values
-/// are used.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonLayout {
-    #[serde(default, rename = "Variables", alias = "variables")]
-    pub variables: Vec<JsonLayoutVariable>,
-    #[serde(default, rename = "Containers", alias = "containers")]
-    pub containers: Vec<JsonLayoutContainer>,
-    #[serde(default, rename = "Description", alias = "description")]
-    pub description: String,
 }
 
 impl JsonBmaModel {

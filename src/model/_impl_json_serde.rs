@@ -2,7 +2,7 @@ use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
 use crate::data::json_model::{JsonBmaModel, JsonVariable};
-use crate::{BmaLayout, BmaNetwork, BmaVariable};
+use crate::{BmaNetwork, BmaVariable};
 use std::collections::HashMap;
 
 impl BmaModel {
@@ -97,13 +97,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
         // Convert the layout
         let layout = json_model
             .layout
-            .map(|layout| BmaLayout {
-                variables: layout.variables.into_iter().map(|it| it.into()).collect(),
-                containers: layout.containers.into_iter().map(|it| it.into()).collect(),
-                description: Some(layout.description),
-                zoom_level: None,
-                pan: None,
-            })
+            .map(|layout| layout.into())
             .unwrap_or_default(); // Default empty layout, if layout is not provided.
 
         // Metadata is not present in JsonBmaModel
