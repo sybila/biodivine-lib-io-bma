@@ -1,8 +1,6 @@
 use crate::data::quote_num::QuoteNum;
-use crate::utils::take_if_not_blank;
+use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
 use crate::{BmaLayoutVariable, VariableType};
-use num_rational::Rational64;
-use num_traits::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize JSON info about variable's layout information.
@@ -49,10 +47,10 @@ impl From<JsonLayoutVariable> for BmaLayoutVariable {
             name: take_if_not_blank(value.name.as_str()),
             description: take_if_not_blank(value.description.as_str()),
             position: (
-                Rational64::from_f64(value.position_x).unwrap_or_default(),
-                Rational64::from_f64(value.position_y).unwrap_or_default(),
+                rational_or_default(value.position_x),
+                rational_or_default(value.position_y),
             ),
-            angle: Rational64::from_f64(value.angle).unwrap_or_default(),
+            angle: rational_or_default(value.angle),
             cell,
         }
     }
@@ -69,9 +67,9 @@ impl From<BmaLayoutVariable> for JsonLayoutVariable {
             id: value.id.into(),
             name: value.name.unwrap_or_default(),
             r#type: value.r#type,
-            position_x: value.position.0.to_f64().unwrap_or_default(),
-            position_y: value.position.1.to_f64().unwrap_or_default(),
-            angle: value.angle.to_f64().unwrap_or_default(),
+            position_x: f64_or_default(value.position.0),
+            position_y: f64_or_default(value.position.1),
+            angle: f64_or_default(value.angle),
             description: value.description.unwrap_or_default(),
             container_id: value.container_id.map(|it| it.into()),
             cell_x,

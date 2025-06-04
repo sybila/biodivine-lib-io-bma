@@ -1,8 +1,6 @@
 use crate::BmaLayoutContainer;
 use crate::data::quote_num::QuoteNum;
-use crate::utils::take_if_not_blank;
-use num_rational::Rational64;
-use num_traits::{FromPrimitive, ToPrimitive};
+use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize JSON info about layout container.
@@ -28,8 +26,8 @@ impl From<BmaLayoutContainer> for JsonLayoutContainer {
             id: value.id.into(),
             name: value.name.unwrap_or_default(),
             size: value.size.into(),
-            position_x: value.position.0.to_f64().unwrap_or_default(),
-            position_y: value.position.1.to_f64().unwrap_or_default(),
+            position_x: f64_or_default(value.position.0),
+            position_y: f64_or_default(value.position.1),
         }
     }
 }
@@ -41,8 +39,8 @@ impl From<JsonLayoutContainer> for BmaLayoutContainer {
             name: take_if_not_blank(value.name.as_str()),
             size: value.size.into(),
             position: (
-                Rational64::from_f64(value.position_x).unwrap_or_default(),
-                Rational64::from_f64(value.position_y).unwrap_or_default(),
+                rational_or_default(value.position_x),
+                rational_or_default(value.position_y),
             ),
         }
     }
