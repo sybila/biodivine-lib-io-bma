@@ -1,8 +1,8 @@
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
-use crate::data::json_model::{JsonBmaModel, JsonContainer, JsonLayoutVariable, JsonVariable};
-use crate::{BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaNetwork, BmaVariable};
+use crate::data::json_model::{JsonBmaModel, JsonLayoutVariable, JsonVariable};
+use crate::{BmaLayout, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use num_rational::Rational64;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
@@ -91,20 +91,6 @@ impl BmaModel {
             description: Some(json_var.description),
         }
     }
-
-    /// Convert a JsonContainer instance into a proper BmaContainer instance.
-    /// If there was no name in the JSON container, we use a default empty string.
-    fn convert_json_container(json_container: JsonContainer) -> BmaLayoutContainer {
-        BmaLayoutContainer {
-            id: json_container.id.into(),
-            name: Some(json_container.name),
-            size: json_container.size.into(),
-            position: (
-                Rational64::from_f64(json_container.position_x).unwrap(),
-                Rational64::from_f64(json_container.position_y).unwrap(),
-            ),
-        }
-    }
 }
 
 impl TryFrom<JsonBmaModel> for BmaModel {
@@ -143,11 +129,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                     .into_iter()
                     .map(Self::convert_json_layout_variable)
                     .collect(),
-                containers: layout
-                    .containers
-                    .into_iter()
-                    .map(Self::convert_json_container)
-                    .collect(),
+                containers: layout.containers.into_iter().map(|it| it.into()).collect(),
                 description: Some(layout.description),
                 zoom_level: None,
                 pan: None,

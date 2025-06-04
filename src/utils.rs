@@ -8,6 +8,16 @@ pub fn is_blank(value: &Option<String>) -> bool {
     false
 }
 
+/// Make a trimmed copy of the provided `String`.
+pub fn take_if_not_blank(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
 /// A helper method to check that a given `container` has the expected value, and it is the
 /// only value with such ID in the container.
 ///

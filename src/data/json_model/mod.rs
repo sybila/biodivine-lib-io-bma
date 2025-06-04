@@ -3,7 +3,10 @@ use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub(crate) mod json_container;
 pub(crate) mod json_relationship;
+
+pub(crate) use json_container::JsonContainer;
 pub(crate) use json_relationship::JsonRelationship;
 
 /// An intermediate structure purely for deserializing JSON BMA models.
@@ -100,24 +103,6 @@ pub(crate) struct JsonLayoutVariable {
     pub cell_x: Option<u32>,
     #[serde(rename = "CellY", alias = "cellY")]
     pub cell_y: Option<u32>,
-}
-
-/// Structure to deserialize JSON info about layout container.
-///
-/// All details must be provided, except for the name. If the name is missing,
-/// we set it to an empty string.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonContainer {
-    #[serde(rename = "Id", alias = "id")]
-    pub id: QuoteNum,
-    #[serde(default, rename = "Name", alias = "name")]
-    pub name: String,
-    #[serde(rename = "Size", alias = "size")]
-    pub size: QuoteNum,
-    #[serde(rename = "PositionX", alias = "positionX")]
-    pub position_x: f64,
-    #[serde(rename = "PositionY", alias = "positionY")]
-    pub position_y: f64,
 }
 
 impl JsonBmaModel {
