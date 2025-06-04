@@ -33,4 +33,5 @@ serde-xml-rs = "0.8"
 num-rational = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 thiserror = "2.0"
+anyhow = "1.0"
 rust_decimal = { version = "1.37", features = ["macros"] }

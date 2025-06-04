@@ -37,14 +37,17 @@ impl From<BmaVariable> for JsonVariable {
 }
 
 impl TryFrom<(&JsonBmaModel, &JsonVariable)> for BmaVariable {
-    type Error = String;
+    type Error = anyhow::Error; // TODO: Replace with type safe error.
 
-    fn try_from(value: (&JsonBmaModel, &JsonVariable)) -> Result<BmaVariable, String> {
+    fn try_from(value: (&JsonBmaModel, &JsonVariable)) -> Result<BmaVariable, Self::Error> {
         let (model, variable) = value;
 
         let variables = model.variable_name_map();
         let formula = if let Some(formula) = take_if_not_blank(variable.formula.as_str()) {
-            Some(BmaFnUpdate::parse_from_str(formula.as_str(), &variables)?)
+            Some(
+                BmaFnUpdate::parse_from_str(formula.as_str(), &variables)
+                    .map_err(anyhow::Error::msg)?,
+            )
         } else {
             None
         };

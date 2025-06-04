@@ -29,7 +29,7 @@ impl From<BmaNetwork> for JsonNetwork {
 }
 
 impl TryFrom<(&JsonBmaModel, &JsonNetwork)> for BmaNetwork {
-    type Error = String;
+    type Error = anyhow::Error;
 
     fn try_from(value: (&JsonBmaModel, &JsonNetwork)) -> Result<Self, Self::Error> {
         let (model, network) = value;
@@ -39,7 +39,7 @@ impl TryFrom<(&JsonBmaModel, &JsonNetwork)> for BmaNetwork {
                 .variables
                 .iter()
                 .map(|var| BmaVariable::try_from((model, var)))
-                .collect::<Result<Vec<BmaVariable>, String>>()?,
+                .collect::<Result<Vec<BmaVariable>, Self::Error>>()?,
             relationships: clone_into_vec(&network.relationships),
             name: take_if_not_blank(network.name.as_str()),
         })
