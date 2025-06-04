@@ -2,11 +2,11 @@ use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub(crate) mod json_container;
+pub(crate) mod json_layout_container;
 pub(crate) mod json_layout_variable;
 pub(crate) mod json_relationship;
 
-pub(crate) use json_container::JsonContainer;
+pub(crate) use json_layout_container::JsonLayoutContainer;
 pub(crate) use json_layout_variable::JsonLayoutVariable;
 pub(crate) use json_relationship::JsonRelationship;
 
@@ -71,7 +71,7 @@ pub(crate) struct JsonLayout {
     #[serde(default, rename = "Variables", alias = "variables")]
     pub variables: Vec<JsonLayoutVariable>,
     #[serde(default, rename = "Containers", alias = "containers")]
-    pub containers: Vec<JsonContainer>,
+    pub containers: Vec<JsonLayoutContainer>,
     #[serde(default, rename = "Description", alias = "description")]
     pub description: String,
 }

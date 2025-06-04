@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// All details must be provided, except for the name.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonContainer {
+pub(crate) struct JsonLayoutContainer {
     #[serde(rename = "Id", alias = "id")]
     pub id: QuoteNum,
     #[serde(default, rename = "Name", alias = "name")]
@@ -22,9 +22,9 @@ pub(crate) struct JsonContainer {
     pub position_y: f64,
 }
 
-impl From<BmaLayoutContainer> for JsonContainer {
+impl From<BmaLayoutContainer> for JsonLayoutContainer {
     fn from(value: BmaLayoutContainer) -> Self {
-        JsonContainer {
+        JsonLayoutContainer {
             id: value.id.into(),
             name: value.name.unwrap_or_default(),
             size: value.size.into(),
@@ -34,8 +34,8 @@ impl From<BmaLayoutContainer> for JsonContainer {
     }
 }
 
-impl From<JsonContainer> for BmaLayoutContainer {
-    fn from(value: JsonContainer) -> Self {
+impl From<JsonLayoutContainer> for BmaLayoutContainer {
+    fn from(value: JsonLayoutContainer) -> Self {
         BmaLayoutContainer {
             id: value.id.into(),
             name: take_if_not_blank(value.name.as_str()),
