@@ -1,7 +1,7 @@
 use crate::model::bma_model::*;
 
+use crate::BmaNetwork;
 use crate::data::json_model::JsonBmaModel;
-use crate::{BmaNetwork, BmaVariable};
 use std::collections::HashMap;
 
 impl BmaModel {
@@ -33,21 +33,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
     /// Returns error if the update function has an incorrect format.
     fn try_from(json_model: JsonBmaModel) -> Result<BmaModel, String> {
         // Convert the model
-        let model = BmaNetwork {
-            variables: json_model
-                .network
-                .variables
-                .iter()
-                .map(|var| BmaVariable::try_from((&json_model, var)))
-                .collect::<Result<Vec<BmaVariable>, String>>()?,
-            relationships: json_model
-                .network
-                .relationships
-                .into_iter()
-                .map(|it| it.into())
-                .collect(),
-            name: Some(json_model.network.name),
-        };
+        let model = BmaNetwork::try_from((&json_model, &json_model.network))?;
 
         // Convert the layout
         let layout = json_model

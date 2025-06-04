@@ -4,6 +4,7 @@ use std::collections::HashMap;
 pub(crate) mod json_layout;
 pub(crate) mod json_layout_container;
 pub(crate) mod json_layout_variable;
+pub(crate) mod json_network;
 pub(crate) mod json_relationship;
 pub(crate) mod json_variable;
 
@@ -12,6 +13,7 @@ pub(crate) use json_layout_container::JsonLayoutContainer;
 pub(crate) use json_layout_variable::JsonLayoutVariable;
 
 use crate::utils::take_if_not_blank;
+pub(crate) use json_network::JsonNetwork;
 pub(crate) use json_relationship::JsonRelationship;
 pub(crate) use json_variable::JsonVariable;
 
@@ -30,21 +32,6 @@ pub(crate) struct JsonBmaModel {
     pub network: JsonNetwork,
     #[serde(rename = "Layout", alias = "layout")]
     pub layout: Option<JsonLayout>,
-}
-
-/// Structure to deserialize JSON info about the main model network, with several
-/// `variables` that have various `relationships`.
-///
-/// Variables and relationships are required. The name is optional, and default
-/// empty string is used if not provided.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonNetwork {
-    #[serde(default, rename = "Name", alias = "name")]
-    pub name: String,
-    #[serde(rename = "Variables", alias = "variables")]
-    pub variables: Vec<JsonVariable>,
-    #[serde(rename = "Relationships", alias = "relationships")]
-    pub relationships: Vec<JsonRelationship>,
 }
 
 impl JsonBmaModel {
