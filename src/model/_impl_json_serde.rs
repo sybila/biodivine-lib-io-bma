@@ -1,10 +1,8 @@
 use crate::model::bma_model::*;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 
-use crate::data::json_model::*;
-use crate::{
-    BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaNetwork, BmaRelationship, BmaVariable,
-};
+use crate::data::json_model::{JsonBmaModel, JsonContainer, JsonLayoutVariable, JsonVariable};
+use crate::{BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaNetwork, BmaVariable};
 use num_rational::Rational64;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
@@ -70,16 +68,6 @@ impl BmaModel {
         })
     }
 
-    /// Convert a JSON relationship into a proper BmaRelationship instance.
-    fn convert_json_relationship(json_rel: JsonRelationship) -> BmaRelationship {
-        BmaRelationship {
-            id: json_rel.id.into(),
-            from_variable: json_rel.from_variable.into(),
-            to_variable: json_rel.to_variable.into(),
-            r#type: json_rel.r#type,
-        }
-    }
-
     /// Convert the JsonLayoutVariable instance into a proper BmaLayoutVariable
     /// instance. If there was no name or description in the JSON layout variable, we use
     /// a default empty string.
@@ -141,7 +129,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
                 .model
                 .relationships
                 .into_iter()
-                .map(Self::convert_json_relationship)
+                .map(|it| it.into())
                 .collect(),
             name: Some(json_model.model.name),
         };

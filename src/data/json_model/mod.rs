@@ -1,8 +1,10 @@
-use crate::RelationshipType;
 use crate::VariableType;
 use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+pub(crate) mod json_relationship;
+pub(crate) use json_relationship::JsonRelationship;
 
 /// An intermediate structure purely for deserializing JSON BMA models.
 ///
@@ -53,32 +55,6 @@ pub(crate) struct JsonVariable {
     pub range_to: QuoteNum,
     #[serde(rename = "Formula", alias = "formula")]
     pub formula: String,
-}
-
-/// Structure to deserialize JSON info about an individual relationship.
-///
-/// All relationships must have their own ID, type, and IDs of both interacting
-/// variables.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonRelationship {
-    #[serde(rename = "Id", alias = "id")]
-    pub id: QuoteNum,
-    #[serde(
-        rename = "FromVariable",
-        alias = "fromVariable",
-        alias = "fromVariableId",
-        alias = "FromVariableId"
-    )]
-    pub from_variable: QuoteNum,
-    #[serde(
-        rename = "ToVariable",
-        alias = "toVariable",
-        alias = "toVariableId",
-        alias = "ToVariableId"
-    )]
-    pub to_variable: QuoteNum,
-    #[serde(rename = "Type", alias = "type")]
-    pub r#type: RelationshipType,
 }
 
 /// Structure to deserialize JSON info about layout, which contains variables,
