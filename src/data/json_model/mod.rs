@@ -1,4 +1,3 @@
-use crate::data::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -6,12 +5,15 @@ pub(crate) mod json_layout;
 pub(crate) mod json_layout_container;
 pub(crate) mod json_layout_variable;
 pub(crate) mod json_relationship;
+pub(crate) mod json_variable;
 
 pub(crate) use json_layout::JsonLayout;
 pub(crate) use json_layout_container::JsonLayoutContainer;
 pub(crate) use json_layout_variable::JsonLayoutVariable;
 
+use crate::utils::take_if_not_blank;
 pub(crate) use json_relationship::JsonRelationship;
+pub(crate) use json_variable::JsonVariable;
 
 /// An intermediate structure purely for deserializing JSON BMA models.
 ///
@@ -45,70 +47,34 @@ pub(crate) struct JsonModel {
     pub relationships: Vec<JsonRelationship>,
 }
 
-/// Structure to deserialize JSON info about individual variable.
-///
-/// All variables must have ID, range of possible values, and an update formula.
-/// The formula can be empty string.
-/// Name is optional and set to None is not provided.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonVariable {
-    #[serde(rename = "Id", alias = "id")]
-    pub id: QuoteNum,
-    #[serde(default, rename = "Name", alias = "name")]
-    pub name: String,
-    #[serde(rename = "RangeFrom", alias = "rangeFrom")]
-    pub range_from: QuoteNum,
-    #[serde(rename = "RangeTo", alias = "rangeTo")]
-    pub range_to: QuoteNum,
-    #[serde(rename = "Formula", alias = "formula")]
-    pub formula: String,
-}
-
 impl JsonBmaModel {
-    /// Collects a set of all variables in the model, creating ID-name mapping.
-    /// First collects all variables from the model. For those that have empty
-    /// names, it tries to find a name in the layout.
-    pub fn collect_all_variables(&self) -> HashMap<u32, String> {
-        let mut model_vars = self
-            .model
-            .variables
-            .iter()
-            .map(|var| (var.id.into(), var.name.clone()))
-            .collect::<HashMap<u32, String>>();
+    /// Collect all variable names that are known in the model.
+    ///
+    /// Names stored in the [`JsonVariable`] are preferred. If such a name is empty,
+    /// the value stored in [`JsonLayoutVariable`] is used. If no name is provided, the
+    /// variable will not be included in the final map.
+    pub fn variable_name_map(&self) -> HashMap<u32, String> {
+        let mut map = HashMap::new();
 
-        let layout_named_vars = self.collect_named_layout_variables();
-        for (id, name_in_layout) in layout_named_vars {
-            if let Some(name_in_model) = model_vars.get(&id) {
-                if name_in_model.is_empty() {
-                    model_vars.insert(id, name_in_layout);
+        // First collect variable names stored in the main network.
+        for var in &self.model.variables {
+            if let Some(name) = take_if_not_blank(var.name.as_str()) {
+                map.insert(var.id.into(), name);
+            }
+        }
+
+        // Then store variable names that are still missing using layout data.
+        if let Some(layout) = self.layout.as_ref() {
+            for var in &layout.variables {
+                if map.contains_key(&var.id.into()) {
+                    continue;
+                }
+                if let Some(name) = take_if_not_blank(var.name.as_str()) {
+                    map.insert(var.id.into(), name);
                 }
             }
         }
 
-        model_vars
-    }
-
-    /// Collects a set of all named variables from the layout, creating ID-name mapping.
-    /// Variables without names (i.e., with empty name string) are ignored.
-    pub fn collect_named_layout_variables(&self) -> HashMap<u32, String> {
-        match &self.layout {
-            None => HashMap::new(),
-            Some(layout) => layout
-                .variables
-                .iter()
-                .filter(|layout_var| !layout_var.name.is_empty())
-                .map(|layout_var| (layout_var.id.into(), layout_var.name.clone()))
-                .collect(),
-        }
-    }
-
-    /// Collects set of variables that regulate given variable.
-    pub fn get_regulators(&self, variable_id: u32) -> Vec<u32> {
-        self.model
-            .relationships
-            .iter()
-            .filter(|rel| u32::from(rel.to_variable) == variable_id)
-            .map(|rel| rel.from_variable.into())
-            .collect()
+        map
     }
 }
