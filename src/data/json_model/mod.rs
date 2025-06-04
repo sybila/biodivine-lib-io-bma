@@ -27,7 +27,7 @@ pub(crate) use json_variable::JsonVariable;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonBmaModel {
     #[serde(rename = "Model", alias = "model")]
-    pub model: JsonModel,
+    pub network: JsonNetwork,
     #[serde(rename = "Layout", alias = "layout")]
     pub layout: Option<JsonLayout>,
 }
@@ -38,7 +38,7 @@ pub(crate) struct JsonBmaModel {
 /// Variables and relationships are required. The name is optional, and default
 /// empty string is used if not provided.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonModel {
+pub(crate) struct JsonNetwork {
     #[serde(default, rename = "Name", alias = "name")]
     pub name: String,
     #[serde(rename = "Variables", alias = "variables")]
@@ -57,7 +57,7 @@ impl JsonBmaModel {
         let mut map = HashMap::new();
 
         // First collect variable names stored in the main network.
-        for var in &self.model.variables {
+        for var in &self.network.variables {
             if let Some(name) = take_if_not_blank(var.name.as_str()) {
                 map.insert(var.id.into(), name);
             }

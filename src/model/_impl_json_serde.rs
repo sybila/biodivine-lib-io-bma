@@ -35,18 +35,18 @@ impl TryFrom<JsonBmaModel> for BmaModel {
         // Convert the model
         let model = BmaNetwork {
             variables: json_model
-                .model
+                .network
                 .variables
                 .iter()
                 .map(|var| BmaVariable::try_from((&json_model, var)))
                 .collect::<Result<Vec<BmaVariable>, String>>()?,
             relationships: json_model
-                .model
+                .network
                 .relationships
                 .into_iter()
                 .map(|it| it.into())
                 .collect(),
-            name: Some(json_model.model.name),
+            name: Some(json_model.network.name),
         };
 
         // Convert the layout
