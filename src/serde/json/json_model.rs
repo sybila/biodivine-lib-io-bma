@@ -1,4 +1,4 @@
-use crate::data::json_model::{JsonLayout, JsonNetwork};
+use crate::serde::json::{JsonLayout, JsonNetwork};
 use crate::utils::take_if_not_blank;
 use crate::{BmaModel, BmaNetwork};
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 /// information is optional.
 ///
 /// This structure is intended purely to simplify serialization. It provides virtually no
-/// consistency checking. The serialized instances may contain semantically invalid data, such as
+/// consistency checking. The serialized instances may contain semantically invalid serde, such as
 /// incorrectly formatted update functions, or variables not matching in layout and model.
 /// The full correctness of the model is checked when constructing the final `BmaModel` struct.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -37,7 +37,7 @@ impl JsonBmaModel {
             }
         }
 
-        // Then store variable names that are still missing using layout data.
+        // Then store variable names that are still missing using layout serde.
         if let Some(layout) = self.layout.as_ref() {
             for var in &layout.variables {
                 if map.contains_key(&var.id.into()) {

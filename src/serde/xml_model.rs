@@ -1,6 +1,6 @@
 use crate::RelationshipType;
 use crate::VariableType;
-use crate::data::quote_num::QuoteNum;
+use crate::serde::quote_num::QuoteNum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ use std::collections::HashMap;
 /// We also parse some additional metadata items often present, but that is optional as well.
 ///
 /// This structure is intended purely to simplify serialization. It does not provide much of a
-/// consistency checking. The serialized instances may contain semantically invalid data, such as
+/// consistency checking. The serialized instances may contain semantically invalid serde, such as
 /// incorrectly formatted update functions, or variables not matching in layout and model.
 /// The full correctness of the model is checked when constructing the final `BmaModel` struct.
 #[derive(Serialize, Deserialize, Debug, Clone)]

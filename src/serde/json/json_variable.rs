@@ -1,6 +1,6 @@
 use crate::BmaVariable;
-use crate::data::json_model::JsonBmaModel;
-use crate::data::quote_num::QuoteNum;
+use crate::serde::json::JsonBmaModel;
+use crate::serde::quote_num::QuoteNum;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::utils::take_if_not_blank;
 use serde::{Deserialize, Serialize};

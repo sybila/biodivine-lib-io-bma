@@ -1,4 +1,4 @@
-use crate::data::quote_num::QuoteNum;
+use crate::serde::quote_num::QuoteNum;
 use crate::{BmaRelationship, RelationshipType};
 use serde::{Deserialize, Serialize};
 

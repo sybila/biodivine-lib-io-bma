@@ -1,5 +1,5 @@
 use crate::BmaLayout;
-use crate::data::json_model::{JsonLayoutContainer, JsonLayoutVariable};
+use crate::serde::json::{JsonLayoutContainer, JsonLayoutVariable};
 use crate::utils::{clone_into_vec, take_if_not_blank};
 use serde::{Deserialize, Serialize};
 

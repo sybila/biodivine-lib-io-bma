@@ -5,7 +5,7 @@ pub(crate) mod model;
 /// Structures and utilities for parsing/evaluating update functions.
 pub mod update_fn;
 
-pub(crate) mod data;
+pub(crate) mod serde;
 
 pub use crate::model::bma_model::{BmaModel, BmaModelError};
 pub use crate::model::bma_network::{BmaNetwork, BmaNetworkError};

@@ -1,4 +1,4 @@
-use crate::data::json_model::{JsonBmaModel, JsonRelationship, JsonVariable};
+use crate::serde::json::{JsonBmaModel, JsonRelationship, JsonVariable};
 use crate::utils::{clone_into_vec, take_if_not_blank};
 use crate::{BmaNetwork, BmaVariable};
 use serde::{Deserialize, Serialize};

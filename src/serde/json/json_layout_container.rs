@@ -1,5 +1,5 @@
 use crate::BmaLayoutContainer;
-use crate::data::quote_num::QuoteNum;
+use crate::serde::quote_num::QuoteNum;
 use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
 use serde::{Deserialize, Serialize};
 

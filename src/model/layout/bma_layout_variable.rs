@@ -80,7 +80,7 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
     type Error = BmaLayoutVariableError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaModel, reporter: &mut R) {
-        // Ensure data fields are not empty.
+        // Ensure serde fields are not empty.
         if is_blank(&self.name) {
             reporter.report(BmaLayoutVariableError::NameEmpty { id: self.id });
         }
