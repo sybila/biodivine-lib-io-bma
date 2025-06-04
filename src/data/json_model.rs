@@ -9,7 +9,7 @@ use std::collections::HashMap;
 /// The functional part of the model is stored in `model` field. The additional `layout`
 /// information is optional.
 ///
-/// This structure is intended purely to simplify serialization. It does not provide much of a
+/// This structure is intended purely to simplify serialization. It provides virtually no
 /// consistency checking. The serialized instances may contain semantically invalid data, such as
 /// incorrectly formatted update functions, or variables not matching in layout and model.
 /// The full correctness of the model is checked when constructing the final `BmaModel` struct.
@@ -21,7 +21,7 @@ pub(crate) struct JsonBmaModel {
     pub layout: Option<JsonLayout>,
 }
 
-/// Structure to deserialize JSON info about the main model component, with several
+/// Structure to deserialize JSON info about the main model network, with several
 /// `variables` that have various `relationships`.
 ///
 /// Variables and relationships are required. The name is optional, and default
@@ -57,7 +57,7 @@ pub(crate) struct JsonVariable {
 
 /// Structure to deserialize JSON info about an individual relationship.
 ///
-/// All relationships must have its own ID, type, and IDs of both interacting
+/// All relationships must have their own ID, type, and IDs of both interacting
 /// variables.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonRelationship {
@@ -128,7 +128,7 @@ pub(crate) struct JsonLayoutVariable {
 
 /// Structure to deserialize JSON info about layout container.
 ///
-/// All details must be provided, except for the name. If name is missing,
+/// All details must be provided, except for the name. If the name is missing,
 /// we set it to an empty string.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct JsonContainer {
@@ -145,7 +145,7 @@ pub(crate) struct JsonContainer {
 }
 
 impl JsonBmaModel {
-    /// Collects set of all variables in the model, creating ID-name mapping.
+    /// Collects a set of all variables in the model, creating ID-name mapping.
     /// First collects all variables from the model. For those that have empty
     /// names, it tries to find a name in the layout.
     pub fn collect_all_variables(&self) -> HashMap<u32, String> {
@@ -168,7 +168,7 @@ impl JsonBmaModel {
         model_vars
     }
 
-    /// Collects set of all named variables from the layout, creating ID-name mapping.
+    /// Collects a set of all named variables from the layout, creating ID-name mapping.
     /// Variables without names (i.e., with empty name string) are ignored.
     pub fn collect_named_layout_variables(&self) -> HashMap<u32, String> {
         match &self.layout {
