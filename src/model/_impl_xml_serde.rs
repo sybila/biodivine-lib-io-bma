@@ -1,5 +1,5 @@
+use crate::serde::xml::XmlVariable;
 use crate::serde::xml_model::*;
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
     BmaVariable,
@@ -18,40 +18,6 @@ impl BmaModel {
 }
 
 impl BmaModel {
-    /// Convert an XmlVariable instance into a proper BmaVariable.
-    ///
-    /// If the update function has an incorrect format, we return an error.
-    fn convert_xml_variable(
-        xml_var: XmlVariable,
-        xml_model: &XmlBmaModel,
-        all_vars: &HashMap<u32, String>,
-    ) -> Result<BmaVariable, String> {
-        // Get a set of regulators for the variable that we'll pass to update fn parser
-        let regulators = xml_model.get_regulators(xml_var.id.into());
-        let named_regulators = all_vars
-            .clone()
-            .into_iter()
-            .filter(|(id, _)| regulators.contains(id))
-            .collect::<HashMap<u32, String>>();
-
-        // Try to parse the update function from the JSON variable
-        let formula = if !xml_var.formula.is_empty() {
-            Some(BmaFnUpdate::parse_from_str(
-                &xml_var.formula,
-                &named_regulators,
-            )?)
-        } else {
-            None
-        };
-
-        Ok(BmaVariable {
-            id: xml_var.id.into(),
-            name: Some(xml_var.name),
-            range: (xml_var.range_from.into(), xml_var.range_to.into()),
-            formula,
-        })
-    }
-
     /// Convert XmlRelationship instance into a proper BmaRelationship.
     fn convert_xml_relationship(xml_rel: XmlRelationship) -> BmaRelationship {
         BmaRelationship {
@@ -105,9 +71,6 @@ impl TryFrom<XmlBmaModel> for BmaModel {
     ///
     /// Returns error if the update function has an incorrect format.
     fn try_from(xml_model: XmlBmaModel) -> Result<BmaModel, String> {
-        // Precompute ID-name mapping of all variables
-        let all_variables: HashMap<u32, String> = xml_model.collect_all_variables();
-
         // Convert the network
         let model = BmaNetwork {
             variables: xml_model
@@ -115,8 +78,9 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .variable
                 .clone()
                 .into_iter()
-                .map(|var| Self::convert_xml_variable(var.clone(), &xml_model, &all_variables))
-                .collect::<Result<Vec<BmaVariable>, String>>()?,
+                .map(|var| BmaVariable::try_from((&xml_model, &var)))
+                .collect::<Result<Vec<BmaVariable>, anyhow::Error>>()
+                .map_err(|e| e.to_string())?,
             relationships: xml_model
                 .relationships
                 .relationship

@@ -1,6 +1,6 @@
 use crate::RelationshipType;
-use crate::VariableType;
 use crate::serde::quote_num::QuoteNum;
+use crate::serde::xml::XmlVariable;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -96,45 +96,6 @@ pub(crate) struct XmlVariables {
     pub variable: Vec<XmlVariable>,
 }
 
-/// Structure to deserialize XML info about variable. BMA XML format mixes
-/// together functional and layout information for variables (unlike JSON),
-/// which makes this a bit messsy.
-///
-/// All variables must have ID, range of possible values, and an update formula.
-/// The formula can be empty string. If name is missing, we set it to an empty string.
-/// If the type is missing, we set it to default value.
-///
-/// All other layout details are optional. If not provided, we set them to None here,
-/// and some are set to default values later as needed.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlVariable {
-    #[serde(rename = "@Id", alias = "Id")]
-    pub id: QuoteNum,
-    #[serde(default, rename = "@Name", alias = "Name")]
-    pub name: String,
-    #[serde(rename = "RangeFrom")]
-    pub range_from: QuoteNum,
-    #[serde(rename = "RangeTo")]
-    pub range_to: QuoteNum,
-    #[serde(rename = "Formula", alias = "Function")]
-    pub formula: String,
-
-    #[serde(default, rename = "Type")]
-    pub r#type: VariableType,
-    #[serde(rename = "PositionX")]
-    pub position_x: Option<f64>,
-    #[serde(rename = "PositionY")]
-    pub position_y: Option<f64>,
-    #[serde(rename = "Angle")]
-    pub angle: Option<f64>,
-    #[serde(default, rename = "ContainerId")]
-    pub container_id: Option<QuoteNum>,
-    #[serde(default, rename = "CellX")]
-    pub cell_x: Option<QuoteNum>,
-    #[serde(default, rename = "CellY")]
-    pub cell_y: Option<QuoteNum>,
-}
-
 /// Structure to deserialize XML info about relationships list. Just a wrapper
 /// for actual relationships list needed due to the weird xml structure...
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -171,15 +132,5 @@ impl XmlBmaModel {
             .iter()
             .map(|var| (var.id.into(), var.name.clone()))
             .collect::<HashMap<u32, String>>()
-    }
-
-    /// Collects set of variables that regulate given variable.
-    pub fn get_regulators(&self, variable_id: u32) -> Vec<u32> {
-        self.relationships
-            .relationship
-            .iter()
-            .filter(|rel| u32::from(rel.to_variable_id) == variable_id)
-            .map(|rel| rel.from_variable_id.into())
-            .collect()
     }
 }
