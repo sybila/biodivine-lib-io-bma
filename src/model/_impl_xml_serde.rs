@@ -18,16 +18,6 @@ impl BmaModel {
 }
 
 impl BmaModel {
-    /// Convert XmlRelationship instance into a proper BmaRelationship.
-    fn convert_xml_relationship(xml_rel: XmlRelationship) -> BmaRelationship {
-        BmaRelationship {
-            id: xml_rel.id.into(),
-            from_variable: xml_rel.from_variable_id.into(),
-            to_variable: xml_rel.to_variable_id.into(),
-            r#type: xml_rel.r#type,
-        }
-    }
-
     /// Convert XmlVariable instance into a BmaLayoutVariable.
     fn convert_xml_layout_var(xml_var: XmlVariable) -> BmaLayoutVariable {
         let cell = if let (Some(x), Some(y)) = (xml_var.cell_x, xml_var.cell_y) {
@@ -85,7 +75,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .relationships
                 .relationship
                 .into_iter()
-                .map(Self::convert_xml_relationship)
+                .map(BmaRelationship::from)
                 .collect(),
             name: Some(xml_model.name),
         };

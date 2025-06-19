@@ -1,6 +1,5 @@
-use crate::RelationshipType;
 use crate::serde::quote_num::QuoteNum;
-use crate::serde::xml::XmlVariable;
+use crate::serde::xml::{XmlRelationship, XmlVariable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -102,26 +101,6 @@ pub(crate) struct XmlVariables {
 pub(crate) struct XmlRelationships {
     #[serde(default, rename = "Relationship")]
     pub relationship: Vec<XmlRelationship>,
-}
-
-/// Structure to deserialize JSON info about an individual relationship.
-///
-/// All relationships must have its own ID, type, and IDs of both interacting
-/// variables.
-///
-/// The container ID is optional, and is set to None if not provided.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlRelationship {
-    #[serde(rename = "@Id", alias = "Id")]
-    pub id: QuoteNum,
-    #[serde(rename = "FromVariableId")]
-    pub from_variable_id: QuoteNum,
-    #[serde(rename = "ToVariableId")]
-    pub to_variable_id: QuoteNum,
-    #[serde(rename = "Type")]
-    pub r#type: RelationshipType,
-    #[serde(default, rename = "ContainerId")]
-    pub container_id: Option<QuoteNum>,
 }
 
 impl XmlBmaModel {
