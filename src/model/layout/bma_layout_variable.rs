@@ -93,13 +93,13 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
             reporter.report(BmaLayoutVariableError::VariableNotFound { id: self.id });
         }
 
-        if let Some(container_id) = self.container_id {
-            if context.layout.find_container(container_id).is_none() {
-                reporter.report(BmaLayoutVariableError::ContainerNotFound {
-                    id: self.id,
-                    container_id,
-                });
-            }
+        if let Some(container_id) = self.container_id
+            && context.layout.find_container(container_id).is_none()
+        {
+            reporter.report(BmaLayoutVariableError::ContainerNotFound {
+                id: self.id,
+                container_id,
+            });
         }
 
         // Ensure the item has a unique ID.

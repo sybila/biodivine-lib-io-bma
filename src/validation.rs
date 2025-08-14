@@ -14,7 +14,7 @@ pub trait ErrorReporter<E: StdError>: Sized {
 
     /// Wrap a mutable reference to this [`ErrorReporter`] into a [`ReporterWrapper`]
     /// which automatically performs type conversions from `E2`.
-    fn wrap<E2: StdError + Into<E>>(&mut self) -> ReporterWrapper<E2, E, Self> {
+    fn wrap<E2: StdError + Into<E>>(&mut self) -> ReporterWrapper<'_, E2, E, Self> {
         ReporterWrapper {
             inner: self,
             _e1: PhantomData,
