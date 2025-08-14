@@ -20,7 +20,7 @@ pub struct BmaNetwork {
 }
 
 impl BmaNetwork {
-    /// Create a new [`BmaNetwork`] from the provided serde.
+    /// Create a new [`BmaNetwork`] from the provided data.
     pub fn new(variables: Vec<BmaVariable>, relationships: Vec<BmaRelationship>) -> Self {
         BmaNetwork {
             name: None,

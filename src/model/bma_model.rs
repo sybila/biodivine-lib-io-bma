@@ -12,7 +12,7 @@ use thiserror::Error;
 /// We distinguish between three parts tracked in the BMA format:
 /// - the functional part with all the variables and relationships ([`BmaNetwork`])
 /// - the optional layout with positions of variables and containers ([`BmaLayout`])
-/// - the additional optional serde like a version and so on (`metadata`)
+/// - the additional optional data like a version and so on (`metadata`)
 ///
 /// `BmaModel` instances can be created from JSON or XML versions of the BMA format.
 /// You can use `from_json_str`, `from_xml_str` to create a model from a string.
@@ -21,7 +21,7 @@ use thiserror::Error;
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct BmaModel {
-    /// Main serde with variables and relationships.
+    /// Main data with variables and relationships.
     pub network: BmaNetwork,
     /// Layout information (variable positions, containers, ...).
     /// Layout can be empty, but it is recommended to provide it.
