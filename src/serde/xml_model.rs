@@ -1,5 +1,4 @@
-use crate::serde::quote_num::QuoteNum;
-use crate::serde::xml::{XmlContainer, XmlRelationship, XmlVariable};
+use crate::serde::xml::{XmlContainer, XmlLayout, XmlRelationship, XmlVariable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -39,26 +38,6 @@ pub(crate) struct XmlBmaModel {
     pub created_date: Option<String>,
     #[serde(rename = "ModifiedDate")]
     pub modified_date: Option<String>,
-}
-
-/// Structure to deserialize XML info about layout. This includes only a few
-/// metadata items like zoom level and pan position. Info about variables and
-/// containers is stored directly in model in BMA XML (as weird as it is...).
-///
-/// The zoom and pan values can be missing in the XML. If not provided, default
-/// values are used.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlLayout {
-    #[serde(rename = "Columns")]
-    pub columns: QuoteNum,
-    #[serde(rename = "Rows")]
-    pub rows: QuoteNum,
-    #[serde(default, rename = "ZoomLevel")]
-    pub zoom_level: f64,
-    #[serde(default, rename = "PanX")]
-    pub pan_x: f64,
-    #[serde(default, rename = "PanY")]
-    pub pan_y: f64,
 }
 
 /// Structure to deserialize XML info about container list. Just a wrapper

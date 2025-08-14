@@ -4,7 +4,7 @@ use std::str::FromStr;
 /// In rare cases, the XML and JSON representations can contain numbers inside quotes (e.g. `"32"`
 /// instead of `32`). To fix this, we try to parse all numbers using this special struct
 /// with a dedicated serialization methods.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]
 pub(crate) struct QuoteNum(u32);
 
 impl From<u32> for QuoteNum {
