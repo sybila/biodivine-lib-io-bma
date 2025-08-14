@@ -1,5 +1,5 @@
 use crate::serde::quote_num::QuoteNum;
-use crate::serde::xml::{XmlRelationship, XmlVariable};
+use crate::serde::xml::{XmlContainer, XmlRelationship, XmlVariable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -67,24 +67,6 @@ pub(crate) struct XmlLayout {
 pub(crate) struct XmlContainers {
     #[serde(default, rename = "Container")]
     pub container: Vec<XmlContainer>,
-}
-
-/// Structure to deserialize XML info about container.
-///
-/// All details must be provided, except for the name. If name is missing,
-/// we set it to an empty string.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlContainer {
-    #[serde(rename = "@Id", alias = "Id")]
-    pub id: QuoteNum,
-    #[serde(default, rename = "@Name", alias = "Name")]
-    pub name: String,
-    #[serde(rename = "PositionX")]
-    pub position_x: f64,
-    #[serde(rename = "PositionY")]
-    pub position_y: f64,
-    #[serde(rename = "Size")]
-    pub size: QuoteNum,
 }
 
 /// Structure to deserialize XML info about variables list. Just a wrapper

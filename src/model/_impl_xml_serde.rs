@@ -1,9 +1,6 @@
 use crate::serde::xml::XmlVariable;
 use crate::serde::xml_model::*;
-use crate::{
-    BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
-    BmaVariable,
-};
+use crate::{BmaLayout, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship, BmaVariable};
 use num_rational::Rational64;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
@@ -37,19 +34,6 @@ impl BmaModel {
             cell,
             angle: Rational64::from_f64(xml_var.angle.unwrap_or_default()).unwrap(),
             description: None,
-        }
-    }
-
-    /// Convert an XmlContainer instance into a BmaContainer.
-    fn convert_xml_container(xml_container: XmlContainer) -> BmaLayoutContainer {
-        BmaLayoutContainer {
-            id: xml_container.id.into(),
-            name: Some(xml_container.name),
-            size: xml_container.size.into(),
-            position: (
-                Rational64::from_f64(xml_container.position_x).unwrap(),
-                Rational64::from_f64(xml_container.position_y).unwrap(),
-            ),
         }
     }
 }
@@ -103,7 +87,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 })
                 .container
                 .into_iter()
-                .map(Self::convert_xml_container)
+                .map(|x| x.into())
                 .collect(),
             description: Some(xml_model.description),
             zoom_level,
