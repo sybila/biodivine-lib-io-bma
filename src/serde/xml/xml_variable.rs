@@ -1,9 +1,8 @@
 use crate::serde::quote_num::QuoteNum;
 use crate::serde::xml_model::XmlBmaModel;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use crate::utils::take_if_not_blank;
+use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
 use crate::{BmaLayoutVariable, BmaVariable, VariableType};
-use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize XML info about a variable. BMA XML format mixes
@@ -32,12 +31,12 @@ pub(crate) struct XmlVariable {
 
     #[serde(default, rename = "Type")]
     pub r#type: VariableType,
-    #[serde(rename = "PositionX")]
-    pub position_x: Option<f64>,
-    #[serde(rename = "PositionY")]
-    pub position_y: Option<f64>,
-    #[serde(rename = "Angle")]
-    pub angle: Option<f64>,
+    #[serde(default, rename = "PositionX")]
+    pub position_x: f64,
+    #[serde(default, rename = "PositionY")]
+    pub position_y: f64,
+    #[serde(default, rename = "Angle")]
+    pub angle: f64,
     #[serde(default, rename = "ContainerId")]
     pub container_id: Option<QuoteNum>,
     #[serde(default, rename = "CellX")]
@@ -55,9 +54,9 @@ impl From<BmaVariable> for XmlVariable {
             range_to: value.range.1.into(),
             formula: value.formula.map(|it| it.to_string()).unwrap_or_default(),
             r#type: Default::default(),
-            position_x: None,
-            position_y: None,
-            angle: None,
+            position_x: 0.0,
+            position_y: 0.0,
+            angle: 0.0,
             container_id: None,
             cell_x: None,
             cell_y: None,
@@ -70,9 +69,9 @@ impl From<(BmaVariable, BmaLayoutVariable)> for XmlVariable {
         let (variable, layout) = value;
         let mut variable = XmlVariable::from(variable);
         variable.r#type = layout.r#type;
-        variable.position_x = layout.position.0.to_f64();
-        variable.position_y = layout.position.1.to_f64();
-        variable.angle = layout.angle.to_f64();
+        variable.position_x = f64_or_default(layout.position.0);
+        variable.position_y = f64_or_default(layout.position.1);
+        variable.angle = f64_or_default(layout.angle);
         variable.container_id = layout.container_id.map(|it| it.into());
         if let Some((x, y)) = layout.cell {
             variable.cell_x = Some(x.into());
@@ -105,5 +104,28 @@ impl TryFrom<(&XmlBmaModel, &XmlVariable)> for BmaVariable {
             range: (variable.range_from.into(), variable.range_to.into()),
             formula,
         })
+    }
+}
+
+impl From<XmlVariable> for BmaLayoutVariable {
+    fn from(value: XmlVariable) -> Self {
+        // In XML, most data about variable layout is stored directly with variables.
+        let cell = match (value.cell_x, value.cell_y) {
+            (Some(x), Some(y)) => Some((x.into(), y.into())),
+            _ => None,
+        };
+        BmaLayoutVariable {
+            id: value.id.into(),
+            container_id: value.container_id.map(|it| it.into()),
+            r#type: Default::default(),
+            name: take_if_not_blank(value.name.as_str()),
+            description: None,
+            position: (
+                rational_or_default(value.position_x),
+                rational_or_default(value.position_y),
+            ),
+            angle: rational_or_default(value.angle),
+            cell,
+        }
     }
 }

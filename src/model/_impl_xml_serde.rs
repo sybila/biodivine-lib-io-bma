@@ -1,6 +1,5 @@
-use crate::serde::xml::XmlVariable;
 use crate::serde::xml_model::*;
-use crate::{BmaLayout, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship, BmaVariable};
+use crate::{BmaLayout, BmaModel, BmaNetwork, BmaRelationship, BmaVariable};
 use num_rational::Rational64;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
@@ -11,30 +10,6 @@ impl BmaModel {
     pub fn from_xml_str(xml_str: &str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
         BmaModel::try_from(xml_model)
-    }
-}
-
-impl BmaModel {
-    /// Convert XmlVariable instance into a BmaLayoutVariable.
-    fn convert_xml_layout_var(xml_var: XmlVariable) -> BmaLayoutVariable {
-        let cell = if let (Some(x), Some(y)) = (xml_var.cell_x, xml_var.cell_y) {
-            Some((u32::from(x), u32::from(y)))
-        } else {
-            None
-        };
-        BmaLayoutVariable {
-            id: xml_var.id.into(),
-            name: Some(xml_var.name),
-            r#type: xml_var.r#type,
-            container_id: xml_var.container_id.map(|it| it.into()),
-            position: (
-                Rational64::from_f64(xml_var.position_x.unwrap_or_default()).unwrap(),
-                Rational64::from_f64(xml_var.position_y.unwrap_or_default()).unwrap(),
-            ),
-            cell,
-            angle: Rational64::from_f64(xml_var.angle.unwrap_or_default()).unwrap(),
-            description: None,
-        }
     }
 }
 
@@ -78,7 +53,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .variables
                 .variable
                 .into_iter()
-                .map(Self::convert_xml_layout_var)
+                .map(|x| x.into())
                 .collect(),
             containers: xml_model
                 .containers
