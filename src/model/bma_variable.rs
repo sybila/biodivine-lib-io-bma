@@ -37,7 +37,7 @@ impl BmaVariable {
         Self::new(id, name, (0, 1), formula)
     }
 
-    /// Create a a new [`BmaVariable`] with the given `name` and `range`.
+    /// Create a new [`BmaVariable`] with the given `name` and `range`.
     pub fn new(
         id: u32,
         name: &str,
@@ -102,7 +102,8 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
             reporter.report(BmaVariableError::NameEmpty { id: self.id });
         }
 
-        // Ensure that the variable range is a valid, non-empty interval.
+        // Ensure that the variable range is a valid interval (start <= end).
+        // Single-value ranges are allowed.
         if self.range.0 > self.range.1 {
             reporter.report(BmaVariableError::RangeInvalid {
                 id: self.id,

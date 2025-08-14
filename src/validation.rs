@@ -87,7 +87,7 @@ pub trait ContextualValidation<Context> {
 /// traits like `From` and `Into`, validation can typically produce more than one error.
 ///
 /// If you need to validate objects whose behavior (or validity) depends on some additional
-/// serde, consider implementing [ContextualValidation].
+/// context, consider implementing [ContextualValidation].
 pub trait Validation {
     type Error: StdError;
 
