@@ -1,17 +1,17 @@
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use crate::utils::{is_blank, is_unique_id};
+use crate::utils::is_unique_id;
 use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use thiserror::Error;
 
 /// A discrete variable identified by an integer `id`. Each [BmaVariable] consists
-/// of a `name` (optional), its value `range` (inclusive), and an [BmaFnUpdate] function
+/// of a `name` (can be blank), its value `range` (inclusive), and an [BmaFnUpdate] function
 /// formula (optional) which describes its evolution in time.
 ///
 /// Expected invariants (checked during validation):
 ///  - Variable `id` must be unique within the variables of the enclosing [crate::BmaNetwork].
-///  - Variable `name` cannot be empty but is not required to be unique.
+///  - Variable `name` can be blank and is not required to be unique.
 ///  - Variable `range` must be a valid range. However, a range that only contains a single
 ///    value is allowed, in which case the variable is considered constant.
 ///
@@ -26,7 +26,7 @@ use thiserror::Error;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BmaVariable {
     pub id: u32,
-    pub name: Option<String>,
+    pub name: String,
     pub range: (u32, u32),
     pub formula: Option<BmaFnUpdate>,
 }
@@ -46,7 +46,7 @@ impl BmaVariable {
     ) -> BmaVariable {
         BmaVariable {
             id,
-            name: Some(name.to_string()),
+            name: name.to_string(),
             range,
             formula,
         }
@@ -61,13 +61,6 @@ impl BmaVariable {
     pub fn max_level(&self) -> u32 {
         self.range.1
     }
-
-    /// Clone the variable name or create a default alternative (`v_ID`).
-    pub fn name_or_default(&self) -> String {
-        self.name
-            .clone()
-            .unwrap_or_else(|| format!("v_{}", self.id))
-    }
 }
 
 /// The default [BmaVariable] is Boolean, with no name or formula.
@@ -75,7 +68,7 @@ impl Default for BmaVariable {
     fn default() -> Self {
         BmaVariable {
             id: 0,
-            name: None,
+            name: String::default(),
             range: (0, 1),
             formula: None,
         }
@@ -89,19 +82,12 @@ pub enum BmaVariableError {
     IdNotUnique { id: u32 },
     #[error("(Variable id: `{id}`) Range `{range:?}` is invalid; must be an interval")]
     RangeInvalid { id: u32, range: (u32, u32) },
-    #[error("(Variable id: `{id}`) Name cannot be empty; use `None` instead")]
-    NameEmpty { id: u32 },
 }
 
 impl ContextualValidation<BmaNetwork> for BmaVariable {
     type Error = BmaVariableError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaNetwork, reporter: &mut R) {
-        // Ensure that the variable name is not empty.
-        if is_blank(&self.name) {
-            reporter.report(BmaVariableError::NameEmpty { id: self.id });
-        }
-
         // Ensure that the variable range is a valid interval (start <= end).
         // Single-value ranges are allowed.
         if self.range.0 > self.range.1 {
@@ -149,15 +135,15 @@ mod tests {
     #[test]
     fn name_or_default() {
         let variable = BmaVariable {
-            name: Some("foo".to_string()),
+            name: "foo".to_string(),
             ..Default::default()
         };
-        assert_eq!(variable.name_or_default(), "foo");
+        assert_eq!(variable.name, "foo");
         let variable = BmaVariable {
             id: 3,
             ..Default::default()
         };
-        assert_eq!(variable.name_or_default(), "v_3");
+        assert_eq!(variable.name, "");
     }
 
     #[test]
@@ -195,8 +181,7 @@ mod tests {
         let variable = BmaVariable::new_boolean(0, "", None);
         let network = network_for_variable(&variable);
 
-        let issues = variable.validate(&network).unwrap_err();
-        assert_eq!(issues, vec![BmaVariableError::NameEmpty { id: 0 }]);
+        assert!(variable.validate(&network).is_ok());
     }
 
     /// Empty ranges are allowed (represents a constant variable).

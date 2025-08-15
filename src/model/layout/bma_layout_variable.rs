@@ -11,7 +11,6 @@ use thiserror::Error;
 ///  - The `id` must be unique within the layout variable IDs, and it must correspond to the
 ///    `id` of one [`crate::BmaVariable`] in the same model.
 ///  - If `container_id` is set, it must refer to an existing [`crate::BmaLayoutContainer`].
-///  - If `name` is set, it must not be empty.
 ///  - If `description` is set, it must not be empty.
 ///
 /// Note that variable `name` is also stored in [`crate::BmaVariable`]. Typically, these values
@@ -24,7 +23,7 @@ pub struct BmaLayoutVariable {
     pub id: u32,
     pub container_id: Option<u32>,
     pub r#type: VariableType,
-    pub name: Option<String>,
+    pub name: String,
     pub description: Option<String>,
     pub position: (Rational64, Rational64),
     pub angle: Rational64,
@@ -40,16 +39,9 @@ impl BmaLayoutVariable {
         BmaLayoutVariable {
             id,
             container_id,
-            name: Some(name.to_string()),
+            name: name.to_string(),
             ..Default::default()
         }
-    }
-
-    /// Clone the variable name or create a default alternative (`v_ID`).
-    pub fn name_or_default(&self) -> String {
-        self.name
-            .clone()
-            .unwrap_or_else(|| format!("v_{}", self.id))
     }
 }
 
@@ -70,8 +62,6 @@ pub enum BmaLayoutVariableError {
     VariableNotFound { id: u32 },
     #[error("(Layout var.: `{id}`) Container not found in `BmaLayout` with id `{container_id}`")]
     ContainerNotFound { id: u32, container_id: u32 },
-    #[error("(Layout var.: `{id}`) Name cannot be empty; use `None` instead")]
-    NameEmpty { id: u32 },
     #[error("(Layout var.: `{id}`) Description cannot be empty; use `None` instead")]
     DescriptionEmpty { id: u32 },
 }
@@ -80,10 +70,6 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
     type Error = BmaLayoutVariableError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaModel, reporter: &mut R) {
-        // Ensure serde fields are not empty.
-        if is_blank(&self.name) {
-            reporter.report(BmaLayoutVariableError::NameEmpty { id: self.id });
-        }
         if is_blank(&self.description) {
             reporter.report(BmaLayoutVariableError::DescriptionEmpty { id: self.id });
         }
@@ -147,12 +133,11 @@ mod tests {
     #[test]
     fn blank_name() {
         let l_var = BmaLayoutVariable {
-            name: Some("".to_string()),
+            name: String::default(),
             ..Default::default()
         };
         let model = make_model_for_variable(&l_var);
-        let issues = l_var.validate(&model).unwrap_err();
-        assert_eq!(issues, vec![BmaLayoutVariableError::NameEmpty { id: 0 }]);
+        assert!(l_var.validate(&model).is_ok());
     }
 
     #[test]

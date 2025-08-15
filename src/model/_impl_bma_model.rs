@@ -84,7 +84,7 @@ impl BmaModel {
                 };
                 let var = BmaVariable {
                     id: var_id.to_index() as u32,
-                    name: Some(bn.get_variable_name(var_id).clone()),
+                    name: bn.get_variable_name(var_id).clone(),
                     range: (0, 1),
                     formula,
                 };
@@ -190,12 +190,12 @@ mod tests {
         let var_a_bma = &bma_model.network.variables[0];
         let var_b_bma = &bma_model.network.variables[1];
 
-        assert_eq!(var_a_bma.name_or_default(), "A");
+        assert_eq!(var_a_bma.name, "A");
         assert!(var_a_bma.formula.is_some());
         let formula_a = var_a_bma.formula.as_ref().unwrap().to_string();
         assert_eq!(formula_a, "(var(0) * (1 - var(1)))");
 
-        assert_eq!(var_b_bma.name_or_default(), "B");
+        assert_eq!(var_b_bma.name, "B");
         assert!(var_b_bma.formula.is_some());
         let formula_b = var_b_bma.formula.as_ref().unwrap().to_string();
         assert_eq!(formula_b, "var(0)");
@@ -224,8 +224,8 @@ mod tests {
         assert_eq!(bma_model.layout.variables.len(), 2);
         let layout_var_a = &bma_model.layout.variables[0];
         let layout_var_b = &bma_model.layout.variables[1];
-        assert_eq!(layout_var_a.name_or_default(), "A");
-        assert_eq!(layout_var_b.name_or_default(), "B");
+        assert_eq!(layout_var_a.name, "A");
+        assert_eq!(layout_var_b.name, "B");
 
         // Verify that there is a default container
         assert_eq!(bma_model.layout.containers.len(), 1);

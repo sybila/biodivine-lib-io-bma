@@ -9,14 +9,10 @@ impl BmaModel {
     /// Generate a canonical name for a BMA variable by combining its ID and name.
     /// This canonical name will be used in a BooleanNetwork.
     fn canonical_var_name(var: &BmaVariable) -> String {
-        if let Some(name) = var.name.as_ref() {
-            // Regex that matches non-alphanumeric and non-underscore characters
-            let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
-            let sanitized_name = re.replace_all(name, "");
-            format!("v_{}_{}", var.id, sanitized_name)
-        } else {
-            format!("v_{}", var.id)
-        }
+        // Regex that matches non-alphanumeric and non-underscore characters
+        let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
+        let sanitized_name = re.replace_all(var.name.as_str(), "");
+        format!("v_{}_{}", var.id, sanitized_name)
     }
 
     /// Extract a regulatory graph from this BMA model.

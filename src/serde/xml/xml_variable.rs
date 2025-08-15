@@ -49,7 +49,7 @@ impl From<BmaVariable> for XmlVariable {
     fn from(value: BmaVariable) -> Self {
         XmlVariable {
             id: value.id.into(),
-            name: value.name.unwrap_or_default(),
+            name: value.name.clone(),
             range_from: value.range.0.into(),
             range_to: value.range.1.into(),
             formula: value.formula.map(|it| it.to_string()).unwrap_or_default(),
@@ -100,7 +100,7 @@ impl TryFrom<(&XmlBmaModel, &XmlVariable)> for BmaVariable {
 
         Ok(BmaVariable {
             id: variable.id.into(),
-            name: take_if_not_blank(variable.name.as_str()),
+            name: variable.name.clone(),
             range: (variable.range_from.into(), variable.range_to.into()),
             formula,
         })
@@ -118,7 +118,7 @@ impl From<XmlVariable> for BmaLayoutVariable {
             id: value.id.into(),
             container_id: value.container_id.map(|it| it.into()),
             r#type: Default::default(),
-            name: take_if_not_blank(value.name.as_str()),
+            name: value.name.clone(),
             description: None,
             position: (
                 rational_or_default(value.position_x),

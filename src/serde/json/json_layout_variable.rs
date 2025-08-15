@@ -44,7 +44,7 @@ impl From<JsonLayoutVariable> for BmaLayoutVariable {
             id: value.id.into(),
             container_id: value.container_id.map(|it| it.into()),
             r#type: value.r#type,
-            name: take_if_not_blank(value.name.as_str()),
+            name: value.name.clone(),
             description: take_if_not_blank(value.description.as_str()),
             position: (
                 rational_or_default(value.position_x),
@@ -65,7 +65,7 @@ impl From<BmaLayoutVariable> for JsonLayoutVariable {
 
         JsonLayoutVariable {
             id: value.id.into(),
-            name: value.name.unwrap_or_default(),
+            name: value.name,
             r#type: value.r#type,
             position_x: f64_or_default(value.position.0),
             position_y: f64_or_default(value.position.1),
