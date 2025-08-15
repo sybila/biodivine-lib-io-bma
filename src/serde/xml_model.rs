@@ -1,4 +1,4 @@
-use crate::serde::xml::{XmlContainer, XmlLayout, XmlRelationship, XmlVariable};
+use crate::serde::xml::{XmlContainers, XmlLayout, XmlRelationships, XmlVariables};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -38,30 +38,6 @@ pub(crate) struct XmlBmaModel {
     pub created_date: Option<String>,
     #[serde(rename = "ModifiedDate")]
     pub modified_date: Option<String>,
-}
-
-/// Structure to deserialize XML info about container list. Just a wrapper
-/// for actual containers list needed due to the weird xml structure...
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlContainers {
-    #[serde(default, rename = "Container")]
-    pub container: Vec<XmlContainer>,
-}
-
-/// Structure to deserialize XML info about variables list. Just a wrapper
-/// for actual variables list needed due to the weird xml structure...
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlVariables {
-    #[serde(default, rename = "Variable")]
-    pub variable: Vec<XmlVariable>,
-}
-
-/// Structure to deserialize XML info about relationships list. Just a wrapper
-/// for actual relationships list needed due to the weird xml structure...
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct XmlRelationships {
-    #[serde(default, rename = "Relationship")]
-    pub relationship: Vec<XmlRelationship>,
 }
 
 impl XmlBmaModel {

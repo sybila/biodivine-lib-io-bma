@@ -57,9 +57,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
                 .collect(),
             containers: xml_model
                 .containers
-                .unwrap_or(XmlContainers {
-                    container: Vec::new(),
-                })
+                .unwrap_or_default()
                 .container
                 .into_iter()
                 .map(|x| x.into())
