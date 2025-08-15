@@ -134,7 +134,7 @@ impl BmaModel {
         relationships.sort_by_key(|rel| (rel.from_variable, rel.to_variable));
 
         let model = BmaNetwork {
-            name: Some(name.to_string()),
+            name: name.to_string(),
             variables,
             relationships,
         };

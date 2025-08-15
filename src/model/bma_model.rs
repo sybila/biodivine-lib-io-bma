@@ -116,7 +116,7 @@ mod tests {
     fn complex_error_example() {
         let model = BmaModel {
             network: BmaNetwork {
-                name: Some("  ".to_string()),
+                name: String::default(),
                 variables: vec![
                     BmaVariable::new_boolean(2, "var_A", None),
                     BmaVariable::new(3, "var_A", (3, 2), None),
@@ -145,7 +145,6 @@ mod tests {
         };
 
         let expected = vec![
-            BmaModelError::Network(BmaNetworkError::NameEmpty),
             BmaModelError::Network(BmaNetworkError::Variable(BmaVariableError::RangeInvalid {
                 id: 3,
                 range: (3, 2),

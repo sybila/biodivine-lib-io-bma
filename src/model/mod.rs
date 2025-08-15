@@ -17,7 +17,7 @@ mod tests {
 
     pub fn simple_network() -> BmaNetwork {
         BmaNetwork {
-            name: Some("Some network".to_string()),
+            name: "Some network".to_string(),
             variables: vec![
                 BmaVariable::new_boolean(3, "var_B", None),
                 BmaVariable::new(0, "var_A", (1, 3), None),

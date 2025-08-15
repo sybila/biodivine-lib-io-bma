@@ -1,5 +1,5 @@
 use crate::serde::xml::{XmlContainers, XmlLayout, XmlRelationships, XmlVariables};
-use crate::utils::{clone_into_vec, take_if_not_blank};
+use crate::utils::clone_into_vec;
 use crate::{BmaLayout, BmaModel, BmaNetwork, BmaVariable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -63,7 +63,7 @@ impl From<BmaModel> for XmlBmaModel {
                 relationship: clone_into_vec(&model.network.relationships),
             },
             id: "".to_string(),
-            name: model.network.name_or_default(),
+            name: model.network.name.clone(),
             description: model.layout.description.clone().unwrap_or_default(),
             layout: Some(model.layout.clone().into()),
             containers: Some(XmlContainers {
@@ -81,7 +81,7 @@ impl TryFrom<XmlBmaModel> for BmaModel {
 
     fn try_from(value: XmlBmaModel) -> Result<Self, Self::Error> {
         let network = BmaNetwork {
-            name: take_if_not_blank(value.name.as_str()),
+            name: value.name.clone(),
             variables: value
                 .variables
                 .variable

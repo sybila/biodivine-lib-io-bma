@@ -1,5 +1,5 @@
 use crate::serde::json::{JsonBmaModel, JsonRelationship, JsonVariable};
-use crate::utils::{clone_into_vec, take_if_not_blank};
+use crate::utils::clone_into_vec;
 use crate::{BmaNetwork, BmaVariable};
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ pub(crate) struct JsonNetwork {
 impl From<BmaNetwork> for JsonNetwork {
     fn from(value: BmaNetwork) -> Self {
         JsonNetwork {
-            name: value.name.unwrap_or_default(),
+            name: value.name,
             variables: clone_into_vec(&value.variables),
             relationships: clone_into_vec(&value.relationships),
         }
@@ -41,7 +41,7 @@ impl TryFrom<(&JsonBmaModel, &JsonNetwork)> for BmaNetwork {
                 .map(|var| BmaVariable::try_from((model, var)))
                 .collect::<Result<Vec<BmaVariable>, Self::Error>>()?,
             relationships: clone_into_vec(&network.relationships),
-            name: take_if_not_blank(network.name.as_str()),
+            name: network.name.clone(),
         })
     }
 }
