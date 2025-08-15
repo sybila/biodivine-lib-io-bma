@@ -1,5 +1,5 @@
 use crate::serde::quote_num::QuoteNum;
-use crate::serde::xml_model::XmlBmaModel;
+use crate::serde::xml::XmlBmaModel;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
 use crate::{BmaLayoutVariable, BmaVariable, VariableType};

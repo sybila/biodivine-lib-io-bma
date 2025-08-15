@@ -1,4 +1,5 @@
 use crate::serde::json::JsonBmaModel;
+use crate::serde::xml::XmlBmaModel;
 use crate::{
     BmaLayout, BmaLayoutError, BmaNetwork, BmaNetworkError, ContextualValidation, ErrorReporter,
     Validation,
@@ -52,6 +53,20 @@ impl BmaModel {
         let json_model: JsonBmaModel = serde_json::from_str(json_str)?;
         let model = BmaModel::try_from(json_model)?;
         Ok(model)
+    }
+
+    /// Create a new BMA model from a model string in XML format.
+    /// Internally, we use serde_xml_rs serialization into an intermediate `XmlBmaModel` structure.
+    pub fn from_xml_str(xml_str: &str) -> Result<Self, String> {
+        let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
+        BmaModel::try_from(xml_model).map_err(|e| e.to_string())
+    }
+
+    /// Convert the `BmaModel` into a BMA compatible XML string.
+    pub fn to_xml_string(&self) -> anyhow::Result<String> {
+        let model = XmlBmaModel::from(self.clone());
+        let xml = serde_xml_rs::to_string(&model)?;
+        Ok(xml)
     }
 }
 
