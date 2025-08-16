@@ -1,4 +1,4 @@
-use crate::utils::{is_blank, is_unique_id};
+use crate::utils::is_unique_id;
 use crate::{BmaLayout, ContextualValidation, ErrorReporter};
 use num_rational::Rational64;
 use serde::{Deserialize, Serialize};
@@ -8,12 +8,11 @@ use thiserror::Error;
 ///
 /// Expected invariants (checked during validation):
 ///  - The `id` must be unique within the containers of this [`BmaLayout`].
-///  - If `name` is set, it must not be empty.
 ///
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BmaLayoutContainer {
     pub id: u32,
-    pub name: Option<String>,
+    pub name: String,
     pub size: u32,
     pub position: (Rational64, Rational64),
 }
@@ -22,7 +21,7 @@ impl Default for BmaLayoutContainer {
     fn default() -> Self {
         BmaLayoutContainer {
             id: 0,
-            name: None,
+            name: String::default(),
             size: 1,
             position: (Default::default(), Default::default()),
         }
@@ -35,7 +34,7 @@ impl BmaLayoutContainer {
     pub fn new(id: u32, name: &str) -> Self {
         BmaLayoutContainer {
             id,
-            name: Some(name.to_string()),
+            name: name.to_string(),
             ..Default::default()
         }
     }
@@ -45,19 +44,12 @@ impl BmaLayoutContainer {
 pub enum BmaLayoutContainerError {
     #[error("(Container: `{id}`) Id must be unique within `BmaLayout`")]
     IdNotUnique { id: u32 },
-    #[error("(Container: `{id}`) Name cannot be empty; use `None` instead")]
-    NameEmpty { id: u32 },
 }
 
 impl ContextualValidation<BmaLayout> for BmaLayoutContainer {
     type Error = BmaLayoutContainerError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaLayout, reporter: &mut R) {
-        // Ensure the name is not empty.
-        if is_blank(&self.name) {
-            reporter.report(BmaLayoutContainerError::NameEmpty { id: self.id });
-        }
-
         // Ensure that the container id is unique within the enclosing BmaLayout.
         let Ok(is_unique) = is_unique_id(&context.containers, self, |x| x.id) else {
             panic!("Validation called on a container that is not part of the BmaLayout")
@@ -90,12 +82,11 @@ mod tests {
     #[test]
     fn blank_name() {
         let container = BmaLayoutContainer {
-            name: Some("".to_string()),
+            name: "".to_string(),
             ..Default::default()
         };
         let layout = make_layout_for_container(&container);
-        let issues = container.validate(&layout).unwrap_err();
-        assert_eq!(issues, vec![BmaLayoutContainerError::NameEmpty { id: 0 }]);
+        assert!(container.validate(&layout).is_ok());
     }
 
     #[test]
@@ -111,7 +102,7 @@ mod tests {
     #[should_panic]
     fn missing_container() {
         let container = BmaLayoutContainer {
-            name: Some("".to_string()),
+            name: "".to_string(),
             ..Default::default()
         };
         let mut layout = make_layout_for_container(&container);

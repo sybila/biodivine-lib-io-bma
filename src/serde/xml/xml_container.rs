@@ -1,6 +1,6 @@
 use crate::BmaLayoutContainer;
 use crate::serde::quote_num::QuoteNum;
-use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
+use crate::utils::{f64_or_default, rational_or_default};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize XML info about container.
@@ -25,7 +25,7 @@ impl From<BmaLayoutContainer> for XmlContainer {
     fn from(value: BmaLayoutContainer) -> Self {
         XmlContainer {
             id: value.id.into(),
-            name: value.name.unwrap_or_default(),
+            name: value.name.clone(),
             position_x: f64_or_default(value.position.0),
             position_y: f64_or_default(value.position.1),
             size: value.size.into(),
@@ -37,7 +37,7 @@ impl From<XmlContainer> for BmaLayoutContainer {
     fn from(value: XmlContainer) -> Self {
         BmaLayoutContainer {
             id: value.id.into(),
-            name: take_if_not_blank(&value.name),
+            name: value.name.clone(),
             size: value.size.into(),
             position: (
                 rational_or_default(value.position_x),
