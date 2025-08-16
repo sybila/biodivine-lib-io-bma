@@ -59,7 +59,7 @@ impl BmaModel {
     /// Internally, we use serde_xml_rs serialization into an intermediate `XmlBmaModel` structure.
     pub fn from_xml_str(xml_str: &str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
-        BmaModel::try_from(xml_model).map_err(|e| e.to_string())
+        Ok(BmaModel::from(xml_model))
     }
 
     /// Convert the `BmaModel` into a BMA compatible XML string.

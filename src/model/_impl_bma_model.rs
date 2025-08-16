@@ -86,7 +86,7 @@ impl BmaModel {
                     id: var_id.to_index() as u32,
                     name: bn.get_variable_name(var_id).clone(),
                     range: (0, 1),
-                    formula,
+                    formula: formula.map(Ok),
                 };
                 Ok(var)
             })
@@ -192,12 +192,12 @@ mod tests {
 
         assert_eq!(var_a_bma.name, "A");
         assert!(var_a_bma.formula.is_some());
-        let formula_a = var_a_bma.formula.as_ref().unwrap().to_string();
+        let formula_a = var_a_bma.formula_string();
         assert_eq!(formula_a, "(var(0) * (1 - var(1)))");
 
         assert_eq!(var_b_bma.name, "B");
         assert!(var_b_bma.formula.is_some());
-        let formula_b = var_b_bma.formula.as_ref().unwrap().to_string();
+        let formula_b = var_b_bma.formula_string();
         assert_eq!(formula_b, "var(0)");
 
         /* === RELATIONSHIPS === */

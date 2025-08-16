@@ -1,3 +1,4 @@
+use crate::update_fn::InvalidBmaFnUpdate;
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::utils::is_unique_id;
 use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
@@ -28,7 +29,7 @@ pub struct BmaVariable {
     pub id: u32,
     pub name: String,
     pub range: (u32, u32),
-    pub formula: Option<BmaFnUpdate>,
+    pub formula: Option<Result<BmaFnUpdate, InvalidBmaFnUpdate>>,
 }
 
 impl BmaVariable {
@@ -48,7 +49,7 @@ impl BmaVariable {
             id,
             name: name.to_string(),
             range,
-            formula,
+            formula: formula.map(Ok),
         }
     }
 
@@ -60,6 +61,17 @@ impl BmaVariable {
     /// The maximum value this variable can take.
     pub fn max_level(&self) -> u32 {
         self.range.1
+    }
+
+    pub fn formula_string(&self) -> String {
+        if let Some(formula) = &self.formula {
+            match formula {
+                Ok(f) => f.to_string(),
+                Err(e) => e.input_string.clone(),
+            }
+        } else {
+            String::default()
+        }
     }
 }
 

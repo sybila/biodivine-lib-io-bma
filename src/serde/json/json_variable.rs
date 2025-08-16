@@ -1,8 +1,7 @@
 use crate::BmaVariable;
 use crate::serde::json::JsonBmaModel;
 use crate::serde::quote_num::QuoteNum;
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use crate::utils::take_if_not_blank;
+use crate::update_fn::read_fn_update;
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize JSON info about individual variable.
@@ -31,32 +30,22 @@ impl From<BmaVariable> for JsonVariable {
             name: value.name.clone(),
             range_from: value.range.0.into(),
             range_to: value.range.1.into(),
-            formula: value.formula.map(|it| it.to_string()).unwrap_or_default(),
+            formula: value.formula_string(),
         }
     }
 }
 
-impl TryFrom<(&JsonBmaModel, &JsonVariable)> for BmaVariable {
-    type Error = anyhow::Error; // TODO: Replace with type safe error.
-
-    fn try_from(value: (&JsonBmaModel, &JsonVariable)) -> Result<BmaVariable, Self::Error> {
+impl From<(&JsonBmaModel, &JsonVariable)> for BmaVariable {
+    fn from(value: (&JsonBmaModel, &JsonVariable)) -> BmaVariable {
         let (model, variable) = value;
 
         let variables = model.variable_name_map();
-        let formula = if let Some(formula) = take_if_not_blank(variable.formula.as_str()) {
-            Some(
-                BmaFnUpdate::parse_from_str(formula.as_str(), &variables)
-                    .map_err(anyhow::Error::msg)?,
-            )
-        } else {
-            None
-        };
 
-        Ok(BmaVariable {
+        BmaVariable {
             id: variable.id.into(),
             name: variable.name.clone(),
             range: (variable.range_from.into(), variable.range_to.into()),
-            formula,
-        })
+            formula: read_fn_update(variable.formula.as_str(), &variables),
+        }
     }
 }

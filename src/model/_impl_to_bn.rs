@@ -180,6 +180,7 @@ impl BmaModel {
             if let Some(bma_formula) = bma_var.formula.clone() {
                 // We have a formula, so we need to convert it to a proper update function.
                 // todo: to_update_fn is not fully finished yet
+                let bma_formula = bma_formula.map_err(|e| e.to_string())?;
                 let update_fn_formula = bma_formula.to_update_fn_boolean(
                     &max_levels,
                     &var_name_mapping,

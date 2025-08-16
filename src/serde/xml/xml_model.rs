@@ -1,6 +1,6 @@
 use crate::serde::xml::{XmlContainers, XmlLayout, XmlRelationships, XmlVariables};
 use crate::utils::clone_into_vec;
-use crate::{BmaLayout, BmaModel, BmaNetwork, BmaVariable};
+use crate::{BmaLayout, BmaModel, BmaNetwork};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -76,18 +76,16 @@ impl From<BmaModel> for XmlBmaModel {
     }
 }
 
-impl TryFrom<XmlBmaModel> for BmaModel {
-    type Error = anyhow::Error; // TODO: Replace with type safe error.
-
-    fn try_from(value: XmlBmaModel) -> Result<Self, Self::Error> {
+impl From<XmlBmaModel> for BmaModel {
+    fn from(value: XmlBmaModel) -> Self {
         let network = BmaNetwork {
             name: value.name.clone(),
             variables: value
                 .variables
                 .variable
                 .iter()
-                .map(|v| (&value, v).try_into())
-                .collect::<Result<Vec<BmaVariable>, Self::Error>>()?,
+                .map(|v| (&value, v).into())
+                .collect::<Vec<_>>(),
             relationships: clone_into_vec(&value.relationships.relationship),
         };
 
@@ -105,10 +103,10 @@ impl TryFrom<XmlBmaModel> for BmaModel {
             metadata.insert("modified_date".to_string(), modified_date.clone());
         }
 
-        Ok(BmaModel {
+        BmaModel {
             network,
             layout,
             metadata,
-        })
+        }
     }
 }

@@ -67,7 +67,7 @@ impl TryFrom<JsonBmaModel> for BmaModel {
 
     fn try_from(json_model: JsonBmaModel) -> Result<BmaModel, anyhow::Error> {
         // Convert the model
-        let model = BmaNetwork::try_from((&json_model, &json_model.network))?;
+        let model = BmaNetwork::from((&json_model, &json_model.network));
 
         // Convert the layout
         let layout = json_model
