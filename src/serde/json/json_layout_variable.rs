@@ -1,5 +1,5 @@
 use crate::serde::quote_num::QuoteNum;
-use crate::utils::{f64_or_default, rational_or_default, take_if_not_blank};
+use crate::utils::{f64_or_default, rational_or_default};
 use crate::{BmaLayoutVariable, VariableType};
 use serde::{Deserialize, Serialize};
 
@@ -45,7 +45,7 @@ impl From<JsonLayoutVariable> for BmaLayoutVariable {
             container_id: value.container_id.map(|it| it.into()),
             r#type: value.r#type,
             name: value.name.clone(),
-            description: take_if_not_blank(value.description.as_str()),
+            description: value.description.clone(),
             position: (
                 rational_or_default(value.position_x),
                 rational_or_default(value.position_y),
@@ -70,7 +70,7 @@ impl From<BmaLayoutVariable> for JsonLayoutVariable {
             position_x: f64_or_default(value.position.0),
             position_y: f64_or_default(value.position.1),
             angle: f64_or_default(value.angle),
-            description: value.description.unwrap_or_default(),
+            description: value.description.clone(),
             container_id: value.container_id.map(|it| it.into()),
             cell_x,
             cell_y,

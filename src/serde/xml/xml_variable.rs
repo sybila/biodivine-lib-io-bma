@@ -119,7 +119,7 @@ impl From<XmlVariable> for BmaLayoutVariable {
             container_id: value.container_id.map(|it| it.into()),
             r#type: Default::default(),
             name: value.name.clone(),
-            description: None,
+            description: String::default(),
             position: (
                 rational_or_default(value.position_x),
                 rational_or_default(value.position_y),

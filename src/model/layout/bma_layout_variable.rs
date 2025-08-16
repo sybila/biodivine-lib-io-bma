@@ -1,4 +1,4 @@
-use crate::utils::{is_blank, is_unique_id};
+use crate::utils::is_unique_id;
 use crate::{BmaModel, ContextualValidation, ErrorReporter};
 use num_rational::Rational64;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub struct BmaLayoutVariable {
     pub container_id: Option<u32>,
     pub r#type: VariableType,
     pub name: String,
-    pub description: Option<String>,
+    pub description: String,
     pub position: (Rational64, Rational64),
     pub angle: Rational64,
     pub cell: Option<(u32, u32)>,
@@ -62,18 +62,12 @@ pub enum BmaLayoutVariableError {
     VariableNotFound { id: u32 },
     #[error("(Layout var.: `{id}`) Container not found in `BmaLayout` with id `{container_id}`")]
     ContainerNotFound { id: u32, container_id: u32 },
-    #[error("(Layout var.: `{id}`) Description cannot be empty; use `None` instead")]
-    DescriptionEmpty { id: u32 },
 }
 
 impl ContextualValidation<BmaModel> for BmaLayoutVariable {
     type Error = BmaLayoutVariableError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaModel, reporter: &mut R) {
-        if is_blank(&self.description) {
-            reporter.report(BmaLayoutVariableError::DescriptionEmpty { id: self.id });
-        }
-
         // Ensure referenced IDs exist.
         if context.network.find_variable(self.id).is_none() {
             reporter.report(BmaLayoutVariableError::VariableNotFound { id: self.id });
@@ -143,15 +137,11 @@ mod tests {
     #[test]
     fn blank_description() {
         let l_var = BmaLayoutVariable {
-            description: Some("".to_string()),
+            description: String::default(),
             ..Default::default()
         };
         let model = make_model_for_variable(&l_var);
-        let issues = l_var.validate(&model).unwrap_err();
-        assert_eq!(
-            issues,
-            vec![BmaLayoutVariableError::DescriptionEmpty { id: 0 }]
-        );
+        assert!(l_var.validate(&model).is_ok());
     }
 
     #[test]
