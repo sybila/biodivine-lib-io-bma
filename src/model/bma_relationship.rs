@@ -114,11 +114,12 @@ pub enum BmaRelationshipError {
 }
 
 /// The type of [`BmaRelationship`] between two variables in a [`BmaNetwork`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum RelationshipType {
     #[default]
     Activator,
     Inhibitor,
+    Unknown(String),
 }
 
 /*
@@ -134,6 +135,7 @@ impl Serialize for RelationshipType {
         match self {
             RelationshipType::Activator => serializer.serialize_str("Activator"),
             RelationshipType::Inhibitor => serializer.serialize_str("Inhibitor"),
+            RelationshipType::Unknown(s) => serializer.serialize_str(s),
         }
     }
 }
@@ -147,19 +149,19 @@ impl<'de> Deserialize<'de> for RelationshipType {
         match s.to_lowercase().as_str() {
             "activator" => Ok(RelationshipType::Activator),
             "inhibitor" => Ok(RelationshipType::Inhibitor),
-            _ => {
-                let message = format!("Unknown relationship type: `{}`", s);
-                Err(serde::de::Error::custom(message))
-            }
+            _ => Ok(RelationshipType::Unknown(s)),
         }
     }
 }
 
-impl From<RelationshipType> for Monotonicity {
-    fn from(val: RelationshipType) -> Self {
-        match val {
-            RelationshipType::Activator => Monotonicity::Activation,
-            RelationshipType::Inhibitor => Monotonicity::Inhibition,
+impl TryFrom<RelationshipType> for Monotonicity {
+    type Error = ();
+
+    fn try_from(value: RelationshipType) -> Result<Self, Self::Error> {
+        match value {
+            RelationshipType::Activator => Ok(Monotonicity::Activation),
+            RelationshipType::Inhibitor => Ok(Monotonicity::Inhibition),
+            RelationshipType::Unknown(_value) => Err(()),
         }
     }
 }
@@ -197,19 +199,19 @@ mod tests {
     #[test]
     fn relationship_conversions() {
         assert_eq!(
-            Monotonicity::from(RelationshipType::Activator),
+            Monotonicity::try_from(RelationshipType::Activator).unwrap(),
             Monotonicity::Activation
         );
         assert_eq!(
-            Monotonicity::from(RelationshipType::Inhibitor),
+            Monotonicity::try_from(RelationshipType::Inhibitor).unwrap(),
             Monotonicity::Inhibition
         );
         assert_eq!(
-            RelationshipType::from(Monotonicity::Activation),
+            RelationshipType::try_from(Monotonicity::Activation).unwrap(),
             RelationshipType::Activator
         );
         assert_eq!(
-            RelationshipType::from(Monotonicity::Inhibition),
+            RelationshipType::try_from(Monotonicity::Inhibition).unwrap(),
             RelationshipType::Inhibitor
         );
     }

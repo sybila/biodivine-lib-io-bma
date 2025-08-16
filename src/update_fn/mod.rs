@@ -31,8 +31,7 @@ pub fn read_fn_update(
 ) -> Option<Result<BmaFnUpdate, InvalidBmaFnUpdate>> {
     let value = take_if_not_blank(input)?;
     Some(
-        BmaFnUpdate::parse_from_str(value.as_str(), variables).map_err(|e| InvalidBmaFnUpdate {
-            input_string: e,
-        }),
+        BmaFnUpdate::parse_from_str(value.as_str(), variables)
+            .map_err(|e| InvalidBmaFnUpdate { input_string: e }),
     )
 }
