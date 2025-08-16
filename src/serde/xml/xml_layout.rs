@@ -58,7 +58,7 @@ impl From<&XmlBmaModel> for BmaLayout {
         BmaLayout {
             variables: clone_into_vec(&value.variables.variable),
             containers: clone_into_vec(&value.containers.clone().unwrap_or_default().container),
-            description: Some(value.description.clone()),
+            description: value.description.clone(),
             zoom_level,
             pan,
         }

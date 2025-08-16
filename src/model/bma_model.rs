@@ -137,7 +137,7 @@ mod tests {
                     BmaLayoutContainer::new(4, "comp1"),
                     BmaLayoutContainer::new(4, "comp2"),
                 ],
-                description: Some("Lorem ipsum".to_string()),
+                description: "Lorem ipsum".to_string(),
                 zoom_level: Some(Rational64::new(10, 3)),
                 pan: None,
             },

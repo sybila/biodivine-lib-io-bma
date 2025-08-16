@@ -37,7 +37,7 @@ mod tests {
                 BmaLayoutVariable::new(3, "l_var_B", Some(13)),
             ],
             containers: vec![BmaLayoutContainer::new(13, "Test container")],
-            description: Some("Lorem ipsum".to_string()),
+            description: "Lorem ipsum".to_string(),
             zoom_level: Some(Rational64::new(1, 3)),
             pan: Some((Rational64::from(3), Rational64::from(10))),
         }

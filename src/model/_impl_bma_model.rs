@@ -156,7 +156,7 @@ impl BmaModel {
         let layout = BmaLayout {
             variables: layout_vars,
             containers: vec![container],
-            description: None,
+            description: String::default(),
             zoom_level: None,
             pan: None,
         };

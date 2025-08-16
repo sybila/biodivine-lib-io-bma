@@ -1,14 +1,6 @@
 use num_rational::Rational64;
 use num_traits::{FromPrimitive, ToPrimitive};
 
-/// A helper method to check that `Option<String>` value is blank.
-pub fn is_blank(value: &Option<String>) -> bool {
-    let Some(value) = value else {
-        return false;
-    };
-    value.trim().is_empty()
-}
-
 /// Make a trimmed copy of the provided `String`.
 pub fn take_if_not_blank(value: &str) -> Option<String> {
     let trimmed = value.trim();

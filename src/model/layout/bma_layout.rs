@@ -1,4 +1,3 @@
-use crate::utils::is_blank;
 use crate::{
     BmaLayoutContainer, BmaLayoutContainerError, BmaLayoutVariable, BmaLayoutVariableError,
     BmaModel, ContextualValidation, ErrorReporter,
@@ -17,7 +16,7 @@ use thiserror::Error;
 pub struct BmaLayout {
     pub variables: Vec<BmaLayoutVariable>,
     pub containers: Vec<BmaLayoutContainer>,
-    pub description: Option<String>,
+    pub description: String,
     pub zoom_level: Option<Rational64>,
     pub pan: Option<(Rational64, Rational64)>,
 }
@@ -37,8 +36,6 @@ impl BmaLayout {
 /// Possible validation errors for [`BmaLayout`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaLayoutError {
-    #[error("Description of the `BmaLayout` cannot be empty; use `None` instead")]
-    DescriptionEmpty,
     #[error(transparent)]
     Variable(#[from] BmaLayoutVariableError),
     #[error(transparent)]
@@ -49,10 +46,6 @@ impl ContextualValidation<BmaModel> for BmaLayout {
     type Error = BmaLayoutError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaModel, reporter: &mut R) {
-        if is_blank(&self.description) {
-            reporter.report(BmaLayoutError::DescriptionEmpty);
-        }
-
         for var in &self.variables {
             var.validate_all(context, &mut reporter.wrap());
         }
@@ -66,7 +59,7 @@ impl ContextualValidation<BmaModel> for BmaLayout {
 #[cfg(test)]
 mod tests {
     use crate::model::tests::{simple_layout, simple_network};
-    use crate::{BmaLayout, BmaLayoutError, BmaModel, BmaNetwork, ContextualValidation};
+    use crate::{BmaLayout, BmaModel, BmaNetwork, ContextualValidation};
 
     #[test]
     fn default_layout_is_valid() {
@@ -94,7 +87,7 @@ mod tests {
     #[test]
     fn description_empty() {
         let layout = BmaLayout {
-            description: Some("".to_string()),
+            description: String::default(),
             ..BmaLayout::default()
         };
         let model = BmaModel {
@@ -102,7 +95,6 @@ mod tests {
             layout: layout.clone(),
             metadata: Default::default(),
         };
-        let issues = layout.validate(&model).unwrap_err();
-        assert_eq!(issues, vec![BmaLayoutError::DescriptionEmpty]);
+        assert!(layout.validate(&model).is_ok());
     }
 }

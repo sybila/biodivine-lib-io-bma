@@ -1,6 +1,6 @@
 use crate::BmaLayout;
 use crate::serde::json::{JsonLayoutContainer, JsonLayoutVariable};
-use crate::utils::{clone_into_vec, take_if_not_blank};
+use crate::utils::clone_into_vec;
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize JSON info about layout, which contains variables,
@@ -23,7 +23,7 @@ impl From<JsonLayout> for BmaLayout {
         BmaLayout {
             variables: clone_into_vec(&value.variables),
             containers: clone_into_vec(&value.containers),
-            description: take_if_not_blank(value.description.as_str()),
+            description: value.description,
             zoom_level: None,
             pan: None,
         }
@@ -35,7 +35,7 @@ impl From<BmaLayout> for JsonLayout {
         JsonLayout {
             variables: clone_into_vec(&value.variables),
             containers: clone_into_vec(&value.containers),
-            description: value.description.unwrap_or_default(),
+            description: value.description,
         }
     }
 }

@@ -64,7 +64,7 @@ impl From<BmaModel> for XmlBmaModel {
             },
             id: "".to_string(),
             name: model.network.name.clone(),
-            description: model.layout.description.clone().unwrap_or_default(),
+            description: model.layout.description.clone(),
             layout: Some(model.layout.clone().into()),
             containers: Some(XmlContainers {
                 container: clone_into_vec(&model.layout.containers),
