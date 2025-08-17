@@ -23,11 +23,11 @@ pub(crate) struct XmlContainer {
 impl From<BmaLayoutContainer> for XmlContainer {
     fn from(value: BmaLayoutContainer) -> Self {
         XmlContainer {
-            id: value.id.into(),
+            id: value.id,
             name: value.name.clone(),
             position_x: f64_or_default(value.position.0),
             position_y: f64_or_default(value.position.1),
-            size: value.size.into(),
+            size: value.size,
         }
     }
 }
@@ -35,9 +35,9 @@ impl From<BmaLayoutContainer> for XmlContainer {
 impl From<XmlContainer> for BmaLayoutContainer {
     fn from(value: XmlContainer) -> Self {
         BmaLayoutContainer {
-            id: value.id.into(),
+            id: value.id,
             name: value.name.clone(),
-            size: value.size.into(),
+            size: value.size,
             position: (
                 rational_or_default(value.position_x),
                 rational_or_default(value.position_y),

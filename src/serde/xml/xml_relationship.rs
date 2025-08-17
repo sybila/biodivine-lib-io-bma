@@ -25,9 +25,9 @@ pub(crate) struct XmlRelationship {
 impl From<XmlRelationship> for BmaRelationship {
     fn from(value: XmlRelationship) -> Self {
         BmaRelationship {
-            id: value.id.into(),
-            from_variable: value.from_variable_id.into(),
-            to_variable: value.to_variable_id.into(),
+            id: value.id,
+            from_variable: value.from_variable_id,
+            to_variable: value.to_variable_id,
             r#type: value.r#type,
         }
     }
@@ -36,9 +36,9 @@ impl From<XmlRelationship> for BmaRelationship {
 impl From<BmaRelationship> for XmlRelationship {
     fn from(value: BmaRelationship) -> Self {
         XmlRelationship {
-            id: value.id.into(),
-            from_variable_id: value.from_variable.into(),
-            to_variable_id: value.to_variable.into(),
+            id: value.id,
+            from_variable_id: value.from_variable,
+            to_variable_id: value.to_variable,
             r#type: value.r#type,
             container_id: None,
         }

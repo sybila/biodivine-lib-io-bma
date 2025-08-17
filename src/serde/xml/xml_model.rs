@@ -48,7 +48,7 @@ impl XmlBmaModel {
         self.variables
             .variable
             .iter()
-            .map(|var| (var.id.into(), var.name.clone()))
+            .map(|var| (var.id, var.name.clone()))
             .collect::<HashMap<u32, String>>()
     }
 }

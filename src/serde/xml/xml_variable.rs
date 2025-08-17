@@ -47,10 +47,10 @@ pub(crate) struct XmlVariable {
 impl From<BmaVariable> for XmlVariable {
     fn from(value: BmaVariable) -> Self {
         XmlVariable {
-            id: value.id.into(),
+            id: value.id,
             name: value.name.clone(),
-            range_from: value.range.0.into(),
-            range_to: value.range.1.into(),
+            range_from: value.range.0,
+            range_to: value.range.1,
             formula: value.formula_string(),
             r#type: Default::default(),
             position_x: 0.0,
@@ -71,10 +71,10 @@ impl From<(BmaVariable, BmaLayoutVariable)> for XmlVariable {
         variable.position_x = f64_or_default(layout.position.0);
         variable.position_y = f64_or_default(layout.position.1);
         variable.angle = f64_or_default(layout.angle);
-        variable.container_id = layout.container_id.map(|it| it.into());
+        variable.container_id = layout.container_id;
         if let Some((x, y)) = layout.cell {
-            variable.cell_x = Some(x.into());
-            variable.cell_y = Some(y.into());
+            variable.cell_x = Some(x);
+            variable.cell_y = Some(y);
         }
         variable
     }
@@ -87,9 +87,9 @@ impl From<(&XmlBmaModel, &XmlVariable)> for BmaVariable {
         let variables = model.collect_all_variables();
 
         BmaVariable {
-            id: variable.id.into(),
+            id: variable.id,
             name: variable.name.clone(),
-            range: (variable.range_from.into(), variable.range_to.into()),
+            range: (variable.range_from, variable.range_to),
             formula: read_fn_update(variable.formula.as_str(), &variables),
         }
     }
@@ -99,12 +99,12 @@ impl From<XmlVariable> for BmaLayoutVariable {
     fn from(value: XmlVariable) -> Self {
         // In XML, most data about variable layout is stored directly with variables.
         let cell = match (value.cell_x, value.cell_y) {
-            (Some(x), Some(y)) => Some((x.into(), y.into())),
+            (Some(x), Some(y)) => Some((x, y)),
             _ => None,
         };
         BmaLayoutVariable {
-            id: value.id.into(),
-            container_id: value.container_id.map(|it| it.into()),
+            id: value.id,
+            container_id: value.container_id,
             r#type: Default::default(),
             name: value.name.clone(),
             description: String::default(),
