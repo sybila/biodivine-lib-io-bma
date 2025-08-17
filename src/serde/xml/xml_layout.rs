@@ -1,5 +1,4 @@
 use crate::BmaLayout;
-use crate::serde::quote_num::QuoteNum;
 use crate::serde::xml::XmlBmaModel;
 use crate::utils::{clone_into_vec, f64_or_default, rational_or_default};
 use serde::{Deserialize, Serialize};
@@ -12,10 +11,10 @@ use serde::{Deserialize, Serialize};
 /// values are used.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub(crate) struct XmlLayout {
-    #[serde(rename = "Columns")]
-    pub columns: QuoteNum,
-    #[serde(rename = "Rows")]
-    pub rows: QuoteNum,
+    #[serde(default, rename = "Columns")]
+    pub columns: u32,
+    #[serde(default, rename = "Rows")]
+    pub rows: u32,
     #[serde(default, rename = "ZoomLevel")]
     pub zoom_level: f64,
     #[serde(default, rename = "PanX")]
@@ -29,8 +28,8 @@ impl From<BmaLayout> for XmlLayout {
         // As far as I can tell, `columns` and `rows` are no longer used...
         let (pan_x, pan_y) = value.pan.unwrap_or_default();
         XmlLayout {
-            columns: QuoteNum::from(1),
-            rows: QuoteNum::from(1),
+            columns: 1,
+            rows: 1,
             zoom_level: f64_or_default(value.zoom_level.unwrap_or_default()),
             pan_x: f64_or_default(pan_x),
             pan_y: f64_or_default(pan_y),

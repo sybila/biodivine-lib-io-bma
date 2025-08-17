@@ -3,6 +3,7 @@ use crate::{BmaModel, ContextualValidation, ErrorReporter};
 use num_rational::Rational64;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
 /// Additional layout information regarding a [`crate::BmaVariable`].
@@ -45,12 +46,37 @@ impl BmaLayoutVariable {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VariableType {
-    #[default]
-    Default,
     Constant,
     MembraneReceptor,
+    Unknown(String),
+}
+
+impl From<&str> for VariableType {
+    fn from(value: &str) -> Self {
+        match value {
+            "Constant" => VariableType::Constant,
+            "MembraneReceptor" => VariableType::MembraneReceptor,
+            value => VariableType::Unknown(value.to_string()),
+        }
+    }
+}
+
+impl Display for VariableType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VariableType::Constant => write!(f, "Constant"),
+            VariableType::MembraneReceptor => write!(f, "MembraneReceptor"),
+            VariableType::Unknown(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl Default for VariableType {
+    fn default() -> Self {
+        VariableType::Unknown(String::default())
+    }
 }
 
 /// Possible validation errors for [BmaLayoutVariable].

@@ -18,9 +18,9 @@ use std::collections::HashMap;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "Model")]
 pub(crate) struct XmlBmaModel {
-    #[serde(rename = "Variables")]
+    #[serde(default, rename = "Variables")]
     pub variables: XmlVariables,
-    #[serde(rename = "Relationships")]
+    #[serde(default, rename = "Relationships")]
     pub relationships: XmlRelationships,
 
     #[serde(default, rename = "@Id", alias = "Id")]

@@ -1,5 +1,4 @@
 use crate::BmaLayoutContainer;
-use crate::serde::quote_num::QuoteNum;
 use crate::utils::{f64_or_default, rational_or_default};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct XmlContainer {
     #[serde(rename = "@Id", alias = "Id")]
-    pub id: QuoteNum,
+    pub id: u32,
     #[serde(default, rename = "@Name", alias = "Name")]
     pub name: String,
     #[serde(rename = "PositionX")]
@@ -18,7 +17,7 @@ pub(crate) struct XmlContainer {
     #[serde(rename = "PositionY")]
     pub position_y: f64,
     #[serde(rename = "Size")]
-    pub size: QuoteNum,
+    pub size: u32,
 }
 
 impl From<BmaLayoutContainer> for XmlContainer {

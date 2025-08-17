@@ -1,8 +1,7 @@
-use crate::serde::quote_num::QuoteNum;
 use crate::serde::xml::XmlBmaModel;
 use crate::update_fn::read_fn_update;
 use crate::utils::{f64_or_default, rational_or_default};
-use crate::{BmaLayoutVariable, BmaVariable, VariableType};
+use crate::{BmaLayoutVariable, BmaVariable};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize XML info about a variable. BMA XML format mixes
@@ -19,18 +18,18 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct XmlVariable {
     // By default, ID and name are attributes, but they can be also present as child tags.
     #[serde(rename = "@Id", alias = "Id")]
-    pub id: QuoteNum,
+    pub id: u32,
     #[serde(default, rename = "@Name", alias = "Name")]
     pub name: String,
     #[serde(rename = "RangeFrom")]
-    pub range_from: QuoteNum,
+    pub range_from: u32,
     #[serde(rename = "RangeTo")]
-    pub range_to: QuoteNum,
-    #[serde(rename = "Formula", alias = "Function")]
+    pub range_to: u32,
+    #[serde(default, rename = "Formula", alias = "Function")]
     pub formula: String,
 
     #[serde(default, rename = "Type")]
-    pub r#type: VariableType,
+    pub r#type: String,
     #[serde(default, rename = "PositionX")]
     pub position_x: f64,
     #[serde(default, rename = "PositionY")]
@@ -38,11 +37,11 @@ pub(crate) struct XmlVariable {
     #[serde(default, rename = "Angle")]
     pub angle: f64,
     #[serde(default, rename = "ContainerId")]
-    pub container_id: Option<QuoteNum>,
+    pub container_id: Option<u32>,
     #[serde(default, rename = "CellX")]
-    pub cell_x: Option<QuoteNum>,
+    pub cell_x: Option<u32>,
     #[serde(default, rename = "CellY")]
-    pub cell_y: Option<QuoteNum>,
+    pub cell_y: Option<u32>,
 }
 
 impl From<BmaVariable> for XmlVariable {
@@ -68,7 +67,7 @@ impl From<(BmaVariable, BmaLayoutVariable)> for XmlVariable {
     fn from(value: (BmaVariable, BmaLayoutVariable)) -> Self {
         let (variable, layout) = value;
         let mut variable = XmlVariable::from(variable);
-        variable.r#type = layout.r#type;
+        variable.r#type = layout.r#type.to_string();
         variable.position_x = f64_or_default(layout.position.0);
         variable.position_y = f64_or_default(layout.position.1);
         variable.angle = f64_or_default(layout.angle);

@@ -166,7 +166,7 @@ mod tests {
         let serialized = serde_json::to_string(&variable).unwrap();
         assert_eq!(
             serialized,
-            r#"{"id":5,"name":"foo","range":[1,3],"formula":"(var(0) - var(1))"}"#
+            r#"{"id":5,"name":"foo","range":[1,3],"formula":{"Ok":"(var(0) - var(1))"}}"#
         );
         let deserialized: BmaVariable = serde_json::from_str(&serialized).unwrap();
         assert_eq!(variable, deserialized);

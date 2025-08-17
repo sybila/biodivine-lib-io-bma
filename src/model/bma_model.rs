@@ -51,7 +51,7 @@ impl BmaModel {
     /// Create a new BMA model from a model string in the BMA JSON format.
     pub fn from_bma_json(json_str: &str) -> anyhow::Result<Self> {
         let json_model: JsonBmaModel = serde_json::from_str(json_str)?;
-        let model = BmaModel::try_from(json_model)?;
+        let model = BmaModel::from(json_model);
         Ok(model)
     }
 

@@ -62,10 +62,8 @@ impl From<BmaModel> for JsonBmaModel {
     }
 }
 
-impl TryFrom<JsonBmaModel> for BmaModel {
-    type Error = anyhow::Error; // TODO: Replace with type safe error.
-
-    fn try_from(json_model: JsonBmaModel) -> Result<BmaModel, anyhow::Error> {
+impl From<JsonBmaModel> for BmaModel {
+    fn from(json_model: JsonBmaModel) -> BmaModel {
         // Convert the model
         let model = BmaNetwork::from((&json_model, &json_model.network));
 
@@ -78,6 +76,6 @@ impl TryFrom<JsonBmaModel> for BmaModel {
         // Metadata is not present in JsonBmaModel
         let metadata = HashMap::new();
 
-        Ok(BmaModel::new(model, layout, metadata))
+        BmaModel::new(model, layout, metadata)
     }
 }

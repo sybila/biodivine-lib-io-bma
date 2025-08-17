@@ -1,4 +1,8 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{self},
+};
+use serde_json::Value;
 use std::str::FromStr;
 
 /// In rare cases, the XML and JSON representations can contain numbers inside quotes (e.g. `"32"`
@@ -33,47 +37,30 @@ impl<'de> Deserialize<'de> for QuoteNum {
     where
         D: Deserializer<'de>,
     {
-        use serde::de::{self, Visitor};
-        use std::fmt;
+        let value = serde_json::Value::deserialize(deserializer).map_err(|e| {
+            println!("{}", e);
+            e
+        })?;
 
-        struct QuoteNumVisitor;
-
-        impl<'de> Visitor<'de> for QuoteNumVisitor {
-            type Value = QuoteNum;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a number or a number string")
-            }
-
-            fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(QuoteNum(value))
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                if value <= u32::MAX as u64 {
-                    Ok(QuoteNum(value as u32))
-                } else {
-                    Err(E::custom(format!("number {} is too large for u32", value)))
-                }
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
+        match value {
+            Value::String(value) => {
                 let trimmed = value.trim_matches('"');
-                let parsed = u32::from_str(trimmed).map_err(E::custom)?;
+                let parsed = u32::from_str(trimmed).map_err(de::Error::custom)?;
                 Ok(QuoteNum(parsed))
             }
+            Value::Number(number) => {
+                let number = number
+                    .as_u64()
+                    .ok_or_else(|| de::Error::custom("number must be u32"))?;
+                let number =
+                    u32::try_from(number).map_err(|_| de::Error::custom("number must be u32"))?;
+                Ok(QuoteNum(number))
+            }
+            _ => Err(de::Error::custom(format!(
+                "expected a string or a number, but got {}",
+                value
+            ))),
         }
-
-        deserializer.deserialize_any(QuoteNumVisitor)
     }
 }
 
