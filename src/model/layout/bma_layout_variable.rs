@@ -1,7 +1,7 @@
 use crate::utils::is_unique_id;
 use crate::{BmaModel, ContextualValidation, ErrorReporter};
 use num_rational::Rational64;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
@@ -46,7 +46,7 @@ impl BmaLayoutVariable {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VariableType {
     Constant,
     MembraneReceptor,
@@ -70,6 +70,25 @@ impl Display for VariableType {
             VariableType::MembraneReceptor => write!(f, "MembraneReceptor"),
             VariableType::Unknown(value) => write!(f, "{}", value),
         }
+    }
+}
+
+impl Serialize for VariableType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for VariableType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let values = String::deserialize(deserializer)?;
+        Ok(VariableType::from(values.as_str()))
     }
 }
 

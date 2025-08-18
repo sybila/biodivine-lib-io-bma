@@ -253,7 +253,7 @@ mod tests {
                 </Relationship>
             </Relationships>
         </AnalysisInput>"#;
-        BmaModel::from_xml_str(model_str).expect("XML was not well-formatted")
+        BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
     }
 
     /// Wrapper to get a little bit more complex BMA model for testing.
@@ -313,7 +313,7 @@ mod tests {
                 </Relationship>
             </Relationships>
         </AnalysisInput>"#;
-        BmaModel::from_xml_str(model_str).expect("XML was not well-formatted")
+        BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
     }
 
     #[test]

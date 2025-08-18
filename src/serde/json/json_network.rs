@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct JsonNetwork {
     #[serde(default, rename = "Name", alias = "name")]
     pub name: String,
-    #[serde(rename = "Variables", alias = "variables")]
+    #[serde(default, rename = "Variables", alias = "variables")]
     pub variables: Vec<JsonVariable>,
-    #[serde(rename = "Relationships", alias = "relationships")]
+    #[serde(default, rename = "Relationships", alias = "relationships")]
     pub relationships: Vec<JsonRelationship>,
 }
 

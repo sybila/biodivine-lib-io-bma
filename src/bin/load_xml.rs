@@ -15,7 +15,7 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
         let xml_data = read_to_string(&model_path)
             .unwrap_or_else(|_| panic!("Unable to read file: {}", model_path_str));
 
-        let result_model = BmaModel::from_xml_str(&xml_data);
+        let result_model = BmaModel::from_xml_string(&xml_data);
         match result_model {
             Ok(_) => {
                 println!("Successfully parsed model `{model_path_str}`.");
@@ -34,7 +34,7 @@ fn main() {
     for model_path in selected_model_paths {
         println!("Parsing selected model {:?}:", model_path);
         let xml_data = read_to_string(model_path).expect("Unable to read file");
-        let model = BmaModel::from_xml_str(&xml_data).expect("XML was not well-formatted");
+        let model = BmaModel::from_xml_string(&xml_data).expect("XML was not well-formatted");
         println!("Internal BmaModel structure:\n{:?}\n", model);
     }
 
@@ -47,7 +47,7 @@ fn main() {
     for model_path in boolean_model_paths {
         println!("Processing selected boolean model {:?}:", model_path);
         let xml_data = read_to_string(model_path).expect("Unable to read file");
-        let bma_model = BmaModel::from_xml_str(&xml_data).expect("XML was not well-formatted");
+        let bma_model = BmaModel::from_xml_string(&xml_data).expect("XML was not well-formatted");
         let bn = bma_model
             .to_boolean_network(true)
             .expect("Failed to convert to BN");

@@ -17,7 +17,7 @@ use std::collections::HashMap;
 pub(crate) struct JsonBmaModel {
     #[serde(rename = "Model", alias = "model")]
     pub network: JsonNetwork,
-    #[serde(rename = "Layout", alias = "layout")]
+    #[serde(default, rename = "Layout", alias = "layout")]
     pub layout: Option<JsonLayout>,
 }
 

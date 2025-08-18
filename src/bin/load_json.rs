@@ -15,7 +15,7 @@ fn test_parse_all_models_in_dir(models_dir: &str) {
         let json_data = read_to_string(&model_path)
             .unwrap_or_else(|_| panic!("Unable to read file: {}", model_path_str));
 
-        let result_model = BmaModel::from_bma_json(&json_data);
+        let result_model = BmaModel::from_json_string(&json_data);
         match result_model {
             Ok(_) => {
                 println!("Successfully parsed model `{model_path_str}`.");
@@ -34,11 +34,11 @@ fn main() {
     for model_path in selected_model_paths {
         println!("Parsing selected model {:?}:", model_path);
         let json_data = read_to_string(model_path).expect("Unable to read file");
-        let model = BmaModel::from_bma_json(&json_data).expect("JSON was not well-formatted");
+        let model = BmaModel::from_json_string(&json_data).expect("JSON was not well-formatted");
         println!("Internal BmaModel structure:\n{:?}\n", model);
         println!(
             "Exported JSON BmaModel structure:\n{}\n",
-            model.to_bma_json().unwrap()
+            model.to_json_string().unwrap()
         );
     }
 
@@ -52,7 +52,8 @@ fn main() {
     for model_path in boolean_model_paths {
         println!("Processing selected boolean model {:?}:", model_path);
         let json_data = read_to_string(model_path).expect("Unable to read file");
-        let bma_model = BmaModel::from_bma_json(&json_data).expect("JSON was not well-formatted");
+        let bma_model =
+            BmaModel::from_json_string(&json_data).expect("JSON was not well-formatted");
         let bn = bma_model
             .to_boolean_network(true)
             .expect("Failed to convert to BN");

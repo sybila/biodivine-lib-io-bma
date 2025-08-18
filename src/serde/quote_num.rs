@@ -51,6 +51,7 @@ impl<'de> Deserialize<'de> for QuoteNum {
             Value::Number(number) => {
                 let number = number
                     .as_u64()
+                    .or_else(|| number.as_f64().map(|it| it as u64))
                     .ok_or_else(|| de::Error::custom("number must be u32"))?;
                 let number =
                     u32::try_from(number).map_err(|_| de::Error::custom("number must be u32"))?;
