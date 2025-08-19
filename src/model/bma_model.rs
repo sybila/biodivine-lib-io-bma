@@ -109,7 +109,7 @@ mod tests {
             layout: simple_layout(),
             metadata: Default::default(),
         };
-        assert!(model.validate().is_ok());
+        model.validate().unwrap();
     }
 
     #[test]

@@ -25,11 +25,11 @@ pub(crate) struct JsonLayoutVariable {
     pub angle: f64,
     #[serde(default, rename = "Description", alias = "description")]
     pub description: String,
-    #[serde(rename = "ContainerId", alias = "containerId", default)]
+    #[serde(default, rename = "ContainerId", alias = "containerId")]
     pub container_id: Option<QuoteNum>,
-    #[serde(rename = "CellX", alias = "cellX", default)]
+    #[serde(default, rename = "CellX", alias = "cellX")]
     pub cell_x: Option<QuoteNum>,
-    #[serde(rename = "CellY", alias = "cellY", default)]
+    #[serde(default, rename = "CellY", alias = "cellY")]
     pub cell_y: Option<QuoteNum>,
 }
 

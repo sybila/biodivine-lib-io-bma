@@ -17,7 +17,7 @@ impl BmaFnUpdate {
     /// matching the format of the [biodivine_lib_param_bn] library.
     ///
     /// Note that currently, WE ONLY SUPPORT BOOLEAN MODELS, even though some methods
-    /// are already implemented to handle more general multi-valued cases as well.
+    /// are already implemented to handle more general multivalued cases as well.
     ///
     /// Map `max_levels` indicates the maximum level for each variable in the model. For
     /// Boolean networks, this is set to 1 for all variables.
@@ -31,7 +31,7 @@ impl BmaFnUpdate {
         var_name_mapping: &HashMap<u32, String>,
         this_var_max_lvl: u32,
     ) -> Result<String, String> {
-        // To convert the BMA expression into an update function, we essetially create
+        // To convert the BMA expression into an update function, we essentially create
         // an explicit function table mapping all valuations of inputs to output values.
         // In BNs, this corresponds to a truth table.
         // We can then use this function table to create a new logical update formula.
@@ -54,7 +54,7 @@ impl BmaFnUpdate {
                         if *value == 0 {
                             format!("!{bn_var_name}")
                         } else {
-                            bn_var_name.clone()
+                            bn_var_name.to_string()
                         }
                     })
                     .collect::<Vec<String>>()
@@ -166,7 +166,7 @@ impl BmaFnUpdate {
     /// Arg `this_var_max_lvl` specifies the maximum level of the variable for which we are
     /// creating the function table.
     ///
-    /// This method can also handle multi-valued variables (arg `max_levels` specifies
+    /// This method can also handle multivalued variables (arg `max_levels` specifies
     /// maximum level for all model variable), but the table needs to be further binarized
     /// to be used in a Boolean network.
     pub fn build_function_table(
@@ -193,12 +193,12 @@ impl BmaFnUpdate {
 
             // Convert the result to integer (rounding if necessary)
             let mut result_int = if rational_result.is_integer() {
-                // Ideally, most numbers will not actually be fractions, and we dont have to round
+                // Ideally, most numbers will not actually be fractions, and we don't have to round
                 rational_result.to_integer()
             } else {
                 // Otherwise, we need to convert the fraction into integer by rounding.
-                // Note that BMA is written in C/C# which performs "round half up" arithemtic.
-                // However, Rust performs "round half even" airthmetic, meaning we might return
+                // Note that BMA is written in C/C# which performs "round half up" arithmetic.
+                // However, Rust performs "round half even" arithmetic, meaning we might return
                 // a different value compared to BMA. We have to run it through this magic
                 // formula that will actually perform a proper "round half up" rounding.
 
@@ -224,7 +224,7 @@ impl BmaFnUpdate {
 /// Generate all possible input combinations for the given variables, respecting their
 /// possible levels.
 ///
-/// This function can handle multi-valued variables (arg `max_levels` specifies maximum
+/// This function can handle multivalued variables (arg `max_levels` specifies maximum
 /// level for each variable).
 ///
 /// The valuations are generated starting at 0, and going up to the maximum level, last
@@ -249,7 +249,7 @@ fn generate_input_valuations(
 /// Recursive helper function to generate input value combinations.
 /// It builds combinations by iterating through each variable and its possible levels.
 ///
-/// This function can handle multi-valued variables (arg `max_levels` specifies maximum
+/// This function can handle multivalued variables (arg `max_levels` specifies maximum
 /// level for each variable).
 fn generate_input_valuations_rec(
     variables: &[u32],
