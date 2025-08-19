@@ -94,6 +94,12 @@ pub enum BmaVariableError {
     IdNotUnique { id: u32 },
     #[error("(Variable id: `{id}`) Range `{range:?}` is invalid; must be an interval")]
     RangeInvalid { id: u32, range: (u32, u32) },
+    #[error("(Variable id: `{id}`) {source}")]
+    UpdateFunctionInvalid {
+        id: u32,
+        #[source]
+        source: InvalidBmaFnUpdate,
+    },
 }
 
 impl ContextualValidation<BmaNetwork> for BmaVariable {
@@ -116,6 +122,13 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
 
         if !is_unique {
             reporter.report(BmaVariableError::IdNotUnique { id: self.id });
+        }
+
+        if let Some(Err(error)) = &self.formula {
+            reporter.report(BmaVariableError::UpdateFunctionInvalid {
+                id: self.id,
+                source: error.clone(),
+            })
         }
     }
 }

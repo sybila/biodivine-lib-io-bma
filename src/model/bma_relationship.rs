@@ -99,18 +99,27 @@ impl ContextualValidation<BmaNetwork> for BmaRelationship {
         if count > 1 {
             reporter.report(BmaRelationshipError::IdNotUnique { id: self.id });
         }
+
+        if let RelationshipType::Unknown(value) = &self.r#type {
+            reporter.report(BmaRelationshipError::UnknownRelationshipType {
+                id: self.id,
+                value: value.clone(),
+            })
+        }
     }
 }
 
 /// Possible validation errors for [`BmaRelationship`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaRelationshipError {
-    #[error("(Relationship: `{id}`) Id must be unique in the `BmaNetwork`")]
+    #[error("(Relationship: `{id}`) Relationship id must be unique in the `BmaNetwork`")]
     IdNotUnique { id: u32 },
     #[error("(Relationship: `{id}`) Regulator (`{from_variable}`) not found in the `BmaNetwork`")]
     RegulatorVariableNotFound { id: u32, from_variable: u32 },
     #[error("(Relationship: `{id}`) Target (`{to_variable}`) not found in the `BmaNetwork`")]
     TargetVariableNotFound { id: u32, to_variable: u32 },
+    #[error("(Relationship: `{id}`) Unknown relationship type `{value}`")]
+    UnknownRelationshipType { id: u32, value: String },
 }
 
 /// The type of [`BmaRelationship`] between two variables in a [`BmaNetwork`].

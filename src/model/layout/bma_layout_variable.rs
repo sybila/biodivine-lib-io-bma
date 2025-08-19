@@ -46,8 +46,10 @@ impl BmaLayoutVariable {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum VariableType {
+    #[default]
+    Default,
     Constant,
     MembraneReceptor,
     Unknown(String),
@@ -56,6 +58,7 @@ pub enum VariableType {
 impl From<&str> for VariableType {
     fn from(value: &str) -> Self {
         match value {
+            "Default" => VariableType::Default,
             "Constant" => VariableType::Constant,
             "MembraneReceptor" => VariableType::MembraneReceptor,
             value => VariableType::Unknown(value.to_string()),
@@ -66,6 +69,7 @@ impl From<&str> for VariableType {
 impl Display for VariableType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            VariableType::Default => f.write_str("Default"),
             VariableType::Constant => write!(f, "Constant"),
             VariableType::MembraneReceptor => write!(f, "MembraneReceptor"),
             VariableType::Unknown(value) => write!(f, "{}", value),
@@ -92,12 +96,6 @@ impl<'de> Deserialize<'de> for VariableType {
     }
 }
 
-impl Default for VariableType {
-    fn default() -> Self {
-        VariableType::Unknown(String::default())
-    }
-}
-
 /// Possible validation errors for [BmaLayoutVariable].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaLayoutVariableError {
@@ -107,6 +105,8 @@ pub enum BmaLayoutVariableError {
     VariableNotFound { id: u32 },
     #[error("(Layout var.: `{id}`) Container not found in `BmaLayout` with id `{container_id}`")]
     ContainerNotFound { id: u32, container_id: u32 },
+    #[error("(Layout var.: `{id}`) Unknown variable type `{value}`")]
+    UnknownVariableType { id: u32, value: String },
 }
 
 impl ContextualValidation<BmaModel> for BmaLayoutVariable {
@@ -134,6 +134,13 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
 
         if !is_unique {
             reporter.report(BmaLayoutVariableError::IdNotUnique { id: self.id });
+        }
+
+        if let VariableType::Unknown(value) = &self.r#type {
+            reporter.report(BmaLayoutVariableError::UnknownVariableType {
+                id: self.id,
+                value: value.clone(),
+            })
         }
     }
 }
