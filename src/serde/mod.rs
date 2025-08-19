@@ -5,7 +5,7 @@ pub(crate) mod quote_num;
 
 #[cfg(test)]
 mod tests {
-    use crate::BmaModel;
+    use crate::{BmaModel, Validation};
 
     #[test]
     fn test_xml_models_have_no_errors() {
@@ -20,8 +20,18 @@ mod tests {
                 }
                 println!("File: {}/{}", folder, file_name);
 
+                // XML Models have a lot of validation issues. So we are fine with the
+                // validation failing, as long as the errors do look reasonable based on
+                // manual inspection.
                 let xml_data = std::fs::read_to_string(file.path()).unwrap();
-                BmaModel::from_xml_string(xml_data.as_str()).unwrap();
+                let model = BmaModel::from_xml_string(xml_data.as_str()).unwrap();
+                if let Err(errors) = model.validate() {
+                    for e in errors {
+                        println!("\tError: {}", e);
+                    }
+                } else {
+                    println!("\tModel ok.");
+                }
             }
         }
     }
@@ -42,8 +52,17 @@ mod tests {
                 }
                 println!("File: {}/{}", folder, file_name);
 
+                // JSON Models have fewer validation issues, but still have a bunch of problems
+                // related to duplicate or missing IDs.
                 let json_data = std::fs::read_to_string(file.path()).unwrap();
-                BmaModel::from_json_string(json_data.as_str()).unwrap();
+                let model = BmaModel::from_json_string(json_data.as_str()).unwrap();
+                if let Err(errors) = model.validate() {
+                    for e in errors {
+                        println!("\tError: {}", e);
+                    }
+                } else {
+                    println!("\tModel ok.");
+                }
             }
         }
     }
