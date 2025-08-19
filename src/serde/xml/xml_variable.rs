@@ -84,7 +84,7 @@ impl From<(&XmlBmaModel, &XmlVariable)> for BmaVariable {
     fn from(value: (&XmlBmaModel, &XmlVariable)) -> Self {
         let (model, variable) = value;
 
-        let variables = model.collect_all_variables();
+        let variables = model.regulators(variable.id);
 
         BmaVariable {
             id: variable.id,

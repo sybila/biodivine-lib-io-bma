@@ -1,5 +1,5 @@
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -22,10 +22,10 @@ pub enum BmaFnToken {
 /// by either its ID or its name. We convert everything to IDs for easier processing.
 pub fn try_tokenize_bma_formula(
     formula: String,
-    variables: &HashMap<u32, String>,
+    regulators: &[(u32, String)],
 ) -> Result<Vec<BmaFnToken>, String> {
     let (tokens, _) =
-        try_tokenize_recursive(&mut formula.chars().peekable(), true, false, variables)?;
+        try_tokenize_recursive(&mut formula.chars().peekable(), true, false, regulators)?;
     Ok(tokens)
 }
 
@@ -33,7 +33,7 @@ pub fn try_tokenize_bma_formula(
 /// for both tokenizing a top-level expression and expressions that are fn's arguments.
 ///
 /// Returns a vector of (nested) tokens, and a last character. The last character is important when
-/// we are parsing function arguments (to find out if another argument is expected or we already
+/// we are parsing function arguments (to find out if another argument is expected, or we already
 /// processed the closing parenthesis). When parsing the top-level formula expression (not a function
 /// argument), we simply return '$'.
 ///
@@ -43,7 +43,7 @@ fn try_tokenize_recursive(
     input_chars: &mut Peekable<Chars>,
     top_level: bool,
     top_fn_level: bool,
-    vars: &HashMap<u32, String>,
+    regulators: &[(u32, String)],
 ) -> Result<(Vec<BmaFnToken>, char), String> {
     let mut output = Vec::new();
 
@@ -56,7 +56,8 @@ fn try_tokenize_recursive(
             '/' => output.push(BmaFnToken::Binary(ArithOp::Div)),
             '(' => {
                 // start a nested token group
-                let (token_group, _) = try_tokenize_recursive(input_chars, false, false, vars)?;
+                let (token_group, _) =
+                    try_tokenize_recursive(input_chars, false, false, regulators)?;
                 output.push(BmaFnToken::TokenList(token_group));
             }
             ')' => {
@@ -78,31 +79,49 @@ fn try_tokenize_recursive(
                         // collect the variable string, all format checks are done in the function
                         let var_name = collect_var_name(input_chars)?;
                         // check if the variable string is valid ID, or find the ID if it is a name
-                        let var_id = process_var_name_or_id(&var_name, vars)?;
+                        let var_id = if let Ok(var_id) = var_name.parse::<u32>() {
+                            var_id
+                        } else {
+                            let regulators_match = regulators
+                                .iter()
+                                .filter(|(_id, name)| name.as_str() == var_name.as_str())
+                                .map(|(id, _)| *id)
+                                .collect::<HashSet<_>>();
+                            if regulators_match.is_empty() {
+                                return Err(format!("Unknown regulator: `{var_name}`"));
+                            } else if regulators_match.len() == 1 {
+                                regulators_match.into_iter().next().unwrap()
+                            } else {
+                                return Err(format!(
+                                    "Regulator `{var_name}` resolves to multiple IDs: `{:?}`",
+                                    regulators_match
+                                ));
+                            }
+                        };
                         output.push(BmaFnToken::Atomic(Literal::Var(var_id)));
                     }
                     "abs" => {
-                        let args = collect_fn_arguments(input_chars, vars)?;
+                        let args = collect_fn_arguments(input_chars, regulators)?;
                         output.push(mk_unary(UnaryFn::Abs, args[0].clone()))
                     }
                     "ceil" => {
-                        let args = collect_fn_arguments(input_chars, vars)?;
+                        let args = collect_fn_arguments(input_chars, regulators)?;
                         output.push(mk_unary(UnaryFn::Ceil, args[0].clone()))
                     }
                     "floor" => {
-                        let args = collect_fn_arguments(input_chars, vars)?;
+                        let args = collect_fn_arguments(input_chars, regulators)?;
                         output.push(mk_unary(UnaryFn::Floor, args[0].clone()))
                     }
                     "min" => {
-                        let args = collect_fn_arguments(input_chars, vars)?;
+                        let args = collect_fn_arguments(input_chars, regulators)?;
                         output.push(mk_aggregate(AggregateFn::Min, args));
                     }
                     "max" => {
-                        let args = collect_fn_arguments(input_chars, vars)?;
+                        let args = collect_fn_arguments(input_chars, regulators)?;
                         output.push(mk_aggregate(AggregateFn::Max, args));
                     }
                     "avg" => {
-                        let args = collect_fn_arguments(input_chars, vars)?;
+                        let args = collect_fn_arguments(input_chars, regulators)?;
                         output.push(mk_aggregate(AggregateFn::Avg, args));
                     }
                     _ => {
@@ -130,45 +149,7 @@ fn try_tokenize_recursive(
     }
 }
 
-/// Process a string that can represent either a variable name or an ID.
-///
-/// If it is valid ID, simply convert it into u32.
-///
-/// If the string is not a valid ID, it must be variable name.
-/// Find a corresponding ID in the `variables` map. If there is no such ID,
-/// or multiple IDs, return an error.
-fn process_var_name_or_id(
-    var_string: &str,
-    variables: &HashMap<u32, String>,
-) -> Result<u32, String> {
-    // Check if the string is a valid ID
-    if let Ok(id) = var_string.parse::<u32>() {
-        return Ok(id);
-    }
-
-    // Look for all IDs that match the variable name
-    let mut found_ids = Vec::new();
-    for (id, name) in variables.iter() {
-        if name.as_str() == var_string {
-            found_ids.push(*id);
-        }
-    }
-
-    // Exactly one ID should match the variable name
-    if found_ids.len() == 1 {
-        Ok(found_ids[0])
-    } else if found_ids.is_empty() {
-        Err(format!(
-            "Can't fint ID for variable '{var_string}' when processing update functions."
-        ))
-    } else {
-        Err(format!(
-            "Found multiple possible IDs for variable '{var_string}' when processing update functions."
-        ))
-    }
-}
-
-/// Shortcut for creating an unary function token.
+/// Shortcut for creating a unary function token.
 fn mk_unary(fn_type: UnaryFn, arg: BmaFnToken) -> BmaFnToken {
     BmaFnToken::Unary(fn_type, Box::new(arg))
 }
@@ -254,7 +235,7 @@ fn collect_number_str(input_chars: &mut Peekable<Chars>) -> String {
 /// Collects the arguments for a function from the input character iterator.
 fn collect_fn_arguments(
     input_chars: &mut Peekable<Chars>,
-    vars: &HashMap<u32, String>,
+    vars: &[(u32, String)],
 ) -> Result<Vec<BmaFnToken>, String> {
     skip_whitespaces(input_chars);
 
@@ -282,13 +263,11 @@ fn collect_fn_arguments(
 mod tests {
     use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
     use crate::update_fn::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
-    use std::collections::HashMap;
 
     #[test]
     fn test_simple_arithmetic() {
         let input = "3 + 5 - 2".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert_eq!(
             result,
             Ok(vec![
@@ -304,8 +283,7 @@ mod tests {
     #[test]
     fn test_function_with_single_argument() {
         let input = "abs(5)".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert_eq!(
             result,
             Ok(vec![BmaFnToken::Unary(
@@ -320,8 +298,7 @@ mod tests {
     #[test]
     fn test_aggregate_function_with_multiple_arguments() {
         let input = "min(5, 3)".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert_eq!(
             result,
             Ok(vec![BmaFnToken::Aggregate(
@@ -337,8 +314,7 @@ mod tests {
     #[test]
     fn test_nested_function_calls() {
         let input = "max(abs(5), ceil(3))".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert_eq!(
             result,
             Ok(vec![BmaFnToken::Aggregate(
@@ -364,8 +340,7 @@ mod tests {
     #[test]
     fn test_compound_expression_with_nested_parentheses() {
         let input = "3 + (5 * (2 + 1))".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert_eq!(
             result,
             Ok(vec![
@@ -388,8 +363,9 @@ mod tests {
     fn test_variable() {
         // try both variable name and ID
 
+        let vars = vec![(42u32, "x".to_string())];
+        // Variable can be found if in the same container, by both name an ID.
         let input = "var(x)".to_string();
-        let vars = HashMap::from([(42, "x".to_string())]);
         let result = try_tokenize_bma_formula(input, &vars);
         assert_eq!(result, Ok(vec![BmaFnToken::Atomic(Literal::Var(42))]));
 
@@ -401,8 +377,7 @@ mod tests {
     #[test]
     fn test_unmatched_parentheses() {
         let input = "min(5, 3".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert!(result.is_err());
         assert_eq!(
             result,
@@ -413,8 +388,7 @@ mod tests {
     #[test]
     fn test_unexpected_character() {
         let input = "5 + @".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert!(result.is_err());
         assert_eq!(result, Err("Unexpected character: '@'".to_string()));
     }
@@ -422,8 +396,7 @@ mod tests {
     #[test]
     fn test_function_with_no_arguments_invalid() {
         let input = "abs()".to_string();
-        let vars = HashMap::new();
-        let result = try_tokenize_bma_formula(input, &vars);
+        let result = try_tokenize_bma_formula(input, &[]);
         assert!(result.is_err());
     }
 }

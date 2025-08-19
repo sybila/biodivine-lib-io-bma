@@ -311,11 +311,12 @@ mod tests {
 
     #[test]
     fn test_collect_variables() {
-        let vars = HashMap::from([
+        let vars = vec![
             (1, "a".to_string()),
             (2, "b".to_string()),
             (3, "c".to_string()),
-        ]);
+        ];
+
         // this one references all three variables by IDs
         let expression =
             parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
@@ -333,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_terminal_str() {
-        let vars = HashMap::from([(1, "x".to_string())]);
+        let vars = vec![(1, "x".to_string())];
         let expression = parse_bma_formula("var(x)", &vars).unwrap();
         let valuation = BTreeMap::from([(1, Rational32::new(5, 1))]);
         let result = expression.evaluate_in_valuation(&valuation);
@@ -343,8 +344,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_terminal_int() {
-        let vars = HashMap::new();
-        let expression = parse_bma_formula("7", &vars).unwrap();
+        let expression = parse_bma_formula("7", &[]).unwrap();
         let valuation = BTreeMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -353,8 +353,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_arithmetic_plus() {
-        let vars = HashMap::new();
-        let expression = parse_bma_formula("2 + 3", &vars).unwrap();
+        let expression = parse_bma_formula("2 + 3", &[]).unwrap();
         let valuation = BTreeMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -363,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_arithmetic_mult() {
-        let vars = HashMap::from([(1, "x".to_string())]);
+        let vars = vec![(1, "x".to_string())];
         let expression = parse_bma_formula("4 * var(x)", &vars).unwrap();
         let valuation = BTreeMap::from([(1, Rational32::new(2, 1))]);
         let result = expression.evaluate_in_valuation(&valuation);
@@ -373,8 +372,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_unary_abs() {
-        let vars = HashMap::new();
-        let expression = parse_bma_formula("abs(5 - 10)", &vars).unwrap();
+        let expression = parse_bma_formula("abs(5 - 10)", &[]).unwrap();
         let valuation = BTreeMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -383,8 +381,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_aggregation_avg() {
-        let vars = HashMap::new();
-        let expression = parse_bma_formula("avg(1, 2, 3)", &vars).unwrap();
+        let expression = parse_bma_formula("avg(1, 2, 3)", &[]).unwrap();
         let valuation = BTreeMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -393,8 +390,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_aggregation_max() {
-        let vars = HashMap::new();
-        let expression = parse_bma_formula("max(1, 4, 3)", &vars).unwrap();
+        let expression = parse_bma_formula("max(1, 4, 3)", &[]).unwrap();
         let valuation = BTreeMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -403,8 +399,7 @@ mod tests {
 
     #[test]
     fn test_evaluate_aggregation_min() {
-        let vars = HashMap::new();
-        let expression = parse_bma_formula("min(1, 2 - 4, 3)", &vars).unwrap();
+        let expression = parse_bma_formula("min(1, 2 - 4, 3)", &[]).unwrap();
         let valuation = BTreeMap::new();
         let result = expression.evaluate_in_valuation(&valuation);
         assert!(result.is_ok());
@@ -414,44 +409,46 @@ mod tests {
     #[test]
     fn test_build_fn_table_binary_and() {
         // prepare 2 boolean variables and a formula for their product
-        let vars = HashMap::from([(1, "a".to_string()), (2, "b".to_string())]);
+        let vars = vec![(1, "a".to_string()), (2, "b".to_string())];
         let max_levels = HashMap::from([(1, 1), (2, 1)]);
         let expression = parse_bma_formula("var(1) * var(2)", &vars).unwrap();
 
-        let expexted_table = prepare_truth_table(vec![1, 2], vec![0, 0, 0, 1]);
+        let expected_table = prepare_truth_table(vec![1, 2], vec![0, 0, 0, 1]);
         let result_table = expression.build_function_table(&[1, 2], &max_levels, 1);
 
         assert!(result_table.is_ok());
-        assert_eq!(result_table.unwrap(), expexted_table);
+        assert_eq!(result_table.unwrap(), expected_table);
     }
 
     #[test]
     fn test_build_fn_table_ternary() {
         // prepare 3 boolean variables and a formula for A | !(B | C)
-        let vars = HashMap::from([
+        let vars = vec![
             (1, "a".to_string()),
             (2, "b".to_string()),
             (3, "c".to_string()),
-        ]);
+        ];
+
         let max_levels = HashMap::from([(1, 1), (2, 1), (3, 1)]);
         let expression =
             parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
 
-        let expexted_table = prepare_truth_table(vec![1, 2, 3], vec![1, 0, 0, 0, 1, 1, 1, 1]);
+        let expected_table = prepare_truth_table(vec![1, 2, 3], vec![1, 0, 0, 0, 1, 1, 1, 1]);
         let result_table = expression.build_function_table(&[1, 2, 3], &max_levels, 1);
 
         assert!(result_table.is_ok());
-        assert_eq!(result_table.unwrap(), expexted_table);
+        assert_eq!(result_table.unwrap(), expected_table);
     }
 
     #[test]
     fn test_to_update_fn_boolean_binary() {
         // prepare 2 boolean variables and a formula for their product
-        let vars = HashMap::from([(1, "a".to_string()), (2, "b".to_string())]);
+        let vars = vec![(1, "a".to_string()), (2, "b".to_string())];
         let max_levels = HashMap::from([(1, 1), (2, 1)]);
         let expression = parse_bma_formula("var(1) * var(2)", &vars).unwrap();
 
         // DNF formula for the AND function is just "(a & b)" - only this one clause has function value 1
+        let vars = HashMap::from([(1, "a".to_string()), (2, "b".to_string())]);
         let expected_fn = "(a & b)".to_string();
         let result_fn = expression.to_update_fn_boolean(&max_levels, &vars, 1);
 
@@ -462,23 +459,29 @@ mod tests {
     #[test]
     fn test_to_update_fn_boolean_ternary() {
         // prepare 3 boolean variables and a formula for A | !(B | C)
-        let vars = HashMap::from([
-            (1, "a".to_string()),
-            (2, "b".to_string()),
-            (3, "c".to_string()),
-        ]);
+        let vars = vec![
+            (0, "a".to_string()),
+            (0, "b".to_string()),
+            (0, "c".to_string()),
+        ];
+
         let max_levels = HashMap::from([(1, 1), (2, 1), (3, 1)]);
         let expression =
             parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
 
         // expected function values are [1, 0, 0, 0, 1, 1, 1, 1]
         // that means DNF formula with 5 clauses (starting from zero valuation)
-        let expexted_fn =
+        let expected_fn =
             "(!a & !b & !c) | (a & !b & !c) | (a & !b & c) | (a & b & !c) | (a & b & c)"
                 .to_string();
+        let vars = HashMap::from([
+            (1, "a".to_string()),
+            (2, "b".to_string()),
+            (3, "c".to_string()),
+        ]);
         let result_fn = expression.to_update_fn_boolean(&max_levels, &vars, 1);
 
         assert!(result_fn.is_ok());
-        assert_eq!(result_fn.unwrap(), expexted_fn);
+        assert_eq!(result_fn.unwrap(), expected_fn);
     }
 }

@@ -1,8 +1,6 @@
 use crate::update_fn::bma_fn_update::BmaFnUpdate;
 use crate::utils::take_if_not_blank;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
 pub mod bma_fn_update;
@@ -14,24 +12,24 @@ mod parser;
 mod tokenizer;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Error)]
+#[error("Invalid update function `{input_string}`: {error}")]
 pub struct InvalidBmaFnUpdate {
+    pub error: String,
     pub input_string: String,
-}
-
-impl Display for InvalidBmaFnUpdate {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "InvalidBmaFnUpdate({})", self.input_string)
-    }
 }
 
 /// A utility function to correctly parse [`BmaFnUpdate`], including handling of blank values.
 pub fn read_fn_update(
     input: &str,
-    variables: &HashMap<u32, String>,
+    variables: &[(u32, String)],
 ) -> Option<Result<BmaFnUpdate, InvalidBmaFnUpdate>> {
     let value = take_if_not_blank(input)?;
     Some(
-        BmaFnUpdate::parse_from_str(value.as_str(), variables)
-            .map_err(|e| InvalidBmaFnUpdate { input_string: e }),
+        BmaFnUpdate::parse_from_str(value.as_str(), variables).map_err(|error| {
+            InvalidBmaFnUpdate {
+                error,
+                input_string: value,
+            }
+        }),
     )
 }

@@ -125,7 +125,6 @@ mod tests {
     use crate::model::bma_variable::BmaVariableError;
     use crate::update_fn::bma_fn_update::BmaFnUpdate;
     use crate::{BmaNetwork, BmaVariable, ContextualValidation};
-    use std::collections::HashMap;
 
     fn network_for_variable(variable: &BmaVariable) -> BmaNetwork {
         BmaNetwork {
@@ -160,8 +159,7 @@ mod tests {
 
     #[test]
     fn default_serde() {
-        let empty = HashMap::new();
-        let formula = BmaFnUpdate::parse_from_str("var(0) - var(1)", &empty).unwrap();
+        let formula = BmaFnUpdate::parse_from_str("var(0) - var(1)", &[]).unwrap();
         let variable = BmaVariable::new(5, "foo", (1, 3), Some(formula));
         let serialized = serde_json::to_string(&variable).unwrap();
         assert_eq!(

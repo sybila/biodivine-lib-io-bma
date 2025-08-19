@@ -39,7 +39,7 @@ impl From<(&JsonBmaModel, &JsonVariable)> for BmaVariable {
     fn from(value: (&JsonBmaModel, &JsonVariable)) -> BmaVariable {
         let (model, variable) = value;
 
-        let variables = model.variable_name_map();
+        let variables = model.regulators(variable.id.into());
 
         BmaVariable {
             id: variable.id.into(),

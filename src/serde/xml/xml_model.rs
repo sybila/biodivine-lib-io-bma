@@ -43,13 +43,21 @@ pub(crate) struct XmlBmaModel {
 }
 
 impl XmlBmaModel {
-    /// Collects set of all variables in the model, creating ID-name mapping.
-    pub fn collect_all_variables(&self) -> HashMap<u32, String> {
-        self.variables
-            .variable
+    /// Collect all regulators of a specific variable.
+    pub fn regulators(&self, variable: u32) -> Vec<(u32, String)> {
+        self.relationships
+            .relationship
             .iter()
-            .map(|var| (var.id, var.name.clone()))
-            .collect::<HashMap<u32, String>>()
+            .filter(|r| r.to_variable_id == variable)
+            .map(|r| r.from_variable_id)
+            .filter_map(|id| {
+                self.variables
+                    .variable
+                    .iter()
+                    .find(|v| v.id == id)
+                    .map(|v| (id, v.name.clone()))
+            })
+            .collect()
     }
 }
 

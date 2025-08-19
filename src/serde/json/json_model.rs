@@ -1,5 +1,4 @@
 use crate::serde::json::{JsonLayout, JsonNetwork};
-use crate::utils::take_if_not_blank;
 use crate::{BmaModel, BmaNetwork};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,34 +21,21 @@ pub(crate) struct JsonBmaModel {
 }
 
 impl JsonBmaModel {
-    /// Collect all variable names that are known in the model.
-    ///
-    /// Names stored in the [`crate::JsonVariable`] are preferred. If such a name is empty,
-    /// the value stored in [`crate::JsonLayoutVariable`] is used. If no name is provided, the
-    /// variable will not be included in the final map.
-    pub fn variable_name_map(&self) -> HashMap<u32, String> {
-        let mut map = HashMap::new();
-
-        // First collect variable names stored in the main network.
-        for var in &self.network.variables {
-            if let Some(name) = take_if_not_blank(var.name.as_str()) {
-                map.insert(var.id.into(), name);
-            }
-        }
-
-        // Then store variable names that are still missing using layout serde.
-        if let Some(layout) = self.layout.as_ref() {
-            for var in &layout.variables {
-                if map.contains_key(&var.id.into()) {
-                    continue;
-                }
-                if let Some(name) = take_if_not_blank(var.name.as_str()) {
-                    map.insert(var.id.into(), name);
-                }
-            }
-        }
-
-        map
+    /// Collect all regulators of a specific variable.
+    pub fn regulators(&self, variable: u32) -> Vec<(u32, String)> {
+        self.network
+            .relationships
+            .iter()
+            .filter(|r| u32::from(r.to_variable) == variable)
+            .map(|r| u32::from(r.from_variable))
+            .filter_map(|id| {
+                self.network
+                    .variables
+                    .iter()
+                    .find(|v| u32::from(v.id) == id)
+                    .map(|v| (id, v.name.clone()))
+            })
+            .collect::<Vec<_>>()
     }
 }
 

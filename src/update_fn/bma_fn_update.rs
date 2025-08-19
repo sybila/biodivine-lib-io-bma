@@ -3,7 +3,6 @@ use crate::update_fn::parser::parse_bma_fn_tokens;
 use crate::update_fn::tokenizer::BmaFnToken;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp;
-use std::collections::HashMap;
 use std::fmt;
 
 use super::parser::parse_bma_formula;
@@ -51,7 +50,7 @@ impl<'de> Deserialize<'de> for BmaFnUpdate {
         D: Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        match BmaFnUpdate::parse_from_str(&value, &Default::default()) {
+        match BmaFnUpdate::parse_from_str(&value, &[]) {
             Ok(tree) => Ok(tree),
             Err(e) => Err(serde::de::Error::custom(e)),
         }
@@ -71,12 +70,12 @@ impl BmaFnUpdate {
     /// by either its ID or its name. We convert everything to IDs for easier processing.
     pub fn parse_from_str(
         function_str: &str,
-        variables: &HashMap<u32, String>,
+        variables: &[(u32, String)],
     ) -> Result<BmaFnUpdate, String> {
         parse_bma_formula(function_str, variables)
     }
 
-    /// Create an "unary" [BmaFnUpdate] from the given arguments.
+    /// Create a "unary" [BmaFnUpdate] from the given arguments.
     ///
     /// See also [BmaFnNodeType::Unary].
     pub fn mk_unary(child: BmaFnUpdate, op: UnaryFn) -> BmaFnUpdate {
