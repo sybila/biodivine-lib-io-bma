@@ -116,6 +116,8 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
 
         // Ensure that the variable id is unique within the enclosing BmaNetwork.
         let Ok(is_unique) = is_unique_id(&context.variables, self, |x| x.id) else {
+            // This is not a validation error; this violates the whole contract of the validation
+            // mechanism and is therefore allowed to fail (instead of returning an error).
             panic!("Validation called on a variable that is not part of the BmaNetwork")
         };
 

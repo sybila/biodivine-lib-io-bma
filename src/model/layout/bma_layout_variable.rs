@@ -129,6 +129,8 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
 
         // Ensure the item has a unique ID.
         let Ok(is_unique) = is_unique_id(&context.layout.variables, self, |x| x.id) else {
+            // This is not a validation error; this violates the whole contract of the validation
+            // mechanism and is therefore allowed to fail (instead of returning an error).
             panic!("Validation called on a variable that is not part of the BmaLayout")
         };
 
@@ -205,7 +207,9 @@ mod tests {
         };
         let model = make_model_for_variable(&l_var);
         l_var.id = 3;
-        l_var.validate(&model).unwrap();
+        // Here, validation should actually panic, because we are validating a variable
+        // which does not belong to the model.
+        let _ = l_var.validate(&model);
     }
 
     #[test]
