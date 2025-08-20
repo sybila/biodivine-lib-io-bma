@@ -1,7 +1,3 @@
-/// Basic BMA model methods, including converting from BN instances.
-mod _impl_bma_model;
-/// Converting a BMA model into a regulatory graph and BN.
-mod _impl_to_bn;
 pub(crate) mod bma_model;
 pub(crate) mod bma_network;
 pub(crate) mod bma_relationship;

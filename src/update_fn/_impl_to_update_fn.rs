@@ -1,5 +1,6 @@
 use crate::update_fn::bma_fn_update::{BmaFnNodeType, BmaFnUpdate};
 use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+use biodivine_lib_param_bn::{FnUpdate, VariableId};
 use num_rational::Rational32;
 use num_traits::sign::Signed;
 use rust_decimal::prelude::ToPrimitive;
@@ -28,9 +29,9 @@ impl BmaFnUpdate {
     pub fn to_update_fn_boolean(
         &self,
         max_levels: &HashMap<u32, u32>,
-        var_name_mapping: &HashMap<u32, String>,
+        var_bma_to_aeon: &HashMap<u32, VariableId>,
         this_var_max_lvl: u32,
-    ) -> Result<String, String> {
+    ) -> Result<FnUpdate, String> {
         // To convert the BMA expression into an update function, we essentially create
         // an explicit function table mapping all valuations of inputs to output values.
         // In BNs, this corresponds to a truth table.
@@ -43,31 +44,29 @@ impl BmaFnUpdate {
         // Create a function table and convert it into DNF formula
         let function_table =
             self.build_function_table(&variables_in_fn, max_levels, this_var_max_lvl)?;
-        let mut conjunction_clauses = Vec::new();
+        let mut conjunctive_clauses = Vec::new();
         for (valuation, fn_value) in function_table {
             if fn_value == 1 {
-                let conjunction_str = valuation
+                let literals = valuation
                     .iter()
                     .map(|(id, value)| {
-                        let bn_var_name = var_name_mapping.get(id).unwrap(); // unwrap is safe here
+                        let aeon_var = var_bma_to_aeon.get(id).unwrap(); // unwrap is safe here
                         // create positive or negative literal based on the value
                         if *value == 0 {
-                            format!("!{bn_var_name}")
+                            FnUpdate::mk_not(FnUpdate::mk_var(*aeon_var))
                         } else {
-                            bn_var_name.to_string()
+                            FnUpdate::mk_var(*aeon_var)
                         }
                     })
-                    .collect::<Vec<String>>()
-                    .join(" & ");
-
-                conjunction_clauses.push(format!("({conjunction_str})"));
+                    .collect::<Vec<FnUpdate>>();
+                conjunctive_clauses.push(FnUpdate::mk_conjunction(&literals));
             }
         }
 
-        let dnf_formula = if conjunction_clauses.is_empty() {
-            "false".to_string()
+        let dnf_formula = if conjunctive_clauses.is_empty() {
+            FnUpdate::mk_false()
         } else {
-            conjunction_clauses.join(" | ")
+            FnUpdate::mk_disjunction(&conjunctive_clauses)
         };
 
         Ok(dnf_formula)
@@ -306,6 +305,7 @@ pub fn prepare_truth_table(mut var_ids: Vec<u32>, fn_values: Vec<u32>) -> Functi
 #[cfg(test)]
 mod tests {
     use crate::update_fn::{_impl_to_update_fn::prepare_truth_table, parser::parse_bma_formula};
+    use biodivine_lib_param_bn::{BooleanNetwork, FnUpdate, RegulatoryGraph, VariableId};
     use num_rational::Rational32;
     use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -448,9 +448,15 @@ mod tests {
         let expression = parse_bma_formula("var(1) * var(2)", &vars).unwrap();
 
         // DNF formula for the AND function is just "(a & b)" - only this one clause has function value 1
-        let vars = HashMap::from([(1, "a".to_string()), (2, "b".to_string())]);
-        let expected_fn = "(a & b)".to_string();
+        let vars = HashMap::from([
+            (1, VariableId::from_index(0)),
+            (2, VariableId::from_index(1)),
+        ]);
         let result_fn = expression.to_update_fn_boolean(&max_levels, &vars, 1);
+
+        let dummy_rg = RegulatoryGraph::new(vec!["a".to_string(), "b".to_string()]);
+        let dummy_bn = BooleanNetwork::new(dummy_rg);
+        let expected_fn = FnUpdate::try_from_str("(a & b)", &dummy_bn).unwrap();
 
         assert!(result_fn.is_ok());
         assert_eq!(result_fn.unwrap(), expected_fn);
@@ -471,13 +477,17 @@ mod tests {
 
         // expected function values are [1, 0, 0, 0, 1, 1, 1, 1]
         // that means DNF formula with 5 clauses (starting from zero valuation)
+
+        let dummy_rg =
+            RegulatoryGraph::new(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        let dummy_bn = BooleanNetwork::new(dummy_rg);
         let expected_fn =
-            "(!a & !b & !c) | (a & !b & !c) | (a & !b & c) | (a & b & !c) | (a & b & c)"
-                .to_string();
+            "(!a & !b & !c) | (a & !b & !c) | (a & !b & c) | (a & b & !c) | (a & b & c)";
+        let expected_fn = FnUpdate::try_from_str(expected_fn, &dummy_bn).unwrap();
         let vars = HashMap::from([
-            (1, "a".to_string()),
-            (2, "b".to_string()),
-            (3, "c".to_string()),
+            (1, VariableId::from_index(0)),
+            (2, VariableId::from_index(1)),
+            (3, VariableId::from_index(2)),
         ]);
         let result_fn = expression.to_update_fn_boolean(&max_levels, &vars, 1);
 

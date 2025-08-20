@@ -1,4 +1,5 @@
 use biodivine_lib_io_bma::BmaModel;
+use biodivine_lib_param_bn::BooleanNetwork;
 use std::fs::{read_dir, read_to_string};
 
 /// Iterate through all models and see if they are parse without error.
@@ -48,9 +49,7 @@ fn main() {
         println!("Processing selected boolean model {:?}:", model_path);
         let xml_data = read_to_string(model_path).expect("Unable to read file");
         let bma_model = BmaModel::from_xml_string(&xml_data).expect("XML was not well-formatted");
-        let bn = bma_model
-            .to_boolean_network(true)
-            .expect("Failed to convert to BN");
+        let bn = BooleanNetwork::try_from(&bma_model).expect("Failed to convert to BN");
         println!("Resulting BN:\n{bn}");
     }
 }

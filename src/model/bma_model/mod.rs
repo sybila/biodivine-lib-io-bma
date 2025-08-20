@@ -1,12 +1,16 @@
+pub(crate) mod from_bn;
+pub(crate) mod into_bn;
+
 use crate::serde::json::JsonBmaModel;
 use crate::serde::xml::XmlBmaModel;
 use crate::{
     BmaLayout, BmaLayoutError, BmaNetwork, BmaNetworkError, ContextualValidation, ErrorReporter,
-    Validation,
+    RelationshipType, Validation,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::collections::HashMap;
+use std::cmp::max;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 /// Main structure with all the important parts of a BMA model.
@@ -68,6 +72,56 @@ impl BmaModel {
         let xml = serde_xml_rs::to_string(&model)?;
         Ok(xml)
     }
+
+    /// Create a new BMA model with a given network, layout, and metadata.
+    /// This is just a constructor wrapper, it does not check the validity of the model.
+    pub fn new(network: BmaNetwork, layout: BmaLayout, metadata: HashMap<String, String>) -> Self {
+        BmaModel {
+            network,
+            layout,
+            metadata,
+        }
+    }
+
+    /// Check if all variables in the model are Boolean (max level is 1).
+    pub fn is_boolean(&self) -> bool {
+        self.get_max_var_level() <= 1
+    }
+
+    /// Get the maximum level across all variables in the BMA model.
+    pub fn get_max_var_level(&self) -> u32 {
+        let mut max_level = 0;
+        self.network.variables.iter().for_each(|v| {
+            // just in case, lets check both `range_from` and `range_to`
+            max_level = max(max_level, max(v.min_level(), v.max_level()));
+        });
+        max_level
+    }
+
+    /// Get regulators of a particular variable, optionally filtered by regulator type.
+    /// The regulators are represented by their IDs.
+    ///
+    /// If network validation passed successfully, you can assume that there is no
+    /// [`RelationshipType::Unknown`] (i.e. every relationship is either an activator,
+    /// or an inhibitor).
+    pub fn get_regulators(
+        &self,
+        target_var: u32,
+        relationship: Option<RelationshipType>,
+    ) -> HashSet<u32> {
+        self.network
+            .relationships
+            .iter()
+            .filter(|r| r.to_variable == target_var)
+            .filter(|r| {
+                relationship
+                    .as_ref()
+                    .map(|x| *x == r.r#type)
+                    .unwrap_or(true)
+            })
+            .map(|r| r.id)
+            .collect()
+    }
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -110,6 +164,8 @@ mod tests {
             metadata: Default::default(),
         };
         model.validate().unwrap();
+        assert!(!model.is_boolean());
+        assert_eq!(model.get_max_var_level(), 3);
     }
 
     #[test]
