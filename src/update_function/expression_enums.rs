@@ -5,7 +5,7 @@ use std::fmt;
 ///
 /// There are some weird format differences, and a variable can be referenced by
 /// either its ID or its name. We convert everything to IDs for easier processing.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum Literal {
     Const(i32),
     Var(u32),
@@ -21,7 +21,7 @@ impl fmt::Display for Literal {
 }
 
 /// Arithmetic operations admissible in BMA function expressions.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum ArithOp {
     Plus,
     Minus,
@@ -40,8 +40,22 @@ impl fmt::Display for ArithOp {
     }
 }
 
+impl TryFrom<char> for ArithOp {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            '+' => Ok(ArithOp::Plus),
+            '-' => Ok(ArithOp::Minus),
+            '*' => Ok(ArithOp::Mult),
+            '/' => Ok(ArithOp::Div),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Unary functions admissible in BMA function expressions.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum UnaryFn {
     Ceil,
     Floor,
@@ -58,12 +72,38 @@ impl fmt::Display for UnaryFn {
     }
 }
 
+impl TryFrom<&str> for UnaryFn {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "ceil" => Ok(UnaryFn::Ceil),
+            "floor" => Ok(UnaryFn::Floor),
+            "abs" => Ok(UnaryFn::Abs),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Aggregate functions admissible in BMA function expressions.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum AggregateFn {
     Min,
     Max,
     Avg,
+}
+
+impl TryFrom<&str> for AggregateFn {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "min" => Ok(AggregateFn::Min),
+            "max" => Ok(AggregateFn::Max),
+            "avg" => Ok(AggregateFn::Avg),
+            _ => Err(()),
+        }
+    }
 }
 
 impl fmt::Display for AggregateFn {

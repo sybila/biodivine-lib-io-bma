@@ -1,5 +1,4 @@
-use crate::update_function::InvalidBmaFnUpdate;
-use crate::update_function::bma_fn_update::BmaUpdateFunction;
+use crate::update_function::{BmaUpdateFunction, InvalidBmaFnUpdate};
 use crate::utils::is_unique_id;
 use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
 use serde::{Deserialize, Serialize};
@@ -136,7 +135,7 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
 #[cfg(test)]
 mod tests {
     use crate::model::bma_variable::BmaVariableError;
-    use crate::update_function::bma_fn_update::BmaUpdateFunction;
+    use crate::update_function::BmaUpdateFunction;
     use crate::{BmaNetwork, BmaVariable, ContextualValidation};
 
     fn network_for_variable(variable: &BmaVariable) -> BmaNetwork {

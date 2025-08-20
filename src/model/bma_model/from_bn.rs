@@ -1,4 +1,4 @@
-use crate::update_function::bma_fn_update::BmaUpdateFunction;
+use crate::update_function::BmaUpdateFunction;
 use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
     BmaVariable, RelationshipType,

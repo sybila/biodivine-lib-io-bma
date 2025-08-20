@@ -1,5 +1,4 @@
-use crate::update_function::bma_fn_update::BmaUpdateFunction;
-use crate::update_function::expression_enums::{AggregateFn, ArithOp};
+use crate::update_function::{AggregateFn, ArithOp, BmaUpdateFunction};
 use crate::{
     BmaModel, BmaModelError, BmaNetworkError, BmaRelationshipError, BmaVariable, BmaVariableError,
     RelationshipType, Validation,
@@ -230,8 +229,8 @@ fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction 
             let args = variables
                 .iter()
                 .map(|x| BmaUpdateFunction::mk_variable(*x))
-                .collect();
-            BmaUpdateFunction::mk_aggregation(AggregateFn::Avg, args)
+                .collect::<Vec<_>>();
+            BmaUpdateFunction::mk_aggregation(AggregateFn::Avg, &args)
         } else {
             // This makes little sense because it means any variable with only negative
             // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
@@ -245,7 +244,7 @@ fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction 
     let n_avr = create_average(&negative);
 
     // Finally, we subtract the negative average from the positive average
-    BmaUpdateFunction::mk_arithmetic(p_avr, n_avr, ArithOp::Minus)
+    BmaUpdateFunction::mk_arithmetic(ArithOp::Minus, &p_avr, &n_avr)
 }
 
 /// Build a map which assigns each BMA variable ID an AEON variable ID.
