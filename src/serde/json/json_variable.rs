@@ -1,7 +1,7 @@
 use crate::BmaVariable;
 use crate::serde::json::JsonBmaModel;
 use crate::serde::quote_num::QuoteNum;
-use crate::update_fn::read_fn_update;
+use crate::update_function::read_fn_update;
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize JSON info about individual variable.

@@ -1,4 +1,4 @@
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
+use crate::update_function::bma_fn_update::BmaUpdateFunction;
 use crate::utils::take_if_not_blank;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -18,14 +18,14 @@ pub struct InvalidBmaFnUpdate {
     pub input_string: String,
 }
 
-/// A utility function to correctly parse [`BmaFnUpdate`], including handling of blank values.
+/// A utility function to correctly parse [`BmaUpdateFunction`], including handling of blank values.
 pub fn read_fn_update(
     input: &str,
     variables: &[(u32, String)],
-) -> Option<Result<BmaFnUpdate, InvalidBmaFnUpdate>> {
+) -> Option<Result<BmaUpdateFunction, InvalidBmaFnUpdate>> {
     let value = take_if_not_blank(input)?;
     Some(
-        BmaFnUpdate::parse_from_str(value.as_str(), variables).map_err(|error| {
+        BmaUpdateFunction::parse_from_str(value.as_str(), variables).map_err(|error| {
             InvalidBmaFnUpdate {
                 error,
                 input_string: value,

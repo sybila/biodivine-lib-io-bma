@@ -1,5 +1,5 @@
 use crate::serde::xml::XmlBmaModel;
-use crate::update_fn::read_fn_update;
+use crate::update_function::read_fn_update;
 use crate::utils::{f64_or_default, rational_or_default};
 use crate::{BmaLayoutVariable, BmaVariable};
 use serde::{Deserialize, Serialize};

@@ -3,7 +3,7 @@
 /// Main `BmaModel` structure and its utilities.
 pub(crate) mod model;
 /// Structures and utilities for parsing/evaluating update functions.
-pub mod update_fn;
+pub mod update_function;
 
 pub(crate) mod serde;
 

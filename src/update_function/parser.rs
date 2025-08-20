@@ -1,6 +1,6 @@
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use crate::update_fn::expression_enums::*;
-use crate::update_fn::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
+use crate::update_function::bma_fn_update::BmaUpdateFunction;
+use crate::update_function::expression_enums::*;
+use crate::update_function::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
 
 /// Parse an BMA update function formula string representation into an actual expression tree.
 /// Basically a wrapper for tokenize+parse (used often for testing/debug purposes).
@@ -11,7 +11,7 @@ use crate::update_fn::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
 pub fn parse_bma_formula(
     formula: &str,
     variables: &[(u32, String)],
-) -> Result<BmaFnUpdate, String> {
+) -> Result<BmaUpdateFunction, String> {
     let tokens = try_tokenize_bma_formula(formula.to_string(), variables)?;
     let tree = parse_bma_fn_tokens(&tokens)?;
     Ok(tree)
@@ -23,15 +23,15 @@ fn index_of_first(tokens: &[BmaFnToken], token: BmaFnToken) -> Option<usize> {
 }
 
 /// Parse `tokens` of BMA update fn formula into an abstract syntax tree using recursive steps.
-pub fn parse_bma_fn_tokens(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+pub fn parse_bma_fn_tokens(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
     parse_1_div(tokens)
 }
 
 /// Recursive parsing step 1: extract `/` operators.
-fn parse_1_div(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+fn parse_1_div(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
     let div_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Div));
     Ok(if let Some(i) = div_token {
-        BmaFnUpdate::mk_arithmetic(
+        BmaUpdateFunction::mk_arithmetic(
             parse_2_mul(&tokens[..i])?,
             parse_1_div(&tokens[(i + 1)..])?,
             ArithOp::Div,
@@ -42,10 +42,10 @@ fn parse_1_div(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 }
 
 /// Recursive parsing step 2: extract `*` operators.
-fn parse_2_mul(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+fn parse_2_mul(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
     let mul_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Mult));
     Ok(if let Some(i) = mul_token {
-        BmaFnUpdate::mk_arithmetic(
+        BmaUpdateFunction::mk_arithmetic(
             parse_3_minus(&tokens[..i])?,
             parse_2_mul(&tokens[(i + 1)..])?,
             ArithOp::Mult,
@@ -56,10 +56,10 @@ fn parse_2_mul(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 }
 
 /// Recursive parsing step 3: extract `-` operators.
-fn parse_3_minus(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+fn parse_3_minus(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
     let minus_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Minus));
     Ok(if let Some(i) = minus_token {
-        BmaFnUpdate::mk_arithmetic(
+        BmaUpdateFunction::mk_arithmetic(
             parse_4_plus(&tokens[..i])?,
             parse_3_minus(&tokens[(i + 1)..])?,
             ArithOp::Minus,
@@ -70,10 +70,10 @@ fn parse_3_minus(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 }
 
 /// Recursive parsing step 4: extract `+` operators.
-fn parse_4_plus(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+fn parse_4_plus(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
     let minus_token = index_of_first(tokens, BmaFnToken::Binary(ArithOp::Plus));
     Ok(if let Some(i) = minus_token {
-        BmaFnUpdate::mk_arithmetic(
+        BmaUpdateFunction::mk_arithmetic(
             parse_5_others(&tokens[..i])?,
             parse_4_plus(&tokens[(i + 1)..])?,
             ArithOp::Plus,
@@ -85,7 +85,7 @@ fn parse_4_plus(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 
 /// Recursive parsing step 5: extract literals and recursively solve sub-formulae in parentheses
 /// and in functions.
-fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
     if tokens.is_empty() {
         Err("Expected formula, found nothing.".to_string())
     } else {
@@ -94,10 +94,10 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
             // else does not make sense.
             match &tokens[0] {
                 BmaFnToken::Atomic(Literal::Var(var_id)) => {
-                    return Ok(BmaFnUpdate::mk_variable(*var_id));
+                    return Ok(BmaUpdateFunction::mk_variable(*var_id));
                 }
                 BmaFnToken::Atomic(Literal::Const(num)) => {
-                    return Ok(BmaFnUpdate::mk_constant(*num));
+                    return Ok(BmaUpdateFunction::mk_constant(*num));
                 }
                 BmaFnToken::Aggregate(operator, arguments) => {
                     let mut arg_expression_nodes = Vec::new();
@@ -111,14 +111,14 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
                             return Err(message.to_string());
                         }
                     }
-                    return Ok(BmaFnUpdate::mk_aggregation(
+                    return Ok(BmaUpdateFunction::mk_aggregation(
                         operator.clone(),
                         arg_expression_nodes,
                     ));
                 }
                 BmaFnToken::Unary(operator, argument) => {
                     return if let BmaFnToken::TokenList(inner_token_list) = *argument.clone() {
-                        Ok(BmaFnUpdate::mk_unary(
+                        Ok(BmaUpdateFunction::mk_unary(
                             parse_bma_fn_tokens(&inner_token_list)?,
                             operator.clone(),
                         ))
@@ -142,16 +142,16 @@ fn parse_5_others(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::update_fn::bma_fn_update::BmaFnUpdate;
-    use crate::update_fn::expression_enums::{AggregateFn, ArithOp, UnaryFn};
+    use crate::update_function::bma_fn_update::BmaUpdateFunction;
+    use crate::update_function::expression_enums::{AggregateFn, ArithOp, UnaryFn};
 
     #[test]
     fn test_parse_simple_addition() {
         let input = "3 + 5";
         let result = parse_bma_formula(input, &[]);
-        let expected = BmaFnUpdate::mk_arithmetic(
-            BmaFnUpdate::mk_constant(3),
-            BmaFnUpdate::mk_constant(5),
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            BmaUpdateFunction::mk_constant(3),
+            BmaUpdateFunction::mk_constant(5),
             ArithOp::Plus,
         );
         assert_eq!(result, Ok(expected));
@@ -161,9 +161,9 @@ mod tests {
     fn test_parse_simple_subtraction() {
         let input = "10 - 7";
         let result = parse_bma_formula(input, &[]);
-        let expected = BmaFnUpdate::mk_arithmetic(
-            BmaFnUpdate::mk_constant(10),
-            BmaFnUpdate::mk_constant(7),
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            BmaUpdateFunction::mk_constant(10),
+            BmaUpdateFunction::mk_constant(7),
             ArithOp::Minus,
         );
         assert_eq!(result, Ok(expected));
@@ -173,13 +173,13 @@ mod tests {
     fn test_parse_multiplication_and_division() {
         let input = "8 * 4 / 2";
         let result = parse_bma_formula(input, &[]);
-        let expected = BmaFnUpdate::mk_arithmetic(
-            BmaFnUpdate::mk_arithmetic(
-                BmaFnUpdate::mk_constant(8),
-                BmaFnUpdate::mk_constant(4),
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            BmaUpdateFunction::mk_arithmetic(
+                BmaUpdateFunction::mk_constant(8),
+                BmaUpdateFunction::mk_constant(4),
                 ArithOp::Mult,
             ),
-            BmaFnUpdate::mk_constant(2),
+            BmaUpdateFunction::mk_constant(2),
             ArithOp::Div,
         );
         assert_eq!(result, Ok(expected));
@@ -189,11 +189,11 @@ mod tests {
     fn test_parse_nested_arithmetic() {
         let input = "3 + (5 * 2)";
         let result = parse_bma_formula(input, &[]);
-        let expected = BmaFnUpdate::mk_arithmetic(
-            BmaFnUpdate::mk_constant(3),
-            BmaFnUpdate::mk_arithmetic(
-                BmaFnUpdate::mk_constant(5),
-                BmaFnUpdate::mk_constant(2),
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            BmaUpdateFunction::mk_constant(3),
+            BmaUpdateFunction::mk_arithmetic(
+                BmaUpdateFunction::mk_constant(5),
+                BmaUpdateFunction::mk_constant(2),
                 ArithOp::Mult,
             ),
             ArithOp::Plus,
@@ -205,7 +205,7 @@ mod tests {
     fn test_parse_abs_function() {
         let input = "abs(5)";
         let result = parse_bma_formula(input, &[]);
-        let expected = BmaFnUpdate::mk_unary(BmaFnUpdate::mk_constant(5), UnaryFn::Abs);
+        let expected = BmaUpdateFunction::mk_unary(BmaUpdateFunction::mk_constant(5), UnaryFn::Abs);
         assert_eq!(result, Ok(expected));
     }
 
@@ -214,14 +214,14 @@ mod tests {
         let input = "min(3, 5, 5 + var(a))";
         let vars = vec![(42, "a".to_string())];
         let result = parse_bma_formula(input, &vars);
-        let expected = BmaFnUpdate::mk_aggregation(
+        let expected = BmaUpdateFunction::mk_aggregation(
             AggregateFn::Min,
             vec![
-                BmaFnUpdate::mk_constant(3),
-                BmaFnUpdate::mk_constant(5),
-                BmaFnUpdate::mk_arithmetic(
-                    BmaFnUpdate::mk_constant(5),
-                    BmaFnUpdate::mk_variable(42),
+                BmaUpdateFunction::mk_constant(3),
+                BmaUpdateFunction::mk_constant(5),
+                BmaUpdateFunction::mk_arithmetic(
+                    BmaUpdateFunction::mk_constant(5),
+                    BmaUpdateFunction::mk_variable(42),
                     ArithOp::Plus,
                 ),
             ],
@@ -252,12 +252,12 @@ mod tests {
     fn test_parse_function_with_multiple_arguments() {
         let input = "max(3, 5, 10)";
         let result = parse_bma_formula(input, &[]);
-        let expected = BmaFnUpdate::mk_aggregation(
+        let expected = BmaUpdateFunction::mk_aggregation(
             AggregateFn::Max,
             vec![
-                BmaFnUpdate::mk_constant(3),
-                BmaFnUpdate::mk_constant(5),
-                BmaFnUpdate::mk_constant(10),
+                BmaUpdateFunction::mk_constant(3),
+                BmaUpdateFunction::mk_constant(5),
+                BmaUpdateFunction::mk_constant(10),
             ],
         );
         assert_eq!(result, Ok(expected));

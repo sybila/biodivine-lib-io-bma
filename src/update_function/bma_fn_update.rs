@@ -1,6 +1,6 @@
-use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
-use crate::update_fn::parser::parse_bma_fn_tokens;
-use crate::update_fn::tokenizer::BmaFnToken;
+use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+use crate::update_function::parser::parse_bma_fn_tokens;
+use crate::update_function::tokenizer::BmaFnToken;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp;
 use std::fmt;
@@ -15,11 +15,11 @@ use super::parser::parse_bma_formula;
 ///     - A binary "arithmetic" node, with a `BinaryOp` and two sub-expressions.
 ///     - An "aggregation" node with a `AggregateFn` op and a list of sub-expressions.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum BmaFnNodeType {
+pub enum BmaUpdateFunctionNode {
     Terminal(Literal),
-    Unary(UnaryFn, Box<BmaFnUpdate>),
-    Arithmetic(ArithOp, Box<BmaFnUpdate>, Box<BmaFnUpdate>),
-    Aggregation(AggregateFn, Vec<Box<BmaFnUpdate>>),
+    Unary(UnaryFn, Box<BmaUpdateFunction>),
+    Arithmetic(ArithOp, Box<BmaUpdateFunction>, Box<BmaUpdateFunction>),
+    Aggregation(AggregateFn, Vec<Box<BmaUpdateFunction>>),
 }
 
 /// A single node in a syntax tree of a BMA update function's expression.
@@ -29,13 +29,13 @@ pub enum BmaFnNodeType {
 ///     - `expression_tree`; A parse tree for the expression`.
 ///     - `function_str`; A canonical string representation of the expression.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct BmaFnUpdate {
+pub struct BmaUpdateFunction {
     pub function_str: String,
     pub height: u32,
-    pub expression_tree: BmaFnNodeType,
+    pub expression_tree: BmaUpdateFunctionNode,
 }
 
-impl Serialize for BmaFnUpdate {
+impl Serialize for BmaUpdateFunction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -44,26 +44,26 @@ impl Serialize for BmaFnUpdate {
     }
 }
 
-impl<'de> Deserialize<'de> for BmaFnUpdate {
+impl<'de> Deserialize<'de> for BmaUpdateFunction {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        match BmaFnUpdate::parse_from_str(&value, &[]) {
+        match BmaUpdateFunction::parse_from_str(&value, &[]) {
             Ok(tree) => Ok(tree),
             Err(e) => Err(serde::de::Error::custom(e)),
         }
     }
 }
 
-impl BmaFnUpdate {
-    /// "Parse" new [BmaFnUpdate] tree from a list of [BmaFnToken] objects.
-    pub fn from_tokens(tokens: &[BmaFnToken]) -> Result<BmaFnUpdate, String> {
+impl BmaUpdateFunction {
+    /// "Parse" new [BmaUpdateFunction] tree from a list of [BmaFnToken] objects.
+    pub fn from_tokens(tokens: &[BmaFnToken]) -> Result<BmaUpdateFunction, String> {
         parse_bma_fn_tokens(tokens)
     }
 
-    /// Parse new [BmaFnUpdate] tree directly from a string representation.
+    /// Parse new [BmaUpdateFunction] tree directly from a string representation.
     ///
     /// Arg `variables` is a map of variable IDs to their names. It is needed because there are
     /// some weird format differences between different variants, and a variable can be referenced
@@ -71,58 +71,65 @@ impl BmaFnUpdate {
     pub fn parse_from_str(
         function_str: &str,
         variables: &[(u32, String)],
-    ) -> Result<BmaFnUpdate, String> {
+    ) -> Result<BmaUpdateFunction, String> {
         parse_bma_formula(function_str, variables)
     }
 
-    /// Create a "unary" [BmaFnUpdate] from the given arguments.
+    /// Create a "unary" [BmaUpdateFunction] from the given arguments.
     ///
-    /// See also [BmaFnNodeType::Unary].
-    pub fn mk_unary(child: BmaFnUpdate, op: UnaryFn) -> BmaFnUpdate {
+    /// See also [BmaUpdateFunctionNode::Unary].
+    pub fn mk_unary(child: BmaUpdateFunction, op: UnaryFn) -> BmaUpdateFunction {
         let subform_str = format!("{op}({child})");
-        BmaFnUpdate {
+        BmaUpdateFunction {
             function_str: subform_str,
             height: child.height + 1,
-            expression_tree: BmaFnNodeType::Unary(op, Box::new(child)),
+            expression_tree: BmaUpdateFunctionNode::Unary(op, Box::new(child)),
         }
     }
 
-    /// Create a "binary" arithmetic [BmaFnUpdate] from the given arguments.
+    /// Create a "binary" arithmetic [BmaUpdateFunction] from the given arguments.
     ///
-    /// See also [BmaFnNodeType::Arithmetic].
-    pub fn mk_arithmetic(left: BmaFnUpdate, right: BmaFnUpdate, op: ArithOp) -> BmaFnUpdate {
-        BmaFnUpdate {
+    /// See also [BmaUpdateFunctionNode::Arithmetic].
+    pub fn mk_arithmetic(
+        left: BmaUpdateFunction,
+        right: BmaUpdateFunction,
+        op: ArithOp,
+    ) -> BmaUpdateFunction {
+        BmaUpdateFunction {
             function_str: format!("({left} {op} {right})"),
             height: cmp::max(left.height, right.height) + 1,
-            expression_tree: BmaFnNodeType::Arithmetic(op, Box::new(left), Box::new(right)),
+            expression_tree: BmaUpdateFunctionNode::Arithmetic(op, Box::new(left), Box::new(right)),
         }
     }
 
-    /// Create a [BmaFnUpdate] representing a Boolean constant.
+    /// Create a [BmaUpdateFunction] representing a Boolean constant.
     ///
-    /// See also [BmaFnNodeType::Terminal] and [Literal::Const].
-    pub fn mk_constant(constant_val: i32) -> BmaFnUpdate {
+    /// See also [BmaUpdateFunctionNode::Terminal] and [Literal::Const].
+    pub fn mk_constant(constant_val: i32) -> BmaUpdateFunction {
         Self::mk_literal(Literal::Const(constant_val))
     }
 
-    /// Create a [BmaFnUpdate] representing a variable.
+    /// Create a [BmaUpdateFunction] representing a variable.
     ///
-    /// See also [BmaFnNodeType::Terminal] and [Literal::Var].
-    pub fn mk_variable(var_id: u32) -> BmaFnUpdate {
+    /// See also [BmaUpdateFunctionNode::Terminal] and [Literal::Var].
+    pub fn mk_variable(var_id: u32) -> BmaUpdateFunction {
         Self::mk_literal(Literal::Var(var_id))
     }
 
-    /// A helper function which creates a new [BmaFnUpdate] for the given [Literal] value.
-    fn mk_literal(literal: Literal) -> BmaFnUpdate {
-        BmaFnUpdate {
+    /// A helper function which creates a new [BmaUpdateFunction] for the given [Literal] value.
+    fn mk_literal(literal: Literal) -> BmaUpdateFunction {
+        BmaUpdateFunction {
             function_str: literal.to_string(),
             height: 0,
-            expression_tree: BmaFnNodeType::Terminal(literal),
+            expression_tree: BmaUpdateFunctionNode::Terminal(literal),
         }
     }
 
-    /// Create a [BmaFnUpdate] representing an aggregation operator applied to given arguments.
-    pub fn mk_aggregation(op: AggregateFn, inner_nodes: Vec<BmaFnUpdate>) -> BmaFnUpdate {
+    /// Create a [BmaUpdateFunction] representing an aggregation operator applied to given arguments.
+    pub fn mk_aggregation(
+        op: AggregateFn,
+        inner_nodes: Vec<BmaUpdateFunction>,
+    ) -> BmaUpdateFunction {
         let max_height = inner_nodes
             .iter()
             .map(|node| node.height)
@@ -137,21 +144,21 @@ impl BmaFnUpdate {
 
         let inner_boxed_nodes = inner_nodes.into_iter().map(Box::new).collect();
 
-        BmaFnUpdate {
+        BmaUpdateFunction {
             function_str,
             height: max_height + 1,
-            expression_tree: BmaFnNodeType::Aggregation(op, inner_boxed_nodes),
+            expression_tree: BmaUpdateFunctionNode::Aggregation(op, inner_boxed_nodes),
         }
     }
 }
 
-impl BmaFnUpdate {
+impl BmaUpdateFunction {
     pub fn as_str(&self) -> &str {
         self.function_str.as_str()
     }
 }
 
-impl fmt::Display for BmaFnUpdate {
+impl fmt::Display for BmaUpdateFunction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.function_str)
     }

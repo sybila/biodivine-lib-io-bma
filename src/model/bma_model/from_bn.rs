@@ -1,4 +1,4 @@
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
+use crate::update_function::bma_fn_update::BmaUpdateFunction;
 use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
     BmaVariable, RelationshipType,
@@ -39,7 +39,7 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
         for var_id in network.variables() {
             let formula = match network.get_update_function(var_id) {
                 Some(f) => Some(Ok(
-                    BmaFnUpdate::try_from_fn_update(f).map_err(|e| anyhow!(e))?
+                    BmaUpdateFunction::try_from_fn_update(f).map_err(|e| anyhow!(e))?
                 )),
                 None => None,
             };

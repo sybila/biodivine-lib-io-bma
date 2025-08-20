@@ -1,5 +1,5 @@
-use crate::update_fn::InvalidBmaFnUpdate;
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
+use crate::update_function::InvalidBmaFnUpdate;
+use crate::update_function::bma_fn_update::BmaUpdateFunction;
 use crate::utils::is_unique_id;
 use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,7 @@ use serde_with::skip_serializing_none;
 use thiserror::Error;
 
 /// A discrete variable identified by an integer `id`. Each [BmaVariable] consists
-/// of a `name` (can be blank), its value `range` (inclusive), and an [BmaFnUpdate] function
+/// of a `name` (can be blank), its value `range` (inclusive), and an [BmaUpdateFunction] function
 /// formula (optional) which describes its evolution in time.
 ///
 /// Expected invariants (checked during validation):
@@ -29,12 +29,12 @@ pub struct BmaVariable {
     pub id: u32,
     pub name: String,
     pub range: (u32, u32),
-    pub formula: Option<Result<BmaFnUpdate, InvalidBmaFnUpdate>>,
+    pub formula: Option<Result<BmaUpdateFunction, InvalidBmaFnUpdate>>,
 }
 
 impl BmaVariable {
     /// Create a new *boolean* [`BmaVariable`] with the given `name`.
-    pub fn new_boolean(id: u32, name: &str, formula: Option<BmaFnUpdate>) -> Self {
+    pub fn new_boolean(id: u32, name: &str, formula: Option<BmaUpdateFunction>) -> Self {
         Self::new(id, name, (0, 1), formula)
     }
 
@@ -43,7 +43,7 @@ impl BmaVariable {
         id: u32,
         name: &str,
         range: (u32, u32),
-        formula: Option<BmaFnUpdate>,
+        formula: Option<BmaUpdateFunction>,
     ) -> BmaVariable {
         BmaVariable {
             id,
@@ -136,7 +136,7 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
 #[cfg(test)]
 mod tests {
     use crate::model::bma_variable::BmaVariableError;
-    use crate::update_fn::bma_fn_update::BmaFnUpdate;
+    use crate::update_function::bma_fn_update::BmaUpdateFunction;
     use crate::{BmaNetwork, BmaVariable, ContextualValidation};
 
     fn network_for_variable(variable: &BmaVariable) -> BmaNetwork {
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn default_serde() {
-        let formula = BmaFnUpdate::parse_from_str("var(0) - var(1)", &[]).unwrap();
+        let formula = BmaUpdateFunction::parse_from_str("var(0) - var(1)", &[]).unwrap();
         let variable = BmaVariable::new(5, "foo", (1, 3), Some(formula));
         let serialized = serde_json::to_string(&variable).unwrap();
         assert_eq!(

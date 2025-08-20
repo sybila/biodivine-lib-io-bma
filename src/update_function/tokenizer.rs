@@ -1,4 +1,4 @@
-use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use std::collections::HashSet;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -261,8 +261,8 @@ fn collect_fn_arguments(
 
 #[cfg(test)]
 mod tests {
-    use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
-    use crate::update_fn::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
+    use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+    use crate::update_function::tokenizer::{BmaFnToken, try_tokenize_bma_formula};
 
     #[test]
     fn test_simple_arithmetic() {

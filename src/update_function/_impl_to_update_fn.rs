@@ -1,5 +1,5 @@
-use crate::update_fn::bma_fn_update::{BmaFnNodeType, BmaFnUpdate};
-use crate::update_fn::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
+use crate::update_function::bma_fn_update::{BmaUpdateFunction, BmaUpdateFunctionNode};
+use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use biodivine_lib_param_bn::{FnUpdate, VariableId};
 use num_rational::Rational32;
 use num_traits::sign::Signed;
@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 /// a HashMap).
 type FunctionTable = Vec<(BTreeMap<u32, u32>, u32)>;
 
-impl BmaFnUpdate {
+impl BmaUpdateFunction {
     /// Convert the BMA expression into corresponding BN update function string
     /// matching the format of the [biodivine_lib_param_bn] library.
     ///
@@ -79,15 +79,17 @@ impl BmaFnUpdate {
         valuation: &BTreeMap<u32, Rational32>,
     ) -> Result<Rational32, String> {
         match &self.expression_tree {
-            BmaFnNodeType::Terminal(Literal::Var(var_id)) => {
+            BmaUpdateFunctionNode::Terminal(Literal::Var(var_id)) => {
                 if let Some(value) = valuation.get(var_id) {
                     Ok(*value)
                 } else {
                     Err(format!("Variable `{var_id}` not found in the valuation."))
                 }
             }
-            BmaFnNodeType::Terminal(Literal::Const(value)) => Ok(Rational32::new(*value, 1)),
-            BmaFnNodeType::Arithmetic(operator, left, right) => {
+            BmaUpdateFunctionNode::Terminal(Literal::Const(value)) => {
+                Ok(Rational32::new(*value, 1))
+            }
+            BmaUpdateFunctionNode::Arithmetic(operator, left, right) => {
                 let left_value = left.evaluate_in_valuation(valuation)?;
                 let right_value = right.evaluate_in_valuation(valuation)?;
                 let res = match operator {
@@ -98,7 +100,7 @@ impl BmaFnUpdate {
                 };
                 Ok(res)
             }
-            BmaFnNodeType::Unary(function, child_node) => {
+            BmaUpdateFunctionNode::Unary(function, child_node) => {
                 let child_value = child_node.evaluate_in_valuation(valuation)?;
                 let res = match function {
                     UnaryFn::Abs => Rational32::abs(&child_value),
@@ -107,7 +109,7 @@ impl BmaFnUpdate {
                 };
                 Ok(res)
             }
-            BmaFnNodeType::Aggregation(function, arguments) => {
+            BmaUpdateFunctionNode::Aggregation(function, arguments) => {
                 let args_values: Vec<Rational32> = arguments
                     .iter()
                     .map(|arg| arg.evaluate_in_valuation(valuation))
@@ -137,19 +139,19 @@ impl BmaFnUpdate {
     /// Collect all variable IDs used in this BMA function's expression.
     fn collect_variables(&self) -> HashSet<u32> {
         match &self.expression_tree {
-            BmaFnNodeType::Terminal(Literal::Var(var_id)) => {
+            BmaUpdateFunctionNode::Terminal(Literal::Var(var_id)) => {
                 let mut set = HashSet::new();
                 set.insert(*var_id);
                 set
             }
-            BmaFnNodeType::Terminal(Literal::Const(_)) => HashSet::new(),
-            BmaFnNodeType::Arithmetic(_, left, right) => {
+            BmaUpdateFunctionNode::Terminal(Literal::Const(_)) => HashSet::new(),
+            BmaUpdateFunctionNode::Arithmetic(_, left, right) => {
                 let left_set = left.collect_variables();
                 let right_set = right.collect_variables();
                 left_set.union(&right_set).cloned().collect()
             }
-            BmaFnNodeType::Unary(_, child_node) => child_node.collect_variables(),
-            BmaFnNodeType::Aggregation(_, arguments) => arguments
+            BmaUpdateFunctionNode::Unary(_, child_node) => child_node.collect_variables(),
+            BmaUpdateFunctionNode::Aggregation(_, arguments) => arguments
                 .iter()
                 .map(|arg| arg.collect_variables())
                 .fold(HashSet::new(), |x, y| x.union(&y).cloned().collect()),
@@ -304,7 +306,9 @@ pub fn prepare_truth_table(mut var_ids: Vec<u32>, fn_values: Vec<u32>) -> Functi
 
 #[cfg(test)]
 mod tests {
-    use crate::update_fn::{_impl_to_update_fn::prepare_truth_table, parser::parse_bma_formula};
+    use crate::update_function::{
+        _impl_to_update_fn::prepare_truth_table, parser::parse_bma_formula,
+    };
     use biodivine_lib_param_bn::{BooleanNetwork, FnUpdate, RegulatoryGraph, VariableId};
     use num_rational::Rational32;
     use std::collections::{BTreeMap, HashMap, HashSet};

@@ -1,5 +1,5 @@
-use crate::update_fn::bma_fn_update::BmaFnUpdate;
-use crate::update_fn::expression_enums::{AggregateFn, ArithOp};
+use crate::update_function::bma_fn_update::BmaUpdateFunction;
+use crate::update_function::expression_enums::{AggregateFn, ArithOp};
 use crate::{
     BmaModel, BmaModelError, BmaNetworkError, BmaRelationshipError, BmaVariable, BmaVariableError,
     RelationshipType, Validation,
@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 /// The network will contain the same set of variables and regulations as this model.
 /// See [Self::to_regulatory_graph] for details on how the regulation graph is extracted,
 /// and [Self::canonical_var_name] for how the variable names are derived.
-/// The update functions are transformed using [BmaFnUpdate::to_update_fn_boolean].
+/// The update functions are transformed using [BmaUpdateFunction::to_update_fn_boolean].
 ///
 /// By default, all regulations are considered as observable, and their sign is taken from the
 /// BMA model as is. This may be inconsistent with the update functions, which may or may not be
@@ -214,29 +214,29 @@ fn canonical_var_name(var: &BmaVariable) -> String {
 ///
 /// The function assumes every regulator relationship is either activation,
 /// or inhibition. Unknown relationship types are ignored.
-fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaFnUpdate {
+fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction {
     let positive = model.get_regulators(var_id, Some(RelationshipType::Activator));
     let negative = model.get_regulators(var_id, Some(RelationshipType::Inhibitor));
     if positive.is_empty() && negative.is_empty() {
         // This is an undetermined input, in which case we set it to zero,
         // because that's what BMA does.
-        return BmaFnUpdate::mk_constant(0);
+        return BmaUpdateFunction::mk_constant(0);
     }
 
     // We build the default function the same way as BMA does.
 
-    fn create_average(variables: &HashSet<u32>) -> BmaFnUpdate {
+    fn create_average(variables: &HashSet<u32>) -> BmaUpdateFunction {
         if !variables.is_empty() {
             let args = variables
                 .iter()
-                .map(|x| BmaFnUpdate::mk_variable(*x))
+                .map(|x| BmaUpdateFunction::mk_variable(*x))
                 .collect();
-            BmaFnUpdate::mk_aggregation(AggregateFn::Avg, args)
+            BmaUpdateFunction::mk_aggregation(AggregateFn::Avg, args)
         } else {
             // This makes little sense because it means any variable with only negative
             // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
             // that's what we are doing as well...
-            BmaFnUpdate::mk_constant(0)
+            BmaUpdateFunction::mk_constant(0)
         }
     }
 
@@ -245,7 +245,7 @@ fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaFnUpdate {
     let n_avr = create_average(&negative);
 
     // Finally, we subtract the negative average from the positive average
-    BmaFnUpdate::mk_arithmetic(p_avr, n_avr, ArithOp::Minus)
+    BmaUpdateFunction::mk_arithmetic(p_avr, n_avr, ArithOp::Minus)
 }
 
 /// Build a map which assigns each BMA variable ID an AEON variable ID.
