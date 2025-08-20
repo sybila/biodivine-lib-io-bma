@@ -3,7 +3,7 @@ use crate::update_function::expression_enums::ArithOp;
 use biodivine_lib_param_bn::{BinaryOp, FnUpdate};
 
 impl BmaUpdateFunction {
-    /// Try to make a BMA expression from a `FnUpdate` instance (of [biodivine_lib_param_bn]).
+    /// Try to make a BMA expression from a `FnUpdate` instance (of [`biodivine_lib_param_bn`]).
     ///
     /// Essentially, this function converts a Boolean formula into a corresponding arithmetic
     /// expression. Constants are converted to 0 or 1, and logical operators are replaced with
@@ -26,7 +26,7 @@ impl BmaUpdateFunction {
     /// exceeding 1.
     fn try_from_fn_update_rec(fn_update: &FnUpdate) -> Result<BmaUpdateFunction, String> {
         let res = match fn_update {
-            FnUpdate::Const(val) => BmaUpdateFunction::mk_constant(if *val { 1 } else { 0 }),
+            FnUpdate::Const(val) => BmaUpdateFunction::mk_constant(i32::from(*val)),
             FnUpdate::Var(var_id) => BmaUpdateFunction::mk_variable(var_id.to_index() as u32),
             FnUpdate::Not(child) => {
                 // NOT: map !A to (1 - A)

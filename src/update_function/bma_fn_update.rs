@@ -26,12 +26,12 @@ impl<'de> Deserialize<'de> for BmaUpdateFunction {
 }
 
 impl BmaUpdateFunction {
-    /// "Parse" new [BmaUpdateFunction] tree from a list of [BmaExpressionToken] objects.
+    /// "Parse" new [`BmaUpdateFunction`] tree from a list of [`BmaExpressionToken`] objects.
     pub fn from_tokens(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
         parse_bma_fn_tokens(tokens)
     }
 
-    /// Parse new [BmaUpdateFunction] tree directly from a string representation.
+    /// Parse new [`BmaUpdateFunction`] tree directly from a string representation.
     ///
     /// Arg `variables` is a map of variable IDs to their names. It is needed because there are
     /// some weird format differences between different variants, and a variable can be referenced

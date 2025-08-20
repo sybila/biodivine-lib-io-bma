@@ -70,7 +70,7 @@ impl From<BmaModel> for XmlBmaModel {
             relationships: XmlRelationships {
                 relationship: clone_into_vec(&model.network.relationships),
             },
-            id: "".to_string(),
+            id: String::new(),
             name: model.network.name.clone(),
             description: model.layout.description.clone(),
             layout: Some(model.layout.clone().into()),

@@ -1,5 +1,5 @@
 //! Rust library for working with models in BMA format.
-#[warn(clippy::pedantic)]
+#![warn(clippy::pedantic)]
 
 /// Main `BmaModel` structure and its utilities.
 pub(crate) mod model;

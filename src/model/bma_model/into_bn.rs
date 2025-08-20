@@ -14,9 +14,9 @@ use std::collections::{HashMap, HashSet};
 /// pure Boolean models (not multi-valued that would need additional conversion).
 ///
 /// The network will contain the same set of variables and regulations as this model.
-/// See [Self::to_regulatory_graph] for details on how the regulation graph is extracted,
-/// and [Self::canonical_var_name] for how the variable names are derived.
-/// The update functions are transformed using [BmaUpdateFunction::to_update_fn_boolean].
+/// See [`Self::to_regulatory_graph`] for details on how the regulation graph is extracted,
+/// and [`Self::canonical_var_name`] for how the variable names are derived.
+/// The update functions are transformed using [`BmaUpdateFunction::to_update_fn_boolean`].
 ///
 /// By default, all regulations are considered as observable, and their sign is taken from the
 /// BMA model as is. This may be inconsistent with the update functions, which may or may not be
@@ -111,7 +111,7 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
 /// this model) and a mapping of BMA variable IDs to their canonical names used in
 /// the new graph.
 ///
-/// See [Self::canonical_var_name] for how the variable names are derived. Variables should
+/// See [`Self::canonical_var_name`] for how the variable names are derived. Variables should
 /// appear exactly in the order in which they appear within the [`BmaNetwork`].
 ///
 /// It is possible that the BMA model has more than one regulation between the same pair
@@ -197,7 +197,7 @@ impl TryFrom<&BmaModel> for RegulatoryGraph {
 }
 
 /// Generate a canonical name for a BMA variable by combining its ID and name.
-/// This canonical name will be used in a BooleanNetwork.
+/// This canonical name will be used in a `BooleanNetwork`.
 fn canonical_var_name(var: &BmaVariable) -> String {
     // Regex that matches non-alphanumeric and non-underscore characters
     let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
@@ -214,8 +214,8 @@ fn canonical_var_name(var: &BmaVariable) -> String {
 /// The function assumes every regulator relationship is either activation,
 /// or inhibition. Unknown relationship types are ignored.
 fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction {
-    let positive = model.get_regulators(var_id, Some(RelationshipType::Activator));
-    let negative = model.get_regulators(var_id, Some(RelationshipType::Inhibitor));
+    let positive = model.get_regulators(var_id, &Some(RelationshipType::Activator));
+    let negative = model.get_regulators(var_id, &Some(RelationshipType::Inhibitor));
     if positive.is_empty() && negative.is_empty() {
         // This is an undetermined input, in which case we set it to zero,
         // because that's what BMA does.
@@ -225,17 +225,17 @@ fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction 
     // We build the default function the same way as BMA does.
 
     fn create_average(variables: &HashSet<u32>) -> BmaUpdateFunction {
-        if !variables.is_empty() {
+        if variables.is_empty() {
+            // This makes little sense because it means any variable with only negative
+            // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
+            // that's what we are doing as well...
+            BmaUpdateFunction::mk_constant(0)
+        } else {
             let args = variables
                 .iter()
                 .map(|x| BmaUpdateFunction::mk_variable(*x))
                 .collect::<Vec<_>>();
             BmaUpdateFunction::mk_aggregation(AggregateFn::Avg, &args)
-        } else {
-            // This makes little sense because it means any variable with only negative
-            // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
-            // that's what we are doing as well...
-            BmaUpdateFunction::mk_constant(0)
         }
     }
 

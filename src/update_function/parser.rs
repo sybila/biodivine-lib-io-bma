@@ -1,5 +1,5 @@
 use crate::update_function::BmaUpdateFunction;
-use crate::update_function::expression_enums::*;
+use crate::update_function::expression_enums::{ArithOp, Literal};
 use crate::update_function::expression_token::{BmaExpressionToken, try_tokenize_bma_formula};
 
 /// Parse an BMA update function formula string representation into an actual expression tree.

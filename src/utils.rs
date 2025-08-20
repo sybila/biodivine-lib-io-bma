@@ -13,7 +13,7 @@ pub fn take_if_not_blank(value: &str) -> Option<String> {
 
 /// Clone the contents of the given slice into a new vector while performing type conversion.
 pub fn clone_into_vec<A: Clone + Into<B>, B>(data: &[A]) -> Vec<B> {
-    data.iter().cloned().map(|it| it.into()).collect()
+    data.iter().cloned().map(std::convert::Into::into).collect()
 }
 
 /// Convert `Rational64` to `f64`, or `0.0` if the conversion fails.
@@ -47,5 +47,5 @@ where
             count += 1;
         }
     }
-    if !found { Err(()) } else { Ok(count == 1) }
+    if found { Ok(count == 1) } else { Err(()) }
 }

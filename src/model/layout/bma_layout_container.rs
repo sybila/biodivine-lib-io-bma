@@ -23,7 +23,7 @@ impl Default for BmaLayoutContainer {
             id: 0,
             name: String::default(),
             size: 1,
-            position: (Default::default(), Default::default()),
+            position: (Rational64::default(), Rational64::default()),
         }
     }
 }
@@ -31,6 +31,7 @@ impl Default for BmaLayoutContainer {
 impl BmaLayoutContainer {
     /// Create a new container using the given `id` and `name`. Remaining values use
     /// default values.
+    #[must_use]
     pub fn new(id: u32, name: &str) -> Self {
         BmaLayoutContainer {
             id,

@@ -56,7 +56,7 @@ impl From<JsonBmaModel> for BmaModel {
         // Convert the layout
         let layout = json_model
             .layout
-            .map(|layout| layout.into())
+            .map(std::convert::Into::into)
             .unwrap_or_default(); // Default empty layout, if layout is not provided.
 
         // Metadata is not present in JsonBmaModel

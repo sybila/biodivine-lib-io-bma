@@ -36,6 +36,7 @@ impl BmaLayoutVariable {
     /// and `name`, with an optional `container_id`.
     ///
     /// Remaining values are set to default.
+    #[must_use]
     pub fn new(id: u32, name: &str, container_id: Option<u32>) -> Self {
         BmaLayoutVariable {
             id,
@@ -72,7 +73,7 @@ impl Display for VariableType {
             VariableType::Default => f.write_str("Default"),
             VariableType::Constant => write!(f, "Constant"),
             VariableType::MembraneReceptor => write!(f, "MembraneReceptor"),
-            VariableType::Unknown(value) => write!(f, "{}", value),
+            VariableType::Unknown(value) => write!(f, "{value}"),
         }
     }
 }
@@ -96,7 +97,7 @@ impl<'de> Deserialize<'de> for VariableType {
     }
 }
 
-/// Possible validation errors for [BmaLayoutVariable].
+/// Possible validation errors for [`BmaLayoutVariable`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaLayoutVariableError {
     #[error("(Layout var.: `{id}`) Id must be unique within `BmaLayout`")]
@@ -142,7 +143,7 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
             reporter.report(BmaLayoutVariableError::UnknownVariableType {
                 id: self.id,
                 value: value.clone(),
-            })
+            });
         }
     }
 }

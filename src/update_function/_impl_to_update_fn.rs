@@ -10,12 +10,12 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// A function table is a vector of tuples, where each tuple contains a variable valuation
 /// and output value. Variable valuation is a mapping of variable IDs to their values (as
-/// a HashMap).
+/// a `HashMap`).
 type FunctionTable = Vec<(BTreeMap<u32, u32>, u32)>;
 
 impl BmaUpdateFunction {
     /// Convert the BMA expression into corresponding BN update function string
-    /// matching the format of the [biodivine_lib_param_bn] library.
+    /// matching the format of the [`biodivine_lib_param_bn`] library.
     ///
     /// Note that currently, WE ONLY SUPPORT BOOLEAN MODELS, even though some methods
     /// are already implemented to handle more general multivalued cases as well.
@@ -24,7 +24,7 @@ impl BmaUpdateFunction {
     /// Boolean networks, this is set to 1 for all variables.
     /// Arg `var_name_mapping` maps each BMA variable ID to its canonical name in the
     /// constructed BN.
-    /// Arg `this_var_max_lvl` is the maximum level of the variable for which we are  
+    /// Arg `this_var_max_lvl` is the maximum level of the variable for which we are\
     /// creating the update function.
     pub fn to_update_fn_boolean(
         &self,
@@ -39,7 +39,7 @@ impl BmaUpdateFunction {
 
         // Collect all variable IDs used in the expression, and sort them
         let mut variables_in_fn: Vec<u32> = self.collect_variables().into_iter().collect();
-        variables_in_fn.sort();
+        variables_in_fn.sort_unstable();
 
         // Create a function table and convert it into DNF formula
         let function_table =
@@ -117,17 +117,17 @@ impl BmaUpdateFunction {
                 let res = match function {
                     AggregateFn::Avg => {
                         let count = args_values.len() as i32;
-                        let sum: Rational32 = args_values.iter().cloned().sum();
+                        let sum: Rational32 = args_values.iter().copied().sum();
                         sum / Rational32::from_integer(count)
                     }
                     AggregateFn::Max => args_values
                         .iter()
-                        .cloned()
+                        .copied()
                         .max()
                         .expect("List of numbers is empty"),
                     AggregateFn::Min => args_values
                         .iter()
-                        .cloned()
+                        .copied()
                         .min()
                         .expect("List of numbers is empty"),
                 };
@@ -148,13 +148,13 @@ impl BmaUpdateFunction {
             BmaExpressionNodeData::Arithmetic(_, left, right) => {
                 let left_set = left.collect_variables();
                 let right_set = right.collect_variables();
-                left_set.union(&right_set).cloned().collect()
+                left_set.union(&right_set).copied().collect()
             }
             BmaExpressionNodeData::Unary(_, child_node) => child_node.collect_variables(),
             BmaExpressionNodeData::Aggregation(_, arguments) => arguments
                 .iter()
-                .map(|arg| arg.collect_variables())
-                .fold(HashSet::new(), |x, y| x.union(&y).cloned().collect()),
+                .map(super::bma_update_function::BmaUpdateFunction::collect_variables)
+                .fold(HashSet::new(), |x, y| x.union(&y).copied().collect()),
         }
     }
 
@@ -265,7 +265,7 @@ fn generate_input_valuations_rec(
     }
 
     let var_id = &variables[index];
-    let max_level = max_levels.get(var_id).cloned().unwrap_or(0);
+    let max_level = max_levels.get(var_id).copied().unwrap_or(0);
 
     for level in 0..=max_level {
         current.insert(*var_id, Rational32::new(level as i32, 1));
@@ -273,7 +273,7 @@ fn generate_input_valuations_rec(
     }
 }
 
-/// A simple wrapper to easily put together a boolean FunctionTable (a truth table).
+/// A simple wrapper to easily put together a boolean `FunctionTable` (a truth table).
 /// This is meant to be used for testing purposes.
 ///
 /// You provide a vector of N variable IDs (will be sorted, so ideally sort beforehand
@@ -284,7 +284,7 @@ fn generate_input_valuations_rec(
 #[allow(dead_code)]
 pub fn prepare_truth_table(mut var_ids: Vec<u32>, fn_values: Vec<u32>) -> FunctionTable {
     let mut function_table = Vec::new();
-    var_ids.sort();
+    var_ids.sort_unstable();
     let num_vars = var_ids.len();
     let num_rows = 1 << num_vars; // 2^N
     assert_eq!(

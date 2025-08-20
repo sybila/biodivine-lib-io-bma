@@ -26,6 +26,7 @@ pub struct BmaRelationship {
 
 impl BmaRelationship {
     /// Make a new [`RelationshipType::Activator`] relationship between two variables.
+    #[must_use]
     pub fn new_activator(id: u32, from: u32, to: u32) -> Self {
         BmaRelationship {
             id,
@@ -36,6 +37,7 @@ impl BmaRelationship {
     }
 
     /// Make a new [`RelationshipType::Inhibitor`] relationship between two variables.
+    #[must_use]
     pub fn new_inhibitor(id: u32, from: u32, to: u32) -> Self {
         BmaRelationship {
             id,
@@ -47,12 +49,14 @@ impl BmaRelationship {
 
     /// Find the regulator variable (`from_variable`) in the enclosing [`BmaNetwork`], assuming
     /// the regulator variable exists.
+    #[must_use]
     pub fn find_regulator_variable<'a>(&self, network: &'a BmaNetwork) -> Option<&'a BmaVariable> {
         network.find_variable(self.from_variable)
     }
 
     /// Find the target variable (`to_variable`) in the enclosing [`BmaNetwork`], assuming
     /// the target variable exists.
+    #[must_use]
     pub fn find_target_variable<'a>(&self, network: &'a BmaNetwork) -> Option<&'a BmaVariable> {
         network.find_variable(self.to_variable)
     }
@@ -68,14 +72,14 @@ impl ContextualValidation<BmaNetwork> for BmaRelationship {
             reporter.report(BmaRelationshipError::RegulatorVariableNotFound {
                 id: self.id,
                 from_variable: self.from_variable,
-            })
+            });
         }
 
         if self.find_target_variable(context).is_none() {
             reporter.report(BmaRelationshipError::TargetVariableNotFound {
                 id: self.id,
                 to_variable: self.to_variable,
-            })
+            });
         }
 
         // Ensure that the relationship id is unique within the enclosing BmaNetwork.
@@ -104,7 +108,7 @@ impl ContextualValidation<BmaNetwork> for BmaRelationship {
             reporter.report(BmaRelationshipError::UnknownRelationshipType {
                 id: self.id,
                 value: value.clone(),
-            })
+            });
         }
     }
 }

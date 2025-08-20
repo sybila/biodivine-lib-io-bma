@@ -36,8 +36,8 @@ pub struct ReporterWrapper<'a, E1: StdError + Into<E2>, E2: StdError, W: ErrorRe
     _e2: PhantomData<E2>,
 }
 
-impl<'a, E1: StdError + Into<E2>, E2: StdError, W: ErrorReporter<E2>> ErrorReporter<E1>
-    for ReporterWrapper<'a, E1, E2, W>
+impl<E1: StdError + Into<E2>, E2: StdError, W: ErrorReporter<E2>> ErrorReporter<E1>
+    for ReporterWrapper<'_, E1, E2, W>
 {
     fn report<X: Into<E1>>(&mut self, error: X) {
         self.inner.report(error.into());
@@ -63,7 +63,7 @@ impl<E: StdError> ErrorReporter<E> for VecReporter<E> {
 /// are parametrized by the context type.
 ///
 /// Compared to `From` and `Into` traits, validation generally does not terminate when the first
-/// error is found. Instead, it collects all errors into a provided [ErrorReporter].
+/// error is found. Instead, it collects all errors into a provided [`ErrorReporter`].
 pub trait ContextualValidation<Context> {
     /// The type of error that can be thrown during validation.
     type Error: StdError;
@@ -83,11 +83,11 @@ pub trait ContextualValidation<Context> {
 
 /// Validation trait is implemented by objects that can be validated.
 ///
-/// Each validation process reports errors using a provided [ErrorReporter]. Compared to
+/// Each validation process reports errors using a provided [`ErrorReporter`]. Compared to
 /// traits like `From` and `Into`, validation can typically produce more than one error.
 ///
 /// If you need to validate objects whose behavior (or validity) depends on some additional
-/// context, consider implementing [ContextualValidation].
+/// context, consider implementing [`ContextualValidation`].
 pub trait Validation {
     type Error: StdError;
 

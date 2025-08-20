@@ -118,7 +118,7 @@ fn try_tokenize_recursive(
                         position += number.len();
                     }
                     Err(e) => {
-                        let message = format!("Invalid number `{}`: {}", number, e);
+                        let message = format!("Invalid number `{number}`: {e}");
                         return Err(BmaTokenizationError::at(position, message));
                     }
                 }
@@ -171,16 +171,15 @@ fn try_tokenize_recursive(
                                     "`{identifier}` resolves to multiple regulator IDs: `{matching_vars:?}`"
                                 );
                                 return Err(BmaTokenizationError::at(position, message));
-                            } else {
-                                debug_assert_eq!(matching_vars.len(), 1);
-                                matching_vars.into_iter().next().unwrap()
                             }
+                            debug_assert_eq!(matching_vars.len(), 1);
+                            matching_vars.into_iter().next().unwrap()
                         };
                         result.push(BmaExpressionToken::Atomic(Literal::Var(var_id)));
                         position += length;
                     }
                     id => {
-                        let message = format!("`{}` is not a recognized function or variable", id);
+                        let message = format!("`{id}` is not a recognized function or variable");
                         return Err(BmaTokenizationError::at(position - id.len(), message));
                     }
                 }
@@ -190,7 +189,7 @@ fn try_tokenize_recursive(
                 let message = format!("Unexpected `{c}`");
                 return Err(BmaTokenizationError::at(position, message));
             }
-        };
+        }
     }
 
     // Technically, if something ends with a comma, it must always also end with parenthesis,
@@ -318,10 +317,9 @@ fn collect_function_arguments(
         // If the last character of this group is parenthesis, we are done.
         if input[position - 1] == ')' {
             break;
-        } else {
-            debug_assert_eq!(input[position - 1], ',');
-            position = next_non_whitespace_character(input, position);
         }
+        debug_assert_eq!(input[position - 1], ',');
+        position = next_non_whitespace_character(input, position);
     }
 
     Ok((args, position - start_at))

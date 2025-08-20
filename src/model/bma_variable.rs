@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use thiserror::Error;
 
-/// A discrete variable identified by an integer `id`. Each [BmaVariable] consists
-/// of a `name` (can be blank), its value `range` (inclusive), and an [BmaUpdateFunction] function
+/// A discrete variable identified by an integer `id`. Each [`BmaVariable`] consists
+/// of a `name` (can be blank), its value `range` (inclusive), and an [`BmaUpdateFunction`] function
 /// formula (optional) which describes its evolution in time.
 ///
 /// Expected invariants (checked during validation):
-///  - Variable `id` must be unique within the variables of the enclosing [crate::BmaNetwork].
+///  - Variable `id` must be unique within the variables of the enclosing [`crate::BmaNetwork`].
 ///  - Variable `name` can be blank and is not required to be unique.
 ///  - Variable `range` must be a valid range. However, a range that only contains a single
 ///    value is allowed, in which case the variable is considered constant.
 ///
 /// Note that when `formula` is not specified, the typical interpretation is to assign
 /// such a variable the "default" update function based on its associated relationships
-/// (see also [crate::BmaRelationship] and [crate::BmaModel::create_default_update_fn]).
+/// (see also [`crate::BmaRelationship`] and [`crate::BmaModel::create_default_update_fn`]).
 ///
 /// Additional non-functional information like the variable position, description, or type are
-/// present as part of [crate::BmaLayout].
+/// present as part of [`crate::BmaLayout`].
 ///
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -33,6 +33,7 @@ pub struct BmaVariable {
 
 impl BmaVariable {
     /// Create a new *boolean* [`BmaVariable`] with the given `name`.
+    #[must_use]
     pub fn new_boolean(id: u32, name: &str, formula: Option<BmaUpdateFunction>) -> Self {
         Self::new(id, name, (0, 1), formula)
     }
@@ -53,15 +54,18 @@ impl BmaVariable {
     }
 
     /// The minimum value this variable can take.
+    #[must_use]
     pub fn min_level(&self) -> u32 {
         self.range.0
     }
 
     /// The maximum value this variable can take.
+    #[must_use]
     pub fn max_level(&self) -> u32 {
         self.range.1
     }
 
+    #[must_use]
     pub fn formula_string(&self) -> String {
         if let Some(formula) = &self.formula {
             match formula {
@@ -74,7 +78,7 @@ impl BmaVariable {
     }
 }
 
-/// The default [BmaVariable] is Boolean, with no name or formula.
+/// The default [`BmaVariable`] is Boolean, with no name or formula.
 impl Default for BmaVariable {
     fn default() -> Self {
         BmaVariable {
@@ -86,7 +90,7 @@ impl Default for BmaVariable {
     }
 }
 
-/// Possible validation errors for [BmaVariable].
+/// Possible validation errors for [`BmaVariable`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BmaVariableError {
     #[error("(Variable id: `{id}`) Id must be unique in the `BmaNetwork`")]
@@ -129,7 +133,7 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
             reporter.report(BmaVariableError::UpdateFunctionInvalid {
                 id: self.id,
                 source: error.clone(),
-            })
+            });
         }
     }
 }

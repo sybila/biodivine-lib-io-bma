@@ -14,8 +14,8 @@ pub enum Literal {
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Literal::Const(value) => write!(f, "{}", value),
-            Literal::Var(value) => write!(f, "var({})", value),
+            Literal::Const(value) => write!(f, "{value}"),
+            Literal::Var(value) => write!(f, "var({value})"),
         }
     }
 }

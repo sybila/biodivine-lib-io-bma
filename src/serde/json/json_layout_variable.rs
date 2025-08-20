@@ -42,7 +42,7 @@ impl From<JsonLayoutVariable> for BmaLayoutVariable {
 
         BmaLayoutVariable {
             id: value.id.into(),
-            container_id: value.container_id.map(|it| it.into()),
+            container_id: value.container_id.map(std::convert::Into::into),
             r#type: value.r#type,
             name: value.name.clone(),
             description: value.description.clone(),
@@ -71,7 +71,7 @@ impl From<BmaLayoutVariable> for JsonLayoutVariable {
             position_y: f64_or_default(value.position.1),
             angle: f64_or_default(value.angle),
             description: value.description.clone(),
-            container_id: value.container_id.map(|it| it.into()),
+            container_id: value.container_id.map(std::convert::Into::into),
             cell_x,
             cell_y,
         }

@@ -60,7 +60,7 @@ impl BmaModel {
     }
 
     /// Create a new BMA model from a model string in XML format.
-    /// Internally, we use serde_xml_rs serialization into an intermediate `XmlBmaModel` structure.
+    /// Internally, we use `serde_xml_rs` serialization into an intermediate `XmlBmaModel` structure.
     pub fn from_xml_string(xml_str: &str) -> Result<Self, String> {
         let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
         Ok(BmaModel::from(xml_model))
@@ -75,6 +75,7 @@ impl BmaModel {
 
     /// Create a new BMA model with a given network, layout, and metadata.
     /// This is just a constructor wrapper, it does not check the validity of the model.
+    #[must_use]
     pub fn new(network: BmaNetwork, layout: BmaLayout, metadata: HashMap<String, String>) -> Self {
         BmaModel {
             network,
@@ -84,11 +85,13 @@ impl BmaModel {
     }
 
     /// Check if all variables in the model are Boolean (max level is 1).
+    #[must_use]
     pub fn is_boolean(&self) -> bool {
         self.get_max_var_level() <= 1
     }
 
     /// Get the maximum level across all variables in the BMA model.
+    #[must_use]
     pub fn get_max_var_level(&self) -> u32 {
         let mut max_level = 0;
         self.network.variables.iter().for_each(|v| {
@@ -104,21 +107,17 @@ impl BmaModel {
     /// If network validation passed successfully, you can assume that there is no
     /// [`RelationshipType::Unknown`] (i.e. every relationship is either an activator,
     /// or an inhibitor).
+    #[must_use]
     pub fn get_regulators(
         &self,
         target_var: u32,
-        relationship: Option<RelationshipType>,
+        relationship: &Option<RelationshipType>,
     ) -> HashSet<u32> {
         self.network
             .relationships
             .iter()
             .filter(|r| r.to_variable == target_var)
-            .filter(|r| {
-                relationship
-                    .as_ref()
-                    .map(|x| *x == r.r#type)
-                    .unwrap_or(true)
-            })
+            .filter(|r| relationship.as_ref().is_none_or(|x| *x == r.r#type))
             .map(|r| r.id)
             .collect()
     }

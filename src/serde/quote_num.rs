@@ -41,7 +41,7 @@ impl<'de> Deserialize<'de> for QuoteNum {
         D: Deserializer<'de>,
     {
         let value = serde_json::Value::deserialize(deserializer).map_err(|e| {
-            println!("{}", e);
+            println!("{e}");
             e
         })?;
 
@@ -60,8 +60,7 @@ impl<'de> Deserialize<'de> for QuoteNum {
                 Ok(QuoteNum(number))
             }
             _ => Err(de::Error::custom(format!(
-                "expected a string or a number, but got {}",
-                value
+                "expected a string or a number, but got {value}"
             ))),
         }
     }
