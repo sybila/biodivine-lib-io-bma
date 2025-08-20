@@ -216,11 +216,11 @@ mod tests {
             Monotonicity::Inhibition
         );
         assert_eq!(
-            RelationshipType::try_from(Monotonicity::Activation).unwrap(),
+            RelationshipType::from(Monotonicity::Activation),
             RelationshipType::Activator
         );
         assert_eq!(
-            RelationshipType::try_from(Monotonicity::Inhibition).unwrap(),
+            RelationshipType::from(Monotonicity::Inhibition),
             RelationshipType::Inhibitor
         );
     }
