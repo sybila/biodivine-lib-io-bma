@@ -10,6 +10,7 @@ readme = "README.md"
 keywords = ["boolean-network", "BMA", "systems-biology"]
 categories = ["science", "simulation"]
 license = "MIT"
+rust-version = "1.88.0"
 
 [lib]
 name = "biodivine_lib_io_bma"
