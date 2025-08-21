@@ -1,5 +1,8 @@
 //! Rust library for working with models in BMA format.
 #![warn(clippy::pedantic)]
+// On top of the pedantic configuration, we do turn off these checks.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
 /// Main `BmaModel` structure and its utilities.
 pub(crate) mod model;

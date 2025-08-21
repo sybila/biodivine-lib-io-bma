@@ -27,7 +27,9 @@ impl BmaUpdateFunction {
     fn try_from_fn_update_rec(fn_update: &FnUpdate) -> Result<BmaUpdateFunction, String> {
         let res = match fn_update {
             FnUpdate::Const(val) => BmaUpdateFunction::mk_constant(i32::from(*val)),
-            FnUpdate::Var(var_id) => BmaUpdateFunction::mk_variable(var_id.to_index() as u32),
+            FnUpdate::Var(var_id) => {
+                BmaUpdateFunction::mk_variable(u32::try_from(var_id.to_index()).unwrap())
+            }
             FnUpdate::Not(child) => {
                 // NOT: map !A to (1 - A)
                 let child_expr = Self::try_from_fn_update_rec(child)?;
@@ -100,7 +102,7 @@ impl BmaUpdateFunction {
                     }
                 }
             }
-            _ => Err("Unsupported operator.")?,
+            FnUpdate::Param(_, _) => Err("Unsupported operator.")?,
         };
         Ok(res)
     }

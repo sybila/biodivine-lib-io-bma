@@ -152,6 +152,7 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
 mod tests {
     use super::*;
     use crate::{BmaLayout, BmaNetwork, BmaVariable};
+    use std::collections::HashMap;
 
     fn make_model_for_variable(l_var: &BmaLayoutVariable) -> BmaModel {
         let n_var = BmaVariable {
@@ -168,7 +169,7 @@ mod tests {
         BmaModel {
             network,
             layout,
-            metadata: Default::default(),
+            metadata: HashMap::default(),
         }
     }
 

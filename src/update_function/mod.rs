@@ -25,7 +25,8 @@ pub struct InvalidBmaFnUpdate {
 }
 
 /// A utility function to correctly parse [`BmaUpdateFunction`], including handling of blank values.
-#[must_use] pub fn read_fn_update(
+#[must_use]
+pub fn read_fn_update(
     input: &str,
     variables: &[(u32, String)],
 ) -> Option<Result<BmaUpdateFunction, InvalidBmaFnUpdate>> {

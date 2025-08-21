@@ -58,7 +58,7 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
                 id: 0,
                 from_variable: u32::try_from(regulation.regulator.to_index())?,
                 to_variable: u32::try_from(regulation.target.to_index())?,
-                r#type: Default::default(),
+                r#type: RelationshipType::default(),
             };
             // If the regulation is non-monotonic. We translate this as having
             // both regulations.

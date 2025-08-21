@@ -41,7 +41,7 @@ pub fn try_tokenize_bma_formula(
     formula: &str,
     variable_id_hint: &[(u32, String)],
 ) -> Result<Vec<BmaExpressionToken>, BmaTokenizationError> {
-    let chars = Vec::from_iter(formula.chars());
+    let chars: Vec<char> = formula.chars().collect();
     let (tokens, length) = try_tokenize_recursive(&chars, 0, false, false, variable_id_hint)?;
 
     // If the tokenizer succeeds, it should always read the whole string.
@@ -60,6 +60,7 @@ pub fn try_tokenize_bma_formula(
 ///
 /// If provided, `variable_id_hint` will be used to resolve variable names into IDs.
 ///
+#[allow(clippy::too_many_lines)]
 fn try_tokenize_recursive(
     input: &[char],
     start_at: usize,

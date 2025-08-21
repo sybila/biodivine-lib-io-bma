@@ -62,6 +62,7 @@ impl ContextualValidation<BmaModel> for BmaLayout {
 mod tests {
     use crate::model::tests::{simple_layout, simple_network};
     use crate::{BmaLayout, BmaModel, BmaNetwork, ContextualValidation};
+    use std::collections::HashMap;
 
     #[test]
     fn default_layout_is_valid() {
@@ -69,7 +70,7 @@ mod tests {
         let model = BmaModel {
             network: BmaNetwork::default(),
             layout: layout.clone(),
-            metadata: Default::default(),
+            metadata: HashMap::default(),
         };
         assert!(layout.validate(&model).is_ok());
     }
@@ -81,7 +82,7 @@ mod tests {
         let model = BmaModel {
             network,
             layout: layout.clone(),
-            metadata: Default::default(),
+            metadata: HashMap::default(),
         };
         assert!(layout.validate(&model).is_ok());
     }
@@ -95,7 +96,7 @@ mod tests {
         let model = BmaModel {
             network: simple_network(),
             layout: layout.clone(),
-            metadata: Default::default(),
+            metadata: HashMap::default(),
         };
         assert!(layout.validate(&model).is_ok());
     }

@@ -18,8 +18,8 @@ pub fn parse_bma_formula(
 }
 
 /// Utility method to find the first occurrence of a specific token in the token tree.
-fn index_of_first(tokens: &[BmaExpressionToken], token: BmaExpressionToken) -> Option<usize> {
-    tokens.iter().position(|t| *t == token)
+fn index_of_first(tokens: &[BmaExpressionToken], token: &BmaExpressionToken) -> Option<usize> {
+    tokens.iter().position(|t| t == token)
 }
 
 /// Parse `tokens` of BMA update fn formula into an abstract syntax tree using recursive steps.
@@ -29,7 +29,7 @@ pub fn parse_bma_fn_tokens(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFun
 
 /// Recursive parsing step 1: extract `/` operators.
 fn parse_1_div(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let div_token = index_of_first(tokens, BmaExpressionToken::Binary(ArithOp::Div));
+    let div_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Div));
     Ok(if let Some(i) = div_token {
         BmaUpdateFunction::mk_arithmetic(
             ArithOp::Div,
@@ -43,7 +43,7 @@ fn parse_1_div(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, Strin
 
 /// Recursive parsing step 2: extract `*` operators.
 fn parse_2_mul(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let mul_token = index_of_first(tokens, BmaExpressionToken::Binary(ArithOp::Mult));
+    let mul_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Mult));
     Ok(if let Some(i) = mul_token {
         BmaUpdateFunction::mk_arithmetic(
             ArithOp::Mult,
@@ -57,7 +57,7 @@ fn parse_2_mul(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, Strin
 
 /// Recursive parsing step 3: extract `-` operators.
 fn parse_3_minus(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let minus_token = index_of_first(tokens, BmaExpressionToken::Binary(ArithOp::Minus));
+    let minus_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Minus));
     Ok(if let Some(i) = minus_token {
         BmaUpdateFunction::mk_arithmetic(
             ArithOp::Minus,
@@ -71,7 +71,7 @@ fn parse_3_minus(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, Str
 
 /// Recursive parsing step 4: extract `+` operators.
 fn parse_4_plus(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let minus_token = index_of_first(tokens, BmaExpressionToken::Binary(ArithOp::Plus));
+    let minus_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Plus));
     Ok(if let Some(i) = minus_token {
         BmaUpdateFunction::mk_arithmetic(
             ArithOp::Plus,

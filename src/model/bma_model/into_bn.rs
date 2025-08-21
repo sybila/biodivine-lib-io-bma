@@ -214,16 +214,6 @@ fn canonical_var_name(var: &BmaVariable) -> String {
 /// The function assumes every regulator relationship is either activation,
 /// or inhibition. Unknown relationship types are ignored.
 fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction {
-    let positive = model.get_regulators(var_id, &Some(RelationshipType::Activator));
-    let negative = model.get_regulators(var_id, &Some(RelationshipType::Inhibitor));
-    if positive.is_empty() && negative.is_empty() {
-        // This is an undetermined input, in which case we set it to zero,
-        // because that's what BMA does.
-        return BmaUpdateFunction::mk_constant(0);
-    }
-
-    // We build the default function the same way as BMA does.
-
     fn create_average(variables: &HashSet<u32>) -> BmaUpdateFunction {
         if variables.is_empty() {
             // This makes little sense because it means any variable with only negative
@@ -238,6 +228,16 @@ fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction 
             BmaUpdateFunction::mk_aggregation(AggregateFn::Avg, &args)
         }
     }
+
+    let positive = model.get_regulators(var_id, &Some(RelationshipType::Activator));
+    let negative = model.get_regulators(var_id, &Some(RelationshipType::Inhibitor));
+    if positive.is_empty() && negative.is_empty() {
+        // This is an undetermined input, in which case we set it to zero,
+        // because that's what BMA does.
+        return BmaUpdateFunction::mk_constant(0);
+    }
+
+    // We build the default function the same way as BMA does.
 
     // We average the positive and negative regulators
     let p_avr = create_average(&positive);

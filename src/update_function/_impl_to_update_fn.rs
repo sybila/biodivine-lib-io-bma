@@ -73,7 +73,7 @@ impl BmaUpdateFunction {
     }
 
     /// Evaluate the BMA function expression in a given valuation.
-    /// A `valuation`` assigns values to all variables (ID-value mapping).
+    /// A `valuation` assigns values to all variables (ID-value mapping).
     pub fn evaluate_in_valuation(
         &self,
         valuation: &BTreeMap<u32, Rational32>,
@@ -116,7 +116,7 @@ impl BmaUpdateFunction {
                     .collect::<Result<Vec<Rational32>, String>>()?;
                 let res = match function {
                     AggregateFn::Avg => {
-                        let count = args_values.len() as i32;
+                        let count = i32::try_from(args_values.len()).unwrap();
                         let sum: Rational32 = args_values.iter().copied().sum();
                         sum / Rational32::from_integer(count)
                     }
@@ -153,7 +153,7 @@ impl BmaUpdateFunction {
             BmaExpressionNodeData::Unary(_, child_node) => child_node.collect_variables(),
             BmaExpressionNodeData::Aggregation(_, arguments) => arguments
                 .iter()
-                .map(super::bma_update_function::BmaUpdateFunction::collect_variables)
+                .map(BmaUpdateFunction::collect_variables)
                 .fold(HashSet::new(), |x, y| x.union(&y).copied().collect()),
         }
     }
@@ -189,7 +189,7 @@ impl BmaUpdateFunction {
             // Convert the valuation values to u32 (all input values are natural nums by design anyway)
             let int_valuation = valuation
                 .iter()
-                .map(|(var_id, value)| (*var_id, value.to_integer() as u32))
+                .map(|(var_id, value)| (*var_id, u32::try_from(value.to_integer()).unwrap()))
                 .collect::<BTreeMap<u32, u32>>();
 
             // Convert the result to integer (rounding if necessary)
@@ -215,7 +215,10 @@ impl BmaUpdateFunction {
 
             // Ensure the result is non-negative, and in the valid range
             result_int = max(0, result_int);
-            function_table.push((int_valuation, min(result_int as u32, this_var_max_lvl)));
+            function_table.push((
+                int_valuation,
+                min(u32::try_from(result_int).unwrap(), this_var_max_lvl),
+            ));
         }
 
         Ok(function_table)
@@ -268,7 +271,7 @@ fn generate_input_valuations_rec(
     let max_level = max_levels.get(var_id).copied().unwrap_or(0);
 
     for level in 0..=max_level {
-        current.insert(*var_id, Rational32::new(level as i32, 1));
+        current.insert(*var_id, Rational32::new(i32::try_from(level).unwrap(), 1));
         generate_input_valuations_rec(variables, max_levels, current, index + 1, results);
     }
 }
@@ -282,8 +285,9 @@ fn generate_input_valuations_rec(
 /// last variable updates first. For instance, in binary case, valuations are generated in
 /// the order: 00, 01, 10, 11.
 #[allow(dead_code)]
-pub fn prepare_truth_table(mut var_ids: Vec<u32>, fn_values: Vec<u32>) -> FunctionTable {
+pub fn prepare_truth_table(var_ids: &[u32], fn_values: &[u32]) -> FunctionTable {
     let mut function_table = Vec::new();
+    let mut var_ids = var_ids.to_vec();
     var_ids.sort_unstable();
     let num_vars = var_ids.len();
     let num_rows = 1 << num_vars; // 2^N
@@ -297,7 +301,7 @@ pub fn prepare_truth_table(mut var_ids: Vec<u32>, fn_values: Vec<u32>) -> Functi
         let mut valuation = BTreeMap::new();
         for (j, var_id) in var_ids.iter().rev().enumerate().take(num_vars) {
             let value = (i >> j) & 1;
-            valuation.insert(*var_id, value as u32);
+            valuation.insert(*var_id, u32::try_from(value).unwrap());
         }
         function_table.push((valuation, *fn_value));
     }
@@ -417,7 +421,7 @@ mod tests {
         let max_levels = HashMap::from([(1, 1), (2, 1)]);
         let expression = parse_bma_formula("var(1) * var(2)", &vars).unwrap();
 
-        let expected_table = prepare_truth_table(vec![1, 2], vec![0, 0, 0, 1]);
+        let expected_table = prepare_truth_table(&[1, 2], &[0, 0, 0, 1]);
         let result_table = expression.build_function_table(&[1, 2], &max_levels, 1);
 
         assert!(result_table.is_ok());
@@ -437,7 +441,7 @@ mod tests {
         let expression =
             parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
 
-        let expected_table = prepare_truth_table(vec![1, 2, 3], vec![1, 0, 0, 0, 1, 1, 1, 1]);
+        let expected_table = prepare_truth_table(&[1, 2, 3], &[1, 0, 0, 0, 1, 1, 1, 1]);
         let result_table = expression.build_function_table(&[1, 2, 3], &max_levels, 1);
 
         assert!(result_table.is_ok());

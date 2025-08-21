@@ -11,12 +11,14 @@ pub struct BmaUpdateFunction(Arc<BmaExpressionNodeData>);
 /// Utility data access.
 impl BmaUpdateFunction {
     /// Get a reference to the underlying [`BmaExpressionNodeData`].
-    #[must_use] pub fn as_data(&self) -> &BmaExpressionNodeData {
+    #[must_use]
+    pub fn as_data(&self) -> &BmaExpressionNodeData {
         self.0.as_ref()
     }
 
     /// Build a string representation of this update function compatible with BMA format.
-    #[must_use] pub fn as_bma_string(&self) -> String {
+    #[must_use]
+    pub fn as_bma_string(&self) -> String {
         self.to_string()
     }
 }
@@ -26,14 +28,16 @@ impl BmaUpdateFunction {
     /// Create a "unary" [`BmaUpdateFunction`] from the given arguments.
     ///
     /// See also [`BmaExpressionNodeData::Unary`].
-    #[must_use] pub fn mk_unary(op: UnaryFn, child: &BmaUpdateFunction) -> BmaUpdateFunction {
+    #[must_use]
+    pub fn mk_unary(op: UnaryFn, child: &BmaUpdateFunction) -> BmaUpdateFunction {
         BmaExpressionNodeData::Unary(op, child.clone()).into()
     }
 
     /// Create a "binary" arithmetic [`BmaUpdateFunction`] from the given arguments.
     ///
     /// See also [`BmaExpressionNodeData::Arithmetic`].
-    #[must_use] pub fn mk_arithmetic(
+    #[must_use]
+    pub fn mk_arithmetic(
         op: ArithOp,
         left: &BmaUpdateFunction,
         right: &BmaUpdateFunction,
@@ -44,20 +48,23 @@ impl BmaUpdateFunction {
     /// Create a [`BmaUpdateFunction`] representing a Boolean constant.
     ///
     /// See also [`BmaExpressionNodeData::Terminal`] and [`Literal::Const`].
-    #[must_use] pub fn mk_constant(constant_val: i32) -> BmaUpdateFunction {
+    #[must_use]
+    pub fn mk_constant(constant_val: i32) -> BmaUpdateFunction {
         BmaExpressionNodeData::Terminal(Literal::Const(constant_val)).into()
     }
 
     /// Create a [`BmaUpdateFunction`] representing a variable (using an ID).
     ///
     /// See also [`BmaExpressionNodeData::Terminal`] and [`Literal::Var`].
-    #[must_use] pub fn mk_variable(var_id: u32) -> BmaUpdateFunction {
+    #[must_use]
+    pub fn mk_variable(var_id: u32) -> BmaUpdateFunction {
         BmaExpressionNodeData::Terminal(Literal::Var(var_id)).into()
     }
 
     /// Create a [`BmaUpdateFunction`] representing an aggregation operator
     /// applied to given arguments.
-    #[must_use] pub fn mk_aggregation(op: AggregateFn, inner_nodes: &[BmaUpdateFunction]) -> BmaUpdateFunction {
+    #[must_use]
+    pub fn mk_aggregation(op: AggregateFn, inner_nodes: &[BmaUpdateFunction]) -> BmaUpdateFunction {
         BmaExpressionNodeData::Aggregation(op, inner_nodes.to_vec()).into()
     }
 }

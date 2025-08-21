@@ -1,7 +1,7 @@
 use crate::serde::xml::XmlBmaModel;
 use crate::update_function::read_fn_update;
 use crate::utils::{f64_or_default, rational_or_default};
-use crate::{BmaLayoutVariable, BmaVariable};
+use crate::{BmaLayoutVariable, BmaVariable, VariableType};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize XML info about a variable. BMA XML format mixes
@@ -52,7 +52,7 @@ impl From<BmaVariable> for XmlVariable {
             range_from: value.range.0,
             range_to: value.range.1,
             formula: value.formula_string(),
-            r#type: Default::default(),
+            r#type: String::default(),
             position_x: 0.0,
             position_y: 0.0,
             angle: 0.0,
@@ -105,7 +105,7 @@ impl From<XmlVariable> for BmaLayoutVariable {
         BmaLayoutVariable {
             id: value.id,
             container_id: value.container_id,
-            r#type: Default::default(),
+            r#type: VariableType::default(),
             name: value.name.clone(),
             description: String::default(),
             position: (

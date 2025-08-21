@@ -148,6 +148,7 @@ mod tests {
         BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, Validation,
     };
     use num_rational::Rational64;
+    use std::collections::HashMap;
 
     #[test]
     fn default_model_is_valid() {
@@ -160,7 +161,7 @@ mod tests {
         let model = BmaModel {
             network: simple_network(),
             layout: simple_layout(),
-            metadata: Default::default(),
+            metadata: HashMap::default(),
         };
         model.validate().unwrap();
         assert!(!model.is_boolean());
@@ -196,7 +197,7 @@ mod tests {
                 zoom_level: Some(Rational64::new(10, 3)),
                 pan: None,
             },
-            metadata: Default::default(),
+            metadata: HashMap::default(),
         };
 
         let expected = vec![
