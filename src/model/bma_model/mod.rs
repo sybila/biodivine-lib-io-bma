@@ -51,13 +51,13 @@ impl BmaModel {
 
     /// Create a new BMA model from a model string in the BMA JSON format.
     pub fn from_json_string(json_str: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str::<JsonBmaModel>(json_str).map(|model| BmaModel::from(model))
+        serde_json::from_str::<JsonBmaModel>(json_str).map(BmaModel::from)
     }
 
     /// Create a new BMA model from a model string in XML format.
     /// Internally, we use `serde_xml_rs` serialization into an intermediate `XmlBmaModel` structure.
     pub fn from_xml_string(xml_str: &str) -> Result<Self, serde_xml_rs::Error> {
-        serde_xml_rs::from_str::<XmlBmaModel>(xml_str).map(|model| BmaModel::from(model))
+        serde_xml_rs::from_str::<XmlBmaModel>(xml_str).map(BmaModel::from)
     }
 
     /// Convert the `BmaModel` into a BMA compatible XML string.
