@@ -2,6 +2,7 @@ use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, Un
 use crate::update_function::{BmaExpressionNodeData, BmaUpdateFunction};
 use biodivine_lib_param_bn::{FnUpdate, VariableId};
 use num_rational::Rational32;
+use num_traits::Zero;
 use num_traits::sign::Signed;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::{Decimal, dec};
@@ -26,7 +27,7 @@ impl BmaUpdateFunction {
     /// constructed BN.
     /// Arg `this_var_max_lvl` is the maximum level of the variable for which we are\
     /// creating the update function.
-    pub fn to_update_fn_boolean(
+    pub(crate) fn to_update_fn_boolean(
         &self,
         max_levels: &HashMap<u32, u32>,
         var_bma_to_aeon: &HashMap<u32, VariableId>,
@@ -50,7 +51,9 @@ impl BmaUpdateFunction {
                 let literals = valuation
                     .iter()
                     .map(|(id, value)| {
-                        let aeon_var = var_bma_to_aeon.get(id).unwrap(); // unwrap is safe here
+                        let Some(aeon_var) = var_bma_to_aeon.get(id) else {
+                            panic!("Invariant violation: Variable id map not built correctly");
+                        };
                         // create positive or negative literal based on the value
                         if *value == 0 {
                             FnUpdate::mk_not(FnUpdate::mk_var(*aeon_var))
@@ -96,16 +99,21 @@ impl BmaUpdateFunction {
                     ArithOp::Plus => left_value + right_value,
                     ArithOp::Minus => left_value - right_value,
                     ArithOp::Mult => left_value * right_value,
-                    ArithOp::Div => left_value / right_value,
+                    ArithOp::Div => {
+                        if right_value == Rational32::zero() {
+                            return Err("Division by zero".to_string());
+                        }
+                        left_value / right_value
+                    }
                 };
                 Ok(res)
             }
             BmaExpressionNodeData::Unary(function, child_node) => {
                 let child_value = child_node.evaluate_in_valuation(valuation)?;
                 let res = match function {
-                    UnaryFn::Abs => Rational32::abs(&child_value),
-                    UnaryFn::Ceil => Rational32::ceil(&child_value),
-                    UnaryFn::Floor => Rational32::floor(&child_value),
+                    UnaryFn::Abs => child_value.abs(),
+                    UnaryFn::Ceil => child_value.ceil(),
+                    UnaryFn::Floor => child_value.floor(),
                 };
                 Ok(res)
             }
@@ -311,7 +319,8 @@ pub fn prepare_truth_table(var_ids: &[u32], fn_values: &[u32]) -> FunctionTable 
 #[cfg(test)]
 mod tests {
     use crate::update_function::{
-        _impl_to_update_fn::prepare_truth_table, expression_parser::parse_bma_formula,
+        _impl_to_update_fn::prepare_truth_table, BmaUpdateFunction,
+        expression_parser::parse_bma_formula,
     };
     use biodivine_lib_param_bn::{BooleanNetwork, FnUpdate, RegulatoryGraph, VariableId};
     use num_rational::Rational32;
@@ -472,16 +481,9 @@ mod tests {
 
     #[test]
     fn test_to_update_fn_boolean_ternary() {
-        // prepare 3 boolean variables and a formula for A | !(B | C)
-        let vars = vec![
-            (0, "a".to_string()),
-            (0, "b".to_string()),
-            (0, "c".to_string()),
-        ];
-
         let max_levels = HashMap::from([(1, 1), (2, 1), (3, 1)]);
         let expression =
-            parse_bma_formula("var(1) + (1 - min((var(2) + var(3)), 1))", &vars).unwrap();
+            BmaUpdateFunction::try_from("var(1) + (1 - min((var(2) + var(3)), 1))").unwrap();
 
         // expected function values are [1, 0, 0, 0, 1, 1, 1, 1]
         // that means DNF formula with 5 clauses (starting from zero valuation)

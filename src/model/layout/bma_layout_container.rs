@@ -55,7 +55,7 @@ impl ContextualValidation<BmaLayout> for BmaLayoutContainer {
         let Ok(is_unique) = is_unique_id(&context.containers, self, |x| x.id) else {
             // This is not a validation error; this violates the whole contract of the validation
             // mechanism and is therefore allowed to fail (instead of returning an error).
-            panic!("Validation called on a container that is not part of the BmaLayout")
+            panic!("Precondition violation: validated container is not part of the `BmaLayout`.")
         };
 
         if !is_unique {

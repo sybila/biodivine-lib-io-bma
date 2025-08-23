@@ -132,7 +132,7 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
         let Ok(is_unique) = is_unique_id(&context.layout.variables, self, |x| x.id) else {
             // This is not a validation error; this violates the whole contract of the validation
             // mechanism and is therefore allowed to fail (instead of returning an error).
-            panic!("Validation called on a variable that is not part of the BmaLayout")
+            panic!("Precondition violation: validated variable is not part of the `BmaLayout`.")
         };
 
         if !is_unique {

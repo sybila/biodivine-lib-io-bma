@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// This is an internal error type for the parsing process. The public API for this is
-/// [`crate::update_function::InvalidBmaFnUpdate`]. The difference is that this error does
+/// [`InvalidBmaUpdateFunction`]. The difference is that this error does
 /// not contain the original input string.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Error)]
 #[error("Invalid expression: {message} at position `{position}`")]

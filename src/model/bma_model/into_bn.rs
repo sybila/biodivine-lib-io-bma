@@ -11,12 +11,7 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
 /// Convert [`BmaModel`] into a [`BooleanNetwork`] instance. At the moment, this only supports
-/// pure Boolean models (not multi-valued that would need additional conversion).
-///
-/// The network will contain the same set of variables and regulations as this model.
-/// See [`Self::to_regulatory_graph`] for details on how the regulation graph is extracted,
-/// and [`Self::canonical_var_name`] for how the variable names are derived.
-/// The update functions are transformed using [`BmaUpdateFunction::to_update_fn_boolean`].
+/// pure Boolean models (not multivalued that would need additional conversion).
 ///
 /// By default, all regulations are considered as observable, and their sign is taken from the
 /// BMA model as is. This may be inconsistent with the update functions, which may or may not be
@@ -81,6 +76,7 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
                 // Setting a constant update function should never fail, hence unwrap is safe.
                 bn.set_update_function(aeon_var, Some(FnUpdate::Const(false)))
                     .unwrap();
+                continue;
             }
 
             let bma_formula = if let Some(bma_formula) = bma_var.formula.as_ref() {
@@ -110,9 +106,6 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
 /// Returns a [`RegulatoryGraph`] instance (extracting variables and regulations from
 /// this model) and a mapping of BMA variable IDs to their canonical names used in
 /// the new graph.
-///
-/// See [`Self::canonical_var_name`] for how the variable names are derived. Variables should
-/// appear exactly in the order in which they appear within the [`BmaNetwork`].
 ///
 /// It is possible that the BMA model has more than one regulation between the same pair
 /// of variables. If they have the same type, we simply add it once. If they have different

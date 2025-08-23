@@ -17,7 +17,7 @@ use thiserror::Error;
 ///
 /// Note that when `formula` is not specified, the typical interpretation is to assign
 /// such a variable the "default" update function based on its associated relationships
-/// (see also [`crate::BmaRelationship`] and [`crate::BmaModel::create_default_update_fn`]).
+/// as `avg(positive_regulators) - avg(negative_regulators)`.
 ///
 /// Additional non-functional information like the variable position, description, or type are
 /// present as part of [`crate::BmaLayout`].
@@ -122,7 +122,7 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
         let Ok(is_unique) = is_unique_id(&context.variables, self, |x| x.id) else {
             // This is not a validation error; this violates the whole contract of the validation
             // mechanism and is therefore allowed to fail (instead of returning an error).
-            panic!("Validation called on a variable that is not part of the BmaNetwork")
+            panic!("Precondition violation: validated variable is not part of the `BmaNetwork`.")
         };
 
         if !is_unique {
@@ -203,7 +203,6 @@ mod tests {
         variable.validate(&network).unwrap();
     }
 
-    /// Empty variable names are not allowed.
     #[test]
     fn empty_name() {
         let variable = BmaVariable::new_boolean(0, "", None);

@@ -97,7 +97,7 @@ impl ContextualValidation<BmaNetwork> for BmaRelationship {
 
         assert!(
             found_self,
-            "Validation called on a relationship that is not part of the BmaNetwork"
+            "Invariant violation: validated relationship is not part of the `BmaNetwork`."
         );
 
         if count > 1 {

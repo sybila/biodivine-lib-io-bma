@@ -20,9 +20,10 @@ use thiserror::Error;
 /// - the additional optional data like a version and so on (`metadata`)
 ///
 /// `BmaModel` instances can be created from JSON or XML versions of the BMA format.
-/// You can use `from_json_str`, `from_xml_str` to create a model from a string.
-/// For serialization to JSON, use custom methods `to_json_str` or `to_pretty_json_str`
-/// (serialization into XML is currently not supported).
+/// You can use [`BmaModel::from_json_string`], [`BmaModel::from_xml_string`] to create a model
+/// from a string. For serialization to JSON or XML, use custom methods
+/// [`BmaModel::to_json_string`], [`BmaModel::to_json_string_pretty`], or
+/// [`BmaModel::to_xml_string`].
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct BmaModel {
@@ -118,7 +119,7 @@ impl BmaModel {
             .iter()
             .filter(|r| r.to_variable == target_var)
             .filter(|r| relationship.as_ref().is_none_or(|x| *x == r.r#type))
-            .map(|r| r.id)
+            .map(|r| r.from_variable)
             .collect()
     }
 }
@@ -145,10 +146,11 @@ mod tests {
     use crate::{
         BmaLayout, BmaLayoutContainer, BmaLayoutContainerError, BmaLayoutError, BmaLayoutVariable,
         BmaLayoutVariableError, BmaModel, BmaModelError, BmaNetwork, BmaNetworkError,
-        BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, Validation,
+        BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, RelationshipType,
+        Validation,
     };
     use num_rational::Rational64;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn default_model_is_valid() {
@@ -233,5 +235,38 @@ mod tests {
 
         let issues = model.validate().unwrap_err();
         assert_eq!(issues, expected);
+    }
+
+    #[test]
+    fn get_regulators_returns_source_variable_ids() {
+        let mut network = BmaNetwork::default();
+        network
+            .variables
+            .push(BmaVariable::new_boolean(1, "var_A", None));
+        network
+            .variables
+            .push(BmaVariable::new_boolean(2, "var_B", None));
+        network
+            .variables
+            .push(BmaVariable::new_boolean(3, "var_C", None));
+        // Suppose variable 1 inhibits variable 2, and variable 3 activates variable 2
+        network
+            .relationships
+            .push(BmaRelationship::new_inhibitor(10, 1, 2));
+        network
+            .relationships
+            .push(BmaRelationship::new_activator(10, 3, 2));
+        let model = BmaModel {
+            network,
+            layout: Default::default(),
+            metadata: Default::default(),
+        };
+
+        let regulators = model.get_regulators(2, &Some(RelationshipType::Activator));
+        assert_eq!(regulators, HashSet::from_iter(vec![3]));
+        let regulators = model.get_regulators(2, &Some(RelationshipType::Inhibitor));
+        assert_eq!(regulators, HashSet::from_iter(vec![1]));
+        let regulators = model.get_regulators(2, &None);
+        assert_eq!(regulators, HashSet::from_iter(vec![1, 3]));
     }
 }
