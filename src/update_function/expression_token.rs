@@ -36,12 +36,12 @@ pub struct BmaToken {
 impl Display for BmaTokenData {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            BmaTokenData::Atomic(Literal::Const(value)) => write!(f, "{}", value),
-            BmaTokenData::Atomic(Literal::Var(value)) => write!(f, "var({})", value),
+            BmaTokenData::Atomic(Literal::Const(value)) => write!(f, "{value}"),
+            BmaTokenData::Atomic(Literal::Var(value)) => write!(f, "var({value})"),
             BmaTokenData::Unary(op, arg) => {
                 write!(f, "{}({})", op, arg.data)
             }
-            BmaTokenData::Binary(op) => write!(f, "{}", op),
+            BmaTokenData::Binary(op) => write!(f, "{op}"),
             BmaTokenData::Aggregate(op, args) => {
                 let args = args
                     .iter()

@@ -119,7 +119,7 @@ fn parse_3_others(tokens: &[BmaToken]) -> Result<BmaUpdateFunction, ParserError>
                         unreachable!("Tokenizer invariant: Function arguments are token lists.")
                     };
 
-                    arg_expressions.push(parse_bma_fn_tokens(&inner_tokens)?);
+                    arg_expressions.push(parse_bma_fn_tokens(inner_tokens)?);
                 }
                 Ok(BmaUpdateFunction::mk_aggregation(*op, &arg_expressions))
             }
@@ -127,14 +127,14 @@ fn parse_3_others(tokens: &[BmaToken]) -> Result<BmaUpdateFunction, ParserError>
                 let TokenList(inner_tokens) = &argument.data else {
                     unreachable!("Tokenizer invariant: Function arguments are token lists.")
                 };
-                let arg_expression = parse_bma_fn_tokens(&inner_tokens)?;
+                let arg_expression = parse_bma_fn_tokens(inner_tokens)?;
                 Ok(BmaUpdateFunction::mk_unary(*op, &arg_expression))
             }
             // recursively solve sub-formulae in parentheses
-            TokenList(inner_tokens) => parse_bma_fn_tokens(&inner_tokens),
+            TokenList(inner_tokens) => parse_bma_fn_tokens(inner_tokens),
         },
         _ => {
-            let token_str = tokens.iter().map(|it| it.to_string()).collect::<Vec<_>>();
+            let token_str = tokens.iter().map(ToString::to_string).collect::<Vec<_>>();
             let token_str = token_str.join(" ");
             Err(ParserError::at(
                 tokens[1].position,

@@ -91,6 +91,7 @@ impl BmaUpdateFunction {
 
     /// The same as [`BmaUpdateFunction::parse_with_hint`], but if the string is empty, the
     /// method returns `None`.
+    #[must_use]
     pub fn parse_optional_with_hint(
         expression: &str,
         variable_id_hint: &[(u32, String)],
