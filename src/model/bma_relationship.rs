@@ -1,3 +1,4 @@
+use crate::utils::is_unique_id;
 use crate::{BmaNetwork, BmaVariable, ContextualValidation, ErrorReporter};
 use biodivine_lib_param_bn::Monotonicity;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -84,23 +85,15 @@ impl ContextualValidation<BmaNetwork> for BmaRelationship {
 
         // Ensure that the relationship id is unique within the enclosing BmaNetwork.
 
-        let mut count = 0;
-        let mut found_self = false;
-        for relationship in &context.relationships {
-            if relationship.id == self.id {
-                count += 1;
-                if relationship == self {
-                    found_self = true;
-                }
-            }
-        }
+        let Ok(is_unique) = is_unique_id(&context.relationships, self, |x| x.id) else {
+            // This is not a validation error; this violates the whole contract of the validation
+            // mechanism and is therefore allowed to fail (instead of returning an error).
+            panic!(
+                "Precondition violation: validated relationship is not part of the `BmaNetwork`."
+            )
+        };
 
-        assert!(
-            found_self,
-            "Invariant violation: validated relationship is not part of the `BmaNetwork`."
-        );
-
-        if count > 1 {
+        if !is_unique {
             reporter.report(BmaRelationshipError::IdNotUnique { id: self.id });
         }
 
