@@ -1,5 +1,5 @@
 use crate::serde::xml::XmlBmaModel;
-use crate::update_function::read_fn_update;
+use crate::update_function::BmaUpdateFunction;
 use crate::utils::{f64_or_default, rational_or_default};
 use crate::{BmaLayoutVariable, BmaVariable, VariableType};
 use serde::{Deserialize, Serialize};
@@ -90,7 +90,10 @@ impl From<(&XmlBmaModel, &XmlVariable)> for BmaVariable {
             id: variable.id,
             name: variable.name.clone(),
             range: (variable.range_from, variable.range_to),
-            formula: read_fn_update(variable.formula.as_str(), &variables),
+            formula: BmaUpdateFunction::parse_optional_with_hint(
+                variable.formula.as_str(),
+                &variables,
+            ),
         }
     }
 }

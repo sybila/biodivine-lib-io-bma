@@ -1,4 +1,9 @@
-use crate::update_function::{AggregateFn, ArithOp, BmaExpressionNodeData, Literal, UnaryFn};
+use crate::update_function::expression_parser::parse_bma_formula;
+use crate::update_function::{
+    AggregateFn, ArithOp, BmaExpressionNodeData, InvalidBmaUpdateFunction, Literal, UnaryFn,
+};
+use crate::utils::take_if_not_blank;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
@@ -69,6 +74,43 @@ impl BmaUpdateFunction {
     }
 }
 
+impl BmaUpdateFunction {
+    /// Parse new [`BmaUpdateFunction`] tree directly from a string representation.
+    ///
+    /// Arg `variable_id_hint` is a map of variable IDs to their names. It is needed because there
+    /// are some weird format differences between different variants, and a variable can be
+    /// referenced by either its ID or its name. We convert everything to IDs
+    /// for easier processing.
+    pub fn parse_with_hint(
+        expression: &str,
+        variable_id_hint: &[(u32, String)],
+    ) -> Result<BmaUpdateFunction, InvalidBmaUpdateFunction> {
+        parse_bma_formula(expression, variable_id_hint)
+            .map_err(|e| InvalidBmaUpdateFunction::from_parser_error(e, expression.to_string()))
+    }
+
+    /// The same as [`BmaUpdateFunction::parse_with_hint`], but if the string is empty, the
+    /// method returns `None`.
+    pub fn parse_optional_with_hint(
+        expression: &str,
+        variable_id_hint: &[(u32, String)],
+    ) -> Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>> {
+        let expression = take_if_not_blank(expression)?;
+        Some(BmaUpdateFunction::parse_with_hint(
+            expression.as_str(),
+            variable_id_hint,
+        ))
+    }
+}
+
+impl TryFrom<&str> for BmaUpdateFunction {
+    type Error = InvalidBmaUpdateFunction;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::parse_with_hint(value, &[])
+    }
+}
+
 impl AsRef<BmaExpressionNodeData> for BmaUpdateFunction {
     fn as_ref(&self) -> &BmaExpressionNodeData {
         self.as_data()
@@ -105,5 +147,24 @@ impl Display for BmaUpdateFunction {
                 Ok(())
             }
         }
+    }
+}
+
+impl Serialize for BmaUpdateFunction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for BmaUpdateFunction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        BmaUpdateFunction::try_from(value.as_str()).map_err(serde::de::Error::custom)
     }
 }

@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn default_serde() {
-        let formula = BmaUpdateFunction::parse_from_str("var(0) - var(1)", &[]).unwrap();
+        let formula = BmaUpdateFunction::try_from("var(0) - var(1)").unwrap();
         let variable = BmaVariable::new(5, "foo", (1, 3), Some(formula));
         let serialized = serde_json::to_string(&variable).unwrap();
         assert_eq!(

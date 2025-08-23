@@ -1,6 +1,7 @@
 use crate::update_function::ParserError;
 use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use std::collections::BTreeSet;
+use std::fmt::{Display, Formatter};
 
 /// Enum of all possible tokens occurring in a BMA function string.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -30,6 +31,39 @@ impl BmaTokenData {
 pub struct BmaToken {
     pub position: usize,
     pub data: BmaTokenData,
+}
+
+impl Display for BmaTokenData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BmaTokenData::Atomic(Literal::Const(value)) => write!(f, "{}", value),
+            BmaTokenData::Atomic(Literal::Var(value)) => write!(f, "var({})", value),
+            BmaTokenData::Unary(op, arg) => {
+                write!(f, "{}({})", op, arg.data)
+            }
+            BmaTokenData::Binary(op) => write!(f, "{}", op),
+            BmaTokenData::Aggregate(op, args) => {
+                let args = args
+                    .iter()
+                    .map(|arg| arg.data.to_string())
+                    .collect::<Vec<_>>();
+                write!(f, "{}({})", op, args.join(", "))
+            }
+            BmaTokenData::TokenList(args) => {
+                let args = args
+                    .iter()
+                    .map(|arg| arg.data.to_string())
+                    .collect::<Vec<_>>();
+                write!(f, "({})", args.join(" "))
+            }
+        }
+    }
+}
+
+impl Display for BmaToken {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.data)
+    }
 }
 
 /// Tokenize a BMA function expression into tokens.

@@ -1,7 +1,7 @@
 use crate::BmaVariable;
 use crate::serde::json::JsonBmaModel;
 use crate::serde::quote_num::QuoteNum;
-use crate::update_function::read_fn_update;
+use crate::update_function::BmaUpdateFunction;
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize JSON info about individual variable.
@@ -45,7 +45,10 @@ impl From<(&JsonBmaModel, &JsonVariable)> for BmaVariable {
             id: variable.id.into(),
             name: variable.name.clone(),
             range: (variable.range_from.into(), variable.range_to.into()),
-            formula: read_fn_update(variable.formula.as_str(), &variables),
+            formula: BmaUpdateFunction::parse_optional_with_hint(
+                variable.formula.as_str(),
+                &variables,
+            ),
         }
     }
 }

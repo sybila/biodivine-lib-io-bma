@@ -311,7 +311,7 @@ pub fn prepare_truth_table(var_ids: &[u32], fn_values: &[u32]) -> FunctionTable 
 #[cfg(test)]
 mod tests {
     use crate::update_function::{
-        _impl_to_update_fn::prepare_truth_table, parser::parse_bma_formula,
+        _impl_to_update_fn::prepare_truth_table, expression_parser::parse_bma_formula,
     };
     use biodivine_lib_param_bn::{BooleanNetwork, FnUpdate, RegulatoryGraph, VariableId};
     use num_rational::Rational32;
