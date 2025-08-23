@@ -40,38 +40,29 @@ pub struct BmaModel {
 
 impl BmaModel {
     /// Convert the `BmaModel` into a BMA compatible JSON string.
-    pub fn to_json_string(&self) -> anyhow::Result<String> {
-        let model = JsonBmaModel::from(self.clone());
-        let json = serde_json::to_string(&model)?;
-        Ok(json)
+    pub fn to_json_string(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&JsonBmaModel::from(self.clone()))
     }
 
     /// Same as [`BmaModel::to_json_string`], but using a human-readable JSON formatting.
-    pub fn to_json_string_pretty(&self) -> anyhow::Result<String> {
-        let model = JsonBmaModel::from(self.clone());
-        let json = serde_json::to_string_pretty(&model)?;
-        Ok(json)
+    pub fn to_json_string_pretty(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(&JsonBmaModel::from(self.clone()))
     }
 
     /// Create a new BMA model from a model string in the BMA JSON format.
-    pub fn from_json_string(json_str: &str) -> anyhow::Result<Self> {
-        let json_model: JsonBmaModel = serde_json::from_str(json_str)?;
-        let model = BmaModel::from(json_model);
-        Ok(model)
+    pub fn from_json_string(json_str: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str::<JsonBmaModel>(json_str).map(|model| BmaModel::from(model))
     }
 
     /// Create a new BMA model from a model string in XML format.
     /// Internally, we use `serde_xml_rs` serialization into an intermediate `XmlBmaModel` structure.
-    pub fn from_xml_string(xml_str: &str) -> Result<Self, String> {
-        let xml_model: XmlBmaModel = serde_xml_rs::from_str(xml_str).map_err(|e| e.to_string())?;
-        Ok(BmaModel::from(xml_model))
+    pub fn from_xml_string(xml_str: &str) -> Result<Self, serde_xml_rs::Error> {
+        serde_xml_rs::from_str::<XmlBmaModel>(xml_str).map(|model| BmaModel::from(model))
     }
 
     /// Convert the `BmaModel` into a BMA compatible XML string.
-    pub fn to_xml_string(&self) -> anyhow::Result<String> {
-        let model = XmlBmaModel::from(self.clone());
-        let xml = serde_xml_rs::to_string(&model)?;
-        Ok(xml)
+    pub fn to_xml_string(&self) -> Result<String, serde_xml_rs::Error> {
+        serde_xml_rs::to_string(&XmlBmaModel::from(self.clone()))
     }
 
     /// Create a new BMA model with a given network, layout, and metadata.
