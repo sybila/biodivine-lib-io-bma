@@ -1,6 +1,6 @@
-use crate::update_function::BmaUpdateFunction;
-use crate::update_function::expression_token::BmaExpressionToken;
+use crate::update_function::expression_token::BmaTokenData;
 use crate::update_function::parser::{parse_bma_fn_tokens, parse_bma_formula};
+use crate::update_function::{BmaUpdateFunction, ParserError};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 impl Serialize for BmaUpdateFunction {
@@ -26,8 +26,8 @@ impl<'de> Deserialize<'de> for BmaUpdateFunction {
 }
 
 impl BmaUpdateFunction {
-    /// "Parse" new [`BmaUpdateFunction`] tree from a list of [`BmaExpressionToken`] objects.
-    pub fn from_tokens(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
+    /// "Parse" new [`BmaUpdateFunction`] tree from a list of [`BmaTokenData`] objects.
+    pub fn from_tokens(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
         parse_bma_fn_tokens(tokens)
     }
 
@@ -39,7 +39,7 @@ impl BmaUpdateFunction {
     pub fn parse_from_str(
         function_str: &str,
         variables: &[(u32, String)],
-    ) -> Result<BmaUpdateFunction, String> {
+    ) -> Result<BmaUpdateFunction, ParserError> {
         parse_bma_formula(function_str, variables)
     }
 }

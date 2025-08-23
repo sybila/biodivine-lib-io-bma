@@ -1,36 +1,35 @@
+use crate::update_function::ParserError;
 use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 use std::collections::BTreeSet;
-use thiserror::Error;
 
 /// Enum of all possible tokens occurring in a BMA function string.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum BmaExpressionToken {
+pub enum BmaTokenData {
     /// Constant or variable.
     Atomic(Literal),
     /// Unary function with argument(s).
-    Unary(UnaryFn, Box<BmaExpressionToken>),
+    Unary(UnaryFn, Box<BmaToken>),
     /// A binary arithmetic operator
     Binary(ArithOp),
     /// Aggregation function with arguments.
-    Aggregate(AggregateFn, Vec<BmaExpressionToken>),
+    Aggregate(AggregateFn, Vec<BmaToken>),
     /// A closed parentheses group.
-    TokenList(Vec<BmaExpressionToken>),
+    TokenList(Vec<BmaToken>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Error)]
-#[error("Cannot tokenize expression: {error_type} at position `{position}`")]
-pub struct BmaTokenizationError {
-    pub position: usize,
-    pub error_type: String,
-}
-
-impl BmaTokenizationError {
-    pub fn at(position: usize, error_type: String) -> BmaTokenizationError {
-        BmaTokenizationError {
+impl BmaTokenData {
+    pub fn at(self, position: usize) -> BmaToken {
+        BmaToken {
+            data: self,
             position,
-            error_type,
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct BmaToken {
+    pub position: usize,
+    pub data: BmaTokenData,
 }
 
 /// Tokenize a BMA function expression into tokens.
@@ -40,7 +39,7 @@ impl BmaTokenizationError {
 pub fn try_tokenize_bma_formula(
     formula: &str,
     variable_id_hint: &[(u32, String)],
-) -> Result<Vec<BmaExpressionToken>, BmaTokenizationError> {
+) -> Result<Vec<BmaToken>, ParserError> {
     let chars: Vec<char> = formula.chars().collect();
     let (tokens, length) = try_tokenize_recursive(&chars, 0, false, false, variable_id_hint)?;
 
@@ -50,7 +49,7 @@ pub fn try_tokenize_bma_formula(
     Ok(tokens)
 }
 
-/// Process an input string into a vector of [`BmaExpressionToken`] objects, starting from the
+/// Process an input string into a vector of [`BmaTokenData`] objects, starting from the
 /// `start_at` position. The function also returns the *length of the tokenized region*.
 ///
 /// If `ends_with_comma` or `ends_with_parenthesis` is specified, the tokenization
@@ -67,7 +66,7 @@ fn try_tokenize_recursive(
     ends_with_comma: bool,
     ends_with_parenthesis: bool,
     variable_id_hint: &[(u32, String)],
-) -> Result<(Vec<BmaExpressionToken>, usize), BmaTokenizationError> {
+) -> Result<(Vec<BmaToken>, usize), ParserError> {
     let mut result = Vec::new();
     let mut position = start_at;
 
@@ -80,10 +79,10 @@ fn try_tokenize_recursive(
                     Ok((result, position - start_at + 1))
                 } else if ends_with_parenthesis {
                     let message = "Unclosed parenthesis (group closed by `,` before `)` was found)";
-                    Err(BmaTokenizationError::at(position, message.to_string()))
+                    Err(ParserError::at(position, message.to_string()))
                 } else {
                     let message = "Unexpected `,`";
-                    Err(BmaTokenizationError::at(position, message.to_string()))
+                    Err(ParserError::at(position, message.to_string()))
                 };
             }
             ')' => {
@@ -91,7 +90,7 @@ fn try_tokenize_recursive(
                     return Ok((result, (position - start_at) + 1));
                 } else {
                     let message = "Unexpected `)` (missing opening `(`)";
-                    Err(BmaTokenizationError::at(position, message.to_string()))
+                    Err(ParserError::at(position, message.to_string()))
                 };
             }
             c if c.is_whitespace() => {
@@ -100,32 +99,35 @@ fn try_tokenize_recursive(
             }
             c if ['+', '-', '*', '/'].contains(&c) => {
                 let op = ArithOp::try_from(c).unwrap();
-                result.push(BmaExpressionToken::Binary(op));
+                result.push(BmaTokenData::Binary(op).at(position));
                 position += 1;
             }
             '(' => {
                 // Start a nested token group.
+                position += 1;
                 let (group, length) =
-                    try_tokenize_recursive(input, position + 1, false, true, variable_id_hint)?;
-                result.push(BmaExpressionToken::TokenList(group));
-                position += length + 1;
+                    try_tokenize_recursive(input, position, false, true, variable_id_hint)?;
+                result.push(BmaTokenData::TokenList(group).at(position));
+                position += length;
             }
             // Parse integer constants
             '0'..='9' => {
                 let number = collect_number_str(input, position);
                 match number.parse::<i32>() {
                     Ok(constant) => {
-                        result.push(BmaExpressionToken::Atomic(Literal::Const(constant)));
+                        result.push(BmaTokenData::Atomic(Literal::Const(constant)).at(position));
                         position += number.len();
                     }
                     Err(e) => {
                         let message = format!("Invalid number `{number}`: {e}");
-                        return Err(BmaTokenizationError::at(position, message));
+                        return Err(ParserError::at(position, message));
                     }
                 }
             }
             // Parse  var literals and functions
             c if is_valid_start_name(c) => {
+                // Used to assign starting position to complex items like function calls.
+                let identifier_start = position;
                 let id = collect_identifier_str(input, position);
                 position += id.len();
                 match id.as_str() {
@@ -134,7 +136,7 @@ fn try_tokenize_recursive(
                             collect_function_arguments(input, position, variable_id_hint)?;
                         // Must not fail due to the test above.
                         let op = AggregateFn::try_from(id).unwrap();
-                        result.push(BmaExpressionToken::Aggregate(op, args));
+                        result.push(BmaTokenData::Aggregate(op, args).at(identifier_start));
                         position += length;
                     }
                     id if ["abs", "ceil", "floor"].contains(&id) => {
@@ -146,12 +148,12 @@ fn try_tokenize_recursive(
                                 id,
                                 args.len()
                             );
-                            return Err(BmaTokenizationError::at(position, message));
+                            return Err(ParserError::at(position, message));
                         }
                         // Must not fail due to the test above.
                         let op = UnaryFn::try_from(id).unwrap();
                         let arg = args.into_iter().next().unwrap();
-                        result.push(BmaExpressionToken::Unary(op, Box::new(arg)));
+                        result.push(BmaTokenData::Unary(op, Box::new(arg)).at(identifier_start));
                         position += length;
                     }
                     "var" => {
@@ -166,29 +168,30 @@ fn try_tokenize_recursive(
                                 .collect::<BTreeSet<_>>();
                             if matching_vars.is_empty() {
                                 let message = format!("`{identifier}` is not a known regulator");
-                                return Err(BmaTokenizationError::at(position, message));
+                                return Err(ParserError::at(position, message));
                             } else if matching_vars.len() > 1 {
                                 let message = format!(
                                     "`{identifier}` resolves to multiple regulator IDs: `{matching_vars:?}`"
                                 );
-                                return Err(BmaTokenizationError::at(position, message));
+                                return Err(ParserError::at(position, message));
                             }
                             debug_assert_eq!(matching_vars.len(), 1);
                             matching_vars.into_iter().next().unwrap()
                         };
-                        result.push(BmaExpressionToken::Atomic(Literal::Var(var_id)));
+                        result
+                            .push(BmaTokenData::Atomic(Literal::Var(var_id)).at(identifier_start));
                         position += length;
                     }
                     id => {
                         let message = format!("`{id}` is not a recognized function or variable");
-                        return Err(BmaTokenizationError::at(position - id.len(), message));
+                        return Err(ParserError::at(identifier_start, message));
                     }
                 }
             }
             c => {
                 // Any other character is unexpected at this point.
                 let message = format!("Unexpected `{c}`");
-                return Err(BmaTokenizationError::at(position, message));
+                return Err(ParserError::at(position, message));
             }
         }
     }
@@ -197,11 +200,11 @@ fn try_tokenize_recursive(
     // but in theory, future implementations do not need to require this.
     if ends_with_parenthesis {
         let message = "Input ended while expecting `)`";
-        return Err(BmaTokenizationError::at(position, message.to_string()));
+        return Err(ParserError::at(position, message.to_string()));
     }
     if ends_with_comma {
         let message = "Input ended while expecting `,`";
-        return Err(BmaTokenizationError::at(position, message.to_string()));
+        return Err(ParserError::at(position, message.to_string()));
     }
 
     Ok((result, position - start_at))
@@ -246,12 +249,12 @@ fn collect_identifier_str(input: &[char], start_at: usize) -> String {
 fn collect_variable_identifier(
     input: &[char],
     start_at: usize,
-) -> Result<(String, usize), BmaTokenizationError> {
+) -> Result<(String, usize), ParserError> {
     let mut position = next_non_whitespace_character(input, start_at);
 
     if position >= input.len() || input[position] != '(' {
         let message = "Expected `var` to be followed by `(`";
-        return Err(BmaTokenizationError::at(position, message.to_string()));
+        return Err(ParserError::at(position, message.to_string()));
     }
 
     position = next_non_whitespace_character(input, position + 1);
@@ -259,14 +262,14 @@ fn collect_variable_identifier(
 
     if identifier.is_empty() {
         let message = "No identifier found in `var` expression";
-        return Err(BmaTokenizationError::at(position, message.to_string()));
+        return Err(ParserError::at(position, message.to_string()));
     }
 
     position += identifier.len();
 
     if position >= input.len() || input[position] != ')' {
         let message = "Expected `var` to be closed by `)`";
-        return Err(BmaTokenizationError::at(position, message.to_string()));
+        return Err(ParserError::at(position, message.to_string()));
     }
 
     Ok((identifier, position - start_at + 1))
@@ -289,12 +292,12 @@ fn collect_function_arguments(
     input: &[char],
     start_at: usize,
     variable_id_hint: &[(u32, String)],
-) -> Result<(Vec<BmaExpressionToken>, usize), BmaTokenizationError> {
+) -> Result<(Vec<BmaToken>, usize), ParserError> {
     let mut position = next_non_whitespace_character(input, start_at);
 
     if position >= input.len() || input[position] != '(' {
         let message = "Expected argument list, but opening `(` is missing";
-        return Err(BmaTokenizationError::at(position, message.to_string()));
+        return Err(ParserError::at(position, message.to_string()));
     }
 
     position = next_non_whitespace_character(input, position + 1);
@@ -307,10 +310,10 @@ fn collect_function_arguments(
 
         if group.is_empty() {
             let message = "Argument is empty";
-            return Err(BmaTokenizationError::at(position, message.to_string()));
+            return Err(ParserError::at(position, message.to_string()));
         }
 
-        args.push(BmaExpressionToken::TokenList(group));
+        args.push(BmaTokenData::TokenList(group).at(position));
 
         debug_assert!(length > 0);
         position += length;
@@ -328,10 +331,16 @@ fn collect_function_arguments(
 
 #[cfg(test)]
 mod tests {
+    use crate::update_function::UnaryFn::Ceil;
     use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
     use crate::update_function::expression_token::{
-        BmaExpressionToken, try_tokenize_bma_formula, try_tokenize_recursive,
+        BmaTokenData, try_tokenize_bma_formula, try_tokenize_recursive,
     };
+    use AggregateFn::{Max, Min};
+    use ArithOp::{Minus, Plus};
+    use BmaTokenData::{Aggregate, Atomic, Binary, TokenList, Unary};
+    use Literal::Const;
+    use UnaryFn::Abs;
 
     #[test]
     fn test_simple_arithmetic() {
@@ -340,11 +349,11 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                BmaExpressionToken::Atomic(Literal::Const(3)),
-                BmaExpressionToken::Binary(ArithOp::Plus),
-                BmaExpressionToken::Atomic(Literal::Const(5)),
-                BmaExpressionToken::Binary(ArithOp::Minus),
-                BmaExpressionToken::Atomic(Literal::Const(2))
+                Atomic(Const(3)).at(0),
+                Binary(Plus).at(2),
+                Atomic(Const(5)).at(4),
+                Binary(Minus).at(6),
+                Atomic(Const(2)).at(8),
             ]
         );
     }
@@ -353,34 +362,26 @@ mod tests {
     fn test_function_with_single_argument() {
         let input = "abs(5)";
         let result = try_tokenize_bma_formula(input, &[]).unwrap();
-        assert_eq!(
-            result,
-            vec![BmaExpressionToken::Unary(
-                UnaryFn::Abs,
-                Box::new(BmaExpressionToken::TokenList(vec![
-                    BmaExpressionToken::Atomic(Literal::Const(5))
-                ])),
-            )]
-        );
+        let five = Atomic(Const(5)).at(4);
+        let args = TokenList(vec![five]).at(4);
+        assert_eq!(result, vec![Unary(Abs, Box::new(args)).at(0)]);
     }
 
     #[test]
     fn test_aggregate_function_with_multiple_arguments() {
         let input = "min(5, 3)";
         let result = try_tokenize_bma_formula(input, &[]).unwrap();
+        let five = Atomic(Const(5)).at(4);
+        let three = Atomic(Const(3)).at(7);
         assert_eq!(
             result,
-            vec![BmaExpressionToken::Aggregate(
-                AggregateFn::Min,
-                vec![
-                    BmaExpressionToken::TokenList(vec![BmaExpressionToken::Atomic(
-                        Literal::Const(5)
-                    )]),
-                    BmaExpressionToken::TokenList(vec![BmaExpressionToken::Atomic(
-                        Literal::Const(3)
-                    )])
-                ]
-            )]
+            vec![
+                Aggregate(
+                    Min,
+                    vec![TokenList(vec![five]).at(4), TokenList(vec![three]).at(7)]
+                )
+                .at(0)
+            ]
         );
     }
 
@@ -388,25 +389,19 @@ mod tests {
     fn test_nested_function_calls() {
         let input = "max(abs(5), ceil(3))";
         let result = try_tokenize_bma_formula(input, &[]);
+        let five = Atomic(Const(5)).at(8);
+        let three = Atomic(Const(3)).at(17);
+        let abs = Unary(Abs, Box::new(TokenList(vec![five]).at(8))).at(4);
+        let ceil = Unary(Ceil, Box::new(TokenList(vec![three]).at(17))).at(12);
         assert_eq!(
             result,
-            Ok(vec![BmaExpressionToken::Aggregate(
-                AggregateFn::Max,
-                vec![
-                    BmaExpressionToken::TokenList(vec![BmaExpressionToken::Unary(
-                        UnaryFn::Abs,
-                        Box::new(BmaExpressionToken::TokenList(vec![
-                            BmaExpressionToken::Atomic(Literal::Const(5))
-                        ])),
-                    )]),
-                    BmaExpressionToken::TokenList(vec![BmaExpressionToken::Unary(
-                        UnaryFn::Ceil,
-                        Box::new(BmaExpressionToken::TokenList(vec![
-                            BmaExpressionToken::Atomic(Literal::Const(3))
-                        ])),
-                    )])
-                ]
-            )])
+            Ok(vec![
+                Aggregate(
+                    Max,
+                    vec![TokenList(vec![abs]).at(4), TokenList(vec![ceil]).at(12)]
+                )
+                .at(0)
+            ])
         );
     }
 
@@ -414,20 +409,21 @@ mod tests {
     fn test_compound_expression_with_nested_parentheses() {
         let input = "3 + (5 * (2 + 1))";
         let result = try_tokenize_bma_formula(input, &[]);
+        let three = Atomic(Const(3)).at(0);
+        let five = Atomic(Const(5)).at(5);
+        let two = Atomic(Const(2)).at(10);
+        let one = Atomic(Const(1)).at(14);
         assert_eq!(
             result,
             Ok(vec![
-                BmaExpressionToken::Atomic(Literal::Const(3)),
-                BmaExpressionToken::Binary(ArithOp::Plus),
-                BmaExpressionToken::TokenList(vec![
-                    BmaExpressionToken::Atomic(Literal::Const(5)),
-                    BmaExpressionToken::Binary(ArithOp::Mult),
-                    BmaExpressionToken::TokenList(vec![
-                        BmaExpressionToken::Atomic(Literal::Const(2)),
-                        BmaExpressionToken::Binary(ArithOp::Plus),
-                        BmaExpressionToken::Atomic(Literal::Const(1))
-                    ])
+                three,
+                Binary(Plus).at(2),
+                TokenList(vec![
+                    five,
+                    Binary(ArithOp::Mult).at(7),
+                    TokenList(vec![two, Binary(Plus).at(12), one]).at(10)
                 ])
+                .at(5)
             ])
         );
     }
@@ -442,43 +438,43 @@ mod tests {
             (2u32, "y".to_string()),
         ];
 
-        let var_literal = BmaExpressionToken::Atomic(Literal::Var(42));
+        let var_literal = Atomic(Literal::Var(42));
 
         // Variable can be found if among regulators, by both name an ID.
         let input = "var(x)";
         let result = try_tokenize_bma_formula(input, &vars).unwrap();
-        assert_eq!(result, vec![var_literal.clone()]);
+        assert_eq!(result, vec![var_literal.clone().at(0)]);
 
         let input = "var(42)";
         let result = try_tokenize_bma_formula(input, &vars).unwrap();
-        assert_eq!(result, vec![var_literal.clone()]);
+        assert_eq!(result, vec![var_literal.clone().at(0)]);
 
         let input = "var(y)";
         let result = try_tokenize_bma_formula(input, &vars).unwrap_err();
         assert_eq!(
-            result.error_type,
+            result.message,
             "`y` resolves to multiple regulator IDs: `{1, 2}`"
         );
         assert_eq!(result.position, 3);
 
         let input = "var(z)";
         let result = try_tokenize_bma_formula(input, &vars).unwrap_err();
-        assert_eq!(result.error_type, "`z` is not a known regulator");
+        assert_eq!(result.message, "`z` is not a known regulator");
         assert_eq!(result.position, 3);
 
         let input = "var()";
         let result = try_tokenize_bma_formula(input, &vars).unwrap_err();
-        assert_eq!(result.error_type, "No identifier found in `var` expression");
+        assert_eq!(result.message, "No identifier found in `var` expression");
         assert_eq!(result.position, 4);
 
         let input = "var x";
         let result = try_tokenize_bma_formula(input, &vars).unwrap_err();
-        assert_eq!(result.error_type, "Expected `var` to be followed by `(`");
+        assert_eq!(result.message, "Expected `var` to be followed by `(`");
         assert_eq!(result.position, 4);
 
         let input = "var(x";
         let result = try_tokenize_bma_formula(input, &vars).unwrap_err();
-        assert_eq!(result.error_type, "Expected `var` to be closed by `)`");
+        assert_eq!(result.message, "Expected `var` to be closed by `)`");
         assert_eq!(result.position, 5);
     }
 
@@ -486,7 +482,7 @@ mod tests {
     fn test_unmatched_parentheses() {
         let input = "min(5, 3";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
-        assert_eq!(result.error_type, "Input ended while expecting `)`");
+        assert_eq!(result.message, "Input ended while expecting `)`");
         assert_eq!(result.position, 8);
     }
 
@@ -498,7 +494,7 @@ mod tests {
         let input = "2 * 3";
         let input_chars = Vec::from_iter(input.chars());
         let result = try_tokenize_recursive(&input_chars, 0, true, false, &[]).unwrap_err();
-        assert_eq!(result.error_type, "Input ended while expecting `,`");
+        assert_eq!(result.message, "Input ended while expecting `,`");
         assert_eq!(result.position, 5);
     }
 
@@ -506,7 +502,7 @@ mod tests {
     fn test_unexpected_character() {
         let input = "5 + @";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
-        assert_eq!(result.error_type, "Unexpected `@`");
+        assert_eq!(result.message, "Unexpected `@`");
         assert_eq!(result.position, 4);
     }
 
@@ -514,7 +510,7 @@ mod tests {
     fn test_function_with_no_arguments_invalid() {
         let input = "abs()";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
-        assert_eq!(result.error_type, "Argument is empty");
+        assert_eq!(result.message, "Argument is empty");
         assert_eq!(result.position, 4);
     }
 
@@ -523,7 +519,7 @@ mod tests {
         let input = "max(1 + (2 -, 3)";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
         assert_eq!(
-            result.error_type.as_str(),
+            result.message.as_str(),
             "Unclosed parenthesis (group closed by `,` before `)` was found)"
         );
         assert_eq!(result.position, 12);
@@ -533,7 +529,7 @@ mod tests {
     fn test_comma_outside_arguments() {
         let input = "1 + 2, 3";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
-        assert_eq!(result.error_type.as_str(), "Unexpected `,`");
+        assert_eq!(result.message.as_str(), "Unexpected `,`");
         assert_eq!(result.position, 5);
     }
 
@@ -542,7 +538,7 @@ mod tests {
         let input = "1 + 2) - 3";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
         assert_eq!(
-            result.error_type.as_str(),
+            result.message.as_str(),
             "Unexpected `)` (missing opening `(`)"
         );
         assert_eq!(result.position, 5);
@@ -553,7 +549,7 @@ mod tests {
         let input = "12345678901234567890";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
         assert_eq!(
-            result.error_type.as_str(),
+            result.message.as_str(),
             "Invalid number `12345678901234567890`: number too large to fit in target type"
         );
         assert_eq!(result.position, 0);
@@ -564,7 +560,7 @@ mod tests {
         let input = "abs(1, 2)";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
         assert_eq!(
-            result.error_type.as_str(),
+            result.message.as_str(),
             "Function `abs` expects exactly one argument; found `2`"
         );
         assert_eq!(result.position, 3);
@@ -575,7 +571,7 @@ mod tests {
         let input = "foo(1, 2)";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
         assert_eq!(
-            result.error_type.as_str(),
+            result.message.as_str(),
             "`foo` is not a recognized function or variable"
         );
         assert_eq!(result.position, 0);
@@ -586,7 +582,7 @@ mod tests {
         let input = "max 1, 2";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
         assert_eq!(
-            result.error_type.as_str(),
+            result.message.as_str(),
             "Expected argument list, but opening `(` is missing"
         );
         assert_eq!(result.position, 4);

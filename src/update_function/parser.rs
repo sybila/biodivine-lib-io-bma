@@ -1,7 +1,9 @@
-use crate::update_function::BmaUpdateFunction;
 use crate::update_function::expression_enums::{ArithOp, Literal};
-use crate::update_function::expression_token::{BmaExpressionToken, try_tokenize_bma_formula};
+use crate::update_function::expression_token::{BmaTokenData, try_tokenize_bma_formula};
+use crate::update_function::{BmaUpdateFunction, ParserError};
+use BmaTokenData::Binary;
 
+// TODO: This should probably be a method
 /// Parse an BMA update function formula string representation into an actual expression tree.
 /// Basically a wrapper for tokenize+parse (used often for testing/debug purposes).
 ///
@@ -10,105 +12,110 @@ use crate::update_function::expression_token::{BmaExpressionToken, try_tokenize_
 /// by either its ID or its name. We convert everything to IDs for easier processing.
 pub fn parse_bma_formula(
     formula: &str,
-    variables: &[(u32, String)],
-) -> Result<BmaUpdateFunction, String> {
-    let tokens = try_tokenize_bma_formula(formula, variables).map_err(|e| e.to_string())?;
+    variable_id_hint: &[(u32, String)],
+) -> Result<BmaUpdateFunction, ParserError> {
+    let tokens = try_tokenize_bma_formula(formula, variable_id_hint)?;
+    let tokens = tokens.into_iter().map(|it| it.data).collect::<Vec<_>>();
     let tree = parse_bma_fn_tokens(&tokens)?;
     Ok(tree)
 }
 
 /// Utility method to find the first occurrence of a specific token in the token tree.
-fn index_of_first(tokens: &[BmaExpressionToken], token: &BmaExpressionToken) -> Option<usize> {
+fn index_of_first(tokens: &[BmaTokenData], token: &BmaTokenData) -> Option<usize> {
     tokens.iter().position(|t| t == token)
 }
 
 /// Parse `tokens` of BMA update fn formula into an abstract syntax tree using recursive steps.
-pub fn parse_bma_fn_tokens(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
+pub fn parse_bma_fn_tokens(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
     parse_1_div(tokens)
 }
 
 /// Recursive parsing step 1: extract `/` operators.
-fn parse_1_div(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let div_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Div));
-    Ok(if let Some(i) = div_token {
-        BmaUpdateFunction::mk_arithmetic(
+fn parse_1_div(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
+    if let Some(i) = index_of_first(tokens, &Binary(ArithOp::Div)) {
+        Ok(BmaUpdateFunction::mk_arithmetic(
             ArithOp::Div,
             &parse_2_mul(&tokens[..i])?,
             &parse_1_div(&tokens[(i + 1)..])?,
-        )
+        ))
     } else {
-        parse_2_mul(tokens)?
-    })
+        parse_2_mul(tokens)
+    }
 }
 
 /// Recursive parsing step 2: extract `*` operators.
-fn parse_2_mul(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let mul_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Mult));
-    Ok(if let Some(i) = mul_token {
-        BmaUpdateFunction::mk_arithmetic(
+fn parse_2_mul(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
+    if let Some(i) = index_of_first(tokens, &Binary(ArithOp::Mult)) {
+        Ok(BmaUpdateFunction::mk_arithmetic(
             ArithOp::Mult,
             &parse_3_minus(&tokens[..i])?,
             &parse_2_mul(&tokens[(i + 1)..])?,
-        )
+        ))
     } else {
-        parse_3_minus(tokens)?
-    })
+        parse_3_minus(tokens)
+    }
 }
 
 /// Recursive parsing step 3: extract `-` operators.
-fn parse_3_minus(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let minus_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Minus));
-    Ok(if let Some(i) = minus_token {
-        BmaUpdateFunction::mk_arithmetic(
+fn parse_3_minus(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
+    if let Some(i) = index_of_first(tokens, &Binary(ArithOp::Minus)) {
+        Ok(BmaUpdateFunction::mk_arithmetic(
             ArithOp::Minus,
             &parse_4_plus(&tokens[..i])?,
             &parse_3_minus(&tokens[(i + 1)..])?,
-        )
+        ))
     } else {
-        parse_4_plus(tokens)?
-    })
+        parse_4_plus(tokens)
+    }
 }
 
 /// Recursive parsing step 4: extract `+` operators.
-fn parse_4_plus(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
-    let minus_token = index_of_first(tokens, &BmaExpressionToken::Binary(ArithOp::Plus));
-    Ok(if let Some(i) = minus_token {
-        BmaUpdateFunction::mk_arithmetic(
+fn parse_4_plus(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
+    if let Some(i) = index_of_first(tokens, &Binary(ArithOp::Plus)) {
+        Ok(BmaUpdateFunction::mk_arithmetic(
             ArithOp::Plus,
             &parse_5_others(&tokens[..i])?,
             &parse_4_plus(&tokens[(i + 1)..])?,
-        )
+        ))
     } else {
-        parse_5_others(tokens)?
-    })
+        parse_5_others(tokens)
+    }
 }
 
 /// Recursive parsing step 5: extract literals and recursively solve sub-formulae in parentheses
 /// and in functions.
-fn parse_5_others(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, String> {
+fn parse_5_others(tokens: &[BmaTokenData]) -> Result<BmaUpdateFunction, ParserError> {
     if tokens.is_empty() {
-        Err("Expected formula, found nothing.".to_string())
+        Err(ParserError::at(
+            0,
+            "Expected formula, found nothing.".to_string(),
+        ))
     } else {
         if tokens.len() == 1 {
             // This should be named (var/function) or a parenthesis group, anything
             // else does not make sense.
             match &tokens[0] {
-                BmaExpressionToken::Atomic(Literal::Var(var_id)) => {
+                BmaTokenData::Atomic(Literal::Var(var_id)) => {
                     return Ok(BmaUpdateFunction::mk_variable(*var_id));
                 }
-                BmaExpressionToken::Atomic(Literal::Const(num)) => {
+                BmaTokenData::Atomic(Literal::Const(num)) => {
                     return Ok(BmaUpdateFunction::mk_constant(*num));
                 }
-                BmaExpressionToken::Aggregate(operator, arguments) => {
+                BmaTokenData::Aggregate(operator, arguments) => {
                     let mut arg_expression_nodes = Vec::new();
                     for inner in arguments {
                         // it must be a token list
-                        if let BmaExpressionToken::TokenList(inner_token_list) = inner {
-                            arg_expression_nodes.push(parse_bma_fn_tokens(inner_token_list)?);
+                        if let BmaTokenData::TokenList(inner_token_list) = &inner.data {
+                            let inner_token_list = inner_token_list
+                                .iter()
+                                .cloned()
+                                .map(|it| it.data)
+                                .collect::<Vec<_>>();
+                            arg_expression_nodes.push(parse_bma_fn_tokens(&inner_token_list)?);
                         } else {
                             let message =
                                 "Function must be applied on `BmaFnToken::TokenList` args.";
-                            return Err(message.to_string());
+                            return Err(ParserError::at(0, message.to_string()));
                         }
                     }
                     return Ok(BmaUpdateFunction::mk_aggregation(
@@ -116,28 +123,36 @@ fn parse_5_others(tokens: &[BmaExpressionToken]) -> Result<BmaUpdateFunction, St
                         &arg_expression_nodes,
                     ));
                 }
-                BmaExpressionToken::Unary(operator, argument) => {
-                    return if let BmaExpressionToken::TokenList(inner_token_list) =
-                        *argument.clone()
-                    {
+                BmaTokenData::Unary(operator, argument) => {
+                    return if let BmaTokenData::TokenList(inner_token_list) = &argument.data {
+                        let inner_token_list = inner_token_list
+                            .iter()
+                            .map(|it| it.data.clone())
+                            .collect::<Vec<_>>();
                         Ok(BmaUpdateFunction::mk_unary(
                             *operator,
                             &parse_bma_fn_tokens(&inner_token_list)?,
                         ))
                     } else {
-                        return Err(
-                            "Function must be applied on `BmaFnToken::TokenList` args.".to_string()
-                        );
+                        return Err(ParserError::at(
+                            0,
+                            "Function must be applied on `BmaFnToken::TokenList` args.".to_string(),
+                        ));
                     };
                 }
                 // recursively solve sub-formulae in parentheses
-                BmaExpressionToken::TokenList(inner) => {
-                    return parse_bma_fn_tokens(inner);
+                BmaTokenData::TokenList(inner) => {
+                    let inner = inner.iter().map(|it| it.data.clone()).collect::<Vec<_>>();
+                    return parse_bma_fn_tokens(&inner);
                 }
                 _ => {} // otherwise, fall through to the error at the end.
             }
         }
-        Err(format!("Unexpected: {tokens:?}. Expecting formula."))
+
+        Err(ParserError::at(
+            0,
+            format!("Unexpected: {tokens:?}. Expecting formula."),
+        ))
     }
 }
 
@@ -234,26 +249,15 @@ mod tests {
     #[test]
     fn test_parse_unmatched_parentheses() {
         let input = "3 + (5 * 2";
-        let result = parse_bma_formula(input, &[]);
-        assert!(result.is_err());
-        assert_eq!(
-            result,
-            Err(
-                "Cannot tokenize expression: Input ended while expecting `)` at position `10`"
-                    .to_string()
-            )
-        );
+        let result = parse_bma_formula(input, &[]).unwrap_err();
+        assert_eq!(result.message.as_str(), "Input ended while expecting `)`");
     }
 
     #[test]
     fn test_parse_invalid_token() {
         let input = "5 + @";
-        let result = parse_bma_formula(input, &[]);
-        assert!(result.is_err());
-        assert_eq!(
-            result,
-            Err("Cannot tokenize expression: Unexpected `@` at position `4`".to_string())
-        );
+        let result = parse_bma_formula(input, &[]).unwrap_err();
+        assert_eq!(result.message.as_str(), "Unexpected `@`");
     }
 
     #[test]
@@ -274,8 +278,7 @@ mod tests {
     #[test]
     fn test_parse_empty_formula() {
         let input = "";
-        let result = parse_bma_formula(input, &[]);
-        assert!(result.is_err());
-        assert_eq!(result, Err("Expected formula, found nothing.".to_string()));
+        let result = parse_bma_formula(input, &[]).unwrap_err();
+        assert_eq!(result.message.as_str(), "Expected formula, found nothing.");
     }
 }
