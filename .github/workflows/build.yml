@@ -31,6 +31,17 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
+  # Check docs
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - run: cargo doc --all-features
+
   # Run basic code validity check.
   check:
     needs: fmt
@@ -53,7 +64,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          components: rustfmt
       - run: cargo test --all-features
 
   # Check code style
