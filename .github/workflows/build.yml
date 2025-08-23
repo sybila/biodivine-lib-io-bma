@@ -81,7 +81,7 @@ jobs:
 
   # Validate minimum supported Rust version declared in Cargo.toml.
   minimum-supported:
-    name: Minimum supported version (1.85) - Check and Test
+    name: Minimum supported version - Check and Test
     needs: fmt
     runs-on: ubuntu-latest
     steps:
@@ -89,7 +89,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.MIN_RUST_VERSION }}
-          components: clippy
       - run: cargo check --all-features
       - run: cargo test --all-features
 
