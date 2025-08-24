@@ -2,7 +2,7 @@ use crate::{
     BmaLayoutContainer, BmaLayoutContainerError, BmaLayoutVariable, BmaLayoutVariableError,
     BmaModel, ContextualValidation, ErrorReporter,
 };
-use num_rational::Rational64;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use thiserror::Error;
@@ -17,8 +17,8 @@ pub struct BmaLayout {
     pub variables: Vec<BmaLayoutVariable>,
     pub containers: Vec<BmaLayoutContainer>,
     pub description: String,
-    pub zoom_level: Option<Rational64>,
-    pub pan: Option<(Rational64, Rational64)>,
+    pub zoom_level: Option<Decimal>,
+    pub pan: Option<(Decimal, Decimal)>,
 }
 
 impl BmaLayout {

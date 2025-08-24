@@ -9,7 +9,7 @@ mod tests {
     use crate::{
         BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaNetwork, BmaRelationship, BmaVariable,
     };
-    use num_rational::Rational64;
+    use rust_decimal::Decimal;
 
     pub fn simple_network() -> BmaNetwork {
         BmaNetwork {
@@ -34,8 +34,8 @@ mod tests {
             ],
             containers: vec![BmaLayoutContainer::new(13, "Test container")],
             description: "Lorem ipsum".to_string(),
-            zoom_level: Some(Rational64::new(1, 3)),
-            pan: Some((Rational64::from(3), Rational64::from(10))),
+            zoom_level: Some(Decimal::from(1) / Decimal::from(3)),
+            pan: Some((Decimal::from(3), Decimal::from(10))),
         }
     }
 }

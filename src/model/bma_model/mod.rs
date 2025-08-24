@@ -1,5 +1,5 @@
-pub(crate) mod from_bn;
-pub(crate) mod into_bn;
+pub(crate) mod from_aeon;
+pub(crate) mod into_aeon;
 
 use crate::serde::json::JsonBmaModel;
 use crate::serde::xml::XmlBmaModel;
@@ -140,7 +140,7 @@ mod tests {
         BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, RelationshipType,
         Validation,
     };
-    use num_rational::Rational64;
+    use rust_decimal::Decimal;
     use std::collections::{HashMap, HashSet};
 
     #[test]
@@ -187,7 +187,7 @@ mod tests {
                     BmaLayoutContainer::new(4, "comp2"),
                 ],
                 description: "Lorem ipsum".to_string(),
-                zoom_level: Some(Rational64::new(10, 3)),
+                zoom_level: Some(Decimal::from(10) / Decimal::from(3)),
                 pan: None,
             },
             metadata: HashMap::default(),

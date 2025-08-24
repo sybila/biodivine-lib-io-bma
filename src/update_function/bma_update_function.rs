@@ -68,8 +68,11 @@ impl BmaUpdateFunction {
 
     /// Create a [`BmaUpdateFunction`] representing an aggregation operator
     /// applied to given arguments.
+    ///
+    /// Precondition: The list of inner nodes must not be empty!
     #[must_use]
     pub fn mk_aggregation(op: AggregateFn, inner_nodes: &[BmaUpdateFunction]) -> BmaUpdateFunction {
+        assert!(!inner_nodes.is_empty(), "At least one argument required.");
         BmaExpressionNodeData::Aggregation(op, inner_nodes.to_vec()).into()
     }
 }

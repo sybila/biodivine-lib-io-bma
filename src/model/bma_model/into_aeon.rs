@@ -1,4 +1,4 @@
-use crate::update_function::{AggregateFn, ArithOp, BmaUpdateFunction};
+use crate::update_function::{AggregateFn, ArithOp, BmaUpdateFunction, InvalidBmaUpdateFunction};
 use crate::{
     BmaModel, BmaModelError, BmaNetworkError, BmaRelationshipError, BmaVariable, BmaVariableError,
     RelationshipType, Validation,
@@ -9,6 +9,7 @@ use biodivine_lib_param_bn::{
 };
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::mem::swap;
 
 /// Convert [`BmaModel`] into a [`BooleanNetwork`] instance. At the moment, this only supports
 /// pure Boolean models (not multivalued that would need additional conversion).
@@ -23,16 +24,20 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
     type Error = anyhow::Error;
 
     fn try_from(model: &BmaModel) -> Result<Self, Self::Error> {
+        // First, make sure all missing functions are now included in the model.
+        let mut model = model.clone();
+        model.populate_missing_functions();
+
         if !model.is_boolean() {
             return Err(anyhow!(
                 "Converting multi-valued models into BNs is not supported"
             ));
         }
 
-        let graph = RegulatoryGraph::try_from(model)?;
+        let graph = RegulatoryGraph::try_from(&model)?;
         let mut bn = BooleanNetwork::new(graph);
 
-        let bma_id_to_aeon_id = build_variable_id_map(model);
+        let bma_id_to_aeon_id = build_variable_id_map(&model);
 
         // Errors that prevent the model from being converted:
         //  - Anything that breaks the regulatory graph conversion (already resolved above).
@@ -57,14 +62,6 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
             }
         }
 
-        // In theory, all variables should be Boolean (except for zero constants which
-        // we deal with later). However, our conversion method is built for multivalued
-        // functions, thus we need this map for the conversion.
-        let max_levels = bma_id_to_aeon_id
-            .keys()
-            .map(|v| (*v, 1u32))
-            .collect::<HashMap<_, _>>();
-
         // Build update functions:
         for bma_var in &model.network.variables {
             // Unwrap is safe because regulatory graph was constructed successfully.
@@ -79,20 +76,11 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
                 continue;
             }
 
-            let bma_formula = if let Some(bma_formula) = bma_var.formula.as_ref() {
-                // Here, an unwrap would also be safe due to the previous validation test.
-                bma_formula.clone()?
-            } else {
-                // The formula is not set, we have to build a default one
-                create_default_update_fn(model, bma_var.id)
-            };
+            let aeon_formula = model.convert_function_to_aeon(bma_var, &bma_id_to_aeon_id)?;
 
-            // TODO: Figure out error handling for this conversion.
-            let aeon_formula = bma_formula
-                .to_update_fn_boolean(&max_levels, &bma_id_to_aeon_id, 1)
-                .map_err(|e| anyhow!(e))?;
-
-            // TODO: This operation can fail if there are missing regulations in the BmaNetwork.
+            // Note that this operation can fail if some regulations in the BMA model are
+            // not set up properly. Unless we "infer" the network structure from update functions,
+            // we can't really prevent this.
             bn.set_update_function(aeon_var, Some(aeon_formula))
                 .map_err(|e| anyhow!(e))?;
         }
@@ -249,6 +237,51 @@ fn build_variable_id_map(model: &BmaModel) -> HashMap<u32, VariableId> {
         .enumerate()
         .map(|(i, v)| (v.id, VariableId::from_index(i)))
         .collect::<HashMap<u32, VariableId>>()
+}
+
+/// Utility methods associated with function conversions.
+impl BmaModel {
+    /// Build the default update function which is used by BMA if no other function is provided.
+    #[must_use]
+    pub fn build_default_update_function(&self, var_id: u32) -> BmaUpdateFunction {
+        create_default_update_fn(self, var_id)
+    }
+
+    /// Modify this BMA model such that the given variable uses the default update function.
+    /// Panics if the given `var_id` does not reference a network variable.
+    ///
+    /// Returns the previous update function.
+    ///
+    /// See also [`BmaModel::build_default_update_function`].
+    pub fn set_default_function(
+        &mut self,
+        var_id: u32,
+    ) -> Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>> {
+        let update = self.build_default_update_function(var_id);
+        let variable = self
+            .network
+            .variables
+            .iter_mut()
+            .find(|v| v.id == var_id)
+            .expect("Precondition violated: No variable with given id.");
+        let mut to_swap = Some(Ok(update));
+        swap(&mut to_swap, &mut variable.formula);
+        to_swap
+    }
+
+    /// Add default update functions for all variables where the update function is missing.
+    pub fn populate_missing_functions(&mut self) {
+        let missing_var_ids = self
+            .network
+            .variables
+            .iter()
+            .filter(|v| v.formula.is_none())
+            .map(|v| v.id)
+            .collect::<Vec<_>>();
+        for id in missing_var_ids {
+            let _ = self.set_default_function(id); // throw away the old function
+        }
+    }
 }
 
 #[cfg(test)]

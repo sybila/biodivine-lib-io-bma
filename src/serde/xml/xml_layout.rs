@@ -1,6 +1,6 @@
 use crate::BmaLayout;
 use crate::serde::xml::XmlBmaModel;
-use crate::utils::{clone_into_vec, f64_or_default, rational_or_default};
+use crate::utils::{clone_into_vec, decimal_or_default, f64_or_default};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize XML info about layout. This includes only a few
@@ -45,10 +45,10 @@ impl From<BmaLayout> for XmlLayout {
 impl From<&XmlBmaModel> for BmaLayout {
     fn from(value: &XmlBmaModel) -> Self {
         let (zoom_level, pan) = if let Some(layout) = value.layout.as_ref() {
-            let zoom_level = rational_or_default(layout.zoom_level);
+            let zoom_level = decimal_or_default(layout.zoom_level);
             let pan = (
-                rational_or_default(layout.pan_x),
-                rational_or_default(layout.pan_y),
+                decimal_or_default(layout.pan_x),
+                decimal_or_default(layout.pan_y),
             );
             (Some(zoom_level), Some(pan))
         } else {

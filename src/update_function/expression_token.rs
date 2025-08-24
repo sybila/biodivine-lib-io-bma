@@ -170,6 +170,10 @@ fn try_tokenize_recursive(
                             collect_function_arguments(input, position, variable_id_hint)?;
                         // Must not fail due to the test above.
                         let op = AggregateFn::try_from(id).unwrap();
+                        if args.is_empty() {
+                            let message = format!("Function `{id}` expects at least one argument");
+                            return Err(ParserError::at(position, message));
+                        }
                         result.push(BmaTokenData::Aggregate(op, args).at(identifier_start));
                         position += length;
                     }
@@ -338,6 +342,11 @@ fn collect_function_arguments(
 
     let mut args = Vec::new();
     loop {
+        // If the next character is parenthesis, just stop.
+        if input[position] == ')' {
+            break;
+        }
+
         // Tokenization of a single argument can end if comma or parenthesis is found.
         let (group, length) =
             try_tokenize_recursive(input, position, true, true, variable_id_hint)?;
@@ -544,8 +553,11 @@ mod tests {
     fn test_function_with_no_arguments_invalid() {
         let input = "abs()";
         let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
-        assert_eq!(result.message, "Argument is empty");
-        assert_eq!(result.position, 4);
+        assert_eq!(
+            result.message,
+            "Function `abs` expects exactly one argument; found `0`"
+        );
+        assert_eq!(result.position, 3);
     }
 
     #[test]
@@ -620,5 +632,16 @@ mod tests {
             "Expected argument list, but opening `(` is missing"
         );
         assert_eq!(result.position, 4);
+    }
+
+    #[test]
+    fn test_empty_arguments() {
+        let input = "max()";
+        let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
+        assert_eq!(
+            result.message.as_str(),
+            "Function `max` expects at least one argument"
+        );
+        assert_eq!(result.position, 3);
     }
 }

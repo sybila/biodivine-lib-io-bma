@@ -1,6 +1,6 @@
 use crate::utils::is_unique_id;
 use crate::{BmaLayout, ContextualValidation, ErrorReporter};
-use num_rational::Rational64;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -14,7 +14,7 @@ pub struct BmaLayoutContainer {
     pub id: u32,
     pub name: String,
     pub size: u32,
-    pub position: (Rational64, Rational64),
+    pub position: (Decimal, Decimal),
 }
 
 impl Default for BmaLayoutContainer {
@@ -23,7 +23,7 @@ impl Default for BmaLayoutContainer {
             id: 0,
             name: String::default(),
             size: 1,
-            position: (Rational64::default(), Rational64::default()),
+            position: (Decimal::default(), Decimal::default()),
         }
     }
 }

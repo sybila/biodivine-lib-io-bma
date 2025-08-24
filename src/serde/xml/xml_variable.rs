@@ -1,6 +1,6 @@
 use crate::serde::xml::XmlBmaModel;
 use crate::update_function::BmaUpdateFunction;
-use crate::utils::{f64_or_default, rational_or_default};
+use crate::utils::{decimal_or_default, f64_or_default};
 use crate::{BmaLayoutVariable, BmaVariable, VariableType};
 use serde::{Deserialize, Serialize};
 
@@ -112,10 +112,10 @@ impl From<XmlVariable> for BmaLayoutVariable {
             name: value.name.clone(),
             description: String::default(),
             position: (
-                rational_or_default(value.position_x),
-                rational_or_default(value.position_y),
+                decimal_or_default(value.position_x),
+                decimal_or_default(value.position_y),
             ),
-            angle: rational_or_default(value.angle),
+            angle: decimal_or_default(value.angle),
             cell,
         }
     }

@@ -1,6 +1,6 @@
 use crate::utils::is_unique_id;
 use crate::{BmaModel, ContextualValidation, ErrorReporter};
-use num_rational::Rational64;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use std::fmt::{Display, Formatter};
@@ -26,8 +26,8 @@ pub struct BmaLayoutVariable {
     pub r#type: VariableType,
     pub name: String,
     pub description: String,
-    pub position: (Rational64, Rational64),
-    pub angle: Rational64,
+    pub position: (Decimal, Decimal),
+    pub angle: Decimal,
     pub cell: Option<(u32, u32)>,
 }
 

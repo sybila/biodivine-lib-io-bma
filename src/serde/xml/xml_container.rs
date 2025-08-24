@@ -1,5 +1,5 @@
 use crate::BmaLayoutContainer;
-use crate::utils::{f64_or_default, rational_or_default};
+use crate::utils::{decimal_or_default, f64_or_default};
 use serde::{Deserialize, Serialize};
 
 /// Structure to deserialize XML info about container.
@@ -39,8 +39,8 @@ impl From<XmlContainer> for BmaLayoutContainer {
             name: value.name.clone(),
             size: value.size,
             position: (
-                rational_or_default(value.position_x),
-                rational_or_default(value.position_y),
+                decimal_or_default(value.position_x),
+                decimal_or_default(value.position_y),
             ),
         }
     }
