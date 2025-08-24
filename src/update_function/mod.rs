@@ -2,11 +2,11 @@ mod bma_update_function;
 mod expression_enums;
 mod expression_node_data;
 
-mod _impl_from_update_fn;
 mod bma_update_function_error;
 mod bma_update_function_evaluation;
 mod expression_parser;
 mod expression_token;
+mod from_aeon;
 mod into_aeon;
 
 pub use bma_update_function::BmaUpdateFunction;

@@ -3,6 +3,7 @@ use crate::{
     BmaModel, BmaModelError, BmaNetworkError, BmaRelationshipError, BmaVariable, BmaVariableError,
     RelationshipType, Validation,
 };
+use BmaRelationshipError::{RegulatorVariableNotFound, TargetVariableNotFound};
 use anyhow::anyhow;
 use biodivine_lib_param_bn::{
     BooleanNetwork, FnUpdate, Monotonicity, Regulation, RegulatoryGraph, VariableId,
@@ -30,7 +31,7 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
 
         if !model.is_boolean() {
             return Err(anyhow!(
-                "Converting multi-valued models into BNs is not supported"
+                "Multi-valued model cannot be converted into Boolean network"
             ));
         }
 
@@ -116,16 +117,10 @@ impl TryFrom<&BmaModel> for RegulatoryGraph {
                             }
                         }
                         BmaNetworkError::Relationship(rel_error) => {
-                            if matches!(
-                                rel_error,
-                                BmaRelationshipError::TargetVariableNotFound { .. }
-                            ) {
+                            if matches!(rel_error, TargetVariableNotFound { .. }) {
                                 return Err(rel_error.into());
                             }
-                            if matches!(
-                                rel_error,
-                                BmaRelationshipError::RegulatorVariableNotFound { .. }
-                            ) {
+                            if matches!(rel_error, RegulatorVariableNotFound { .. }) {
                                 return Err(rel_error.into());
                             }
                         }
@@ -151,8 +146,12 @@ impl TryFrom<&BmaModel> for RegulatoryGraph {
         for relationship in &model.network.relationships {
             // These unwrap operations must succeed, because regulations
             // only use valid variable IDs.
-            let source = bma_id_to_aeon_id.get(&relationship.from_variable).unwrap();
-            let target = bma_id_to_aeon_id.get(&relationship.to_variable).unwrap();
+            let source = bma_id_to_aeon_id
+                .get(&relationship.from_variable)
+                .expect("Invariant violation: Relationship source variable not found.");
+            let target = bma_id_to_aeon_id
+                .get(&relationship.to_variable)
+                .expect("Invariant violation: Relationship target variable not found.");
             let mut regulation = Regulation {
                 regulator: *source,
                 target: *target,
@@ -165,11 +164,15 @@ impl TryFrom<&BmaModel> for RegulatoryGraph {
                     regulation.monotonicity = None;
                     regulatory_graph
                         .remove_regulation(*source, *target)
-                        .unwrap();
-                    regulatory_graph.add_raw_regulation(regulation).unwrap();
+                        .expect("Invariant violated: Regulation already missing.");
+                    regulatory_graph
+                        .add_raw_regulation(regulation)
+                        .expect("Invariant violated: Regulation already exists.");
                 }
             } else {
-                regulatory_graph.add_raw_regulation(regulation).unwrap();
+                regulatory_graph
+                    .add_raw_regulation(regulation)
+                    .expect("Invariant violated: Regulation already exists.");
             }
         }
 
