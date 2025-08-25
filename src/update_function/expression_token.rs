@@ -121,7 +121,7 @@ fn try_tokenize_recursive(
             }
             ')' => {
                 return if ends_with_parenthesis {
-                    return Ok((result, (position - start_at) + 1));
+                    Ok((result, (position - start_at) + 1))
                 } else {
                     let message = "Unexpected `)` (missing opening `(`)";
                     Err(ParserError::at(position, message.to_string()))
@@ -304,6 +304,7 @@ fn collect_variable_identifier(
     }
 
     position += identifier.len();
+    position = next_non_whitespace_character(input, position);
 
     if position >= input.len() || input[position] != ')' {
         let message = "Expected `var` to be closed by `)`";
@@ -343,7 +344,7 @@ fn collect_function_arguments(
     let mut args = Vec::new();
     loop {
         // If the next character is parenthesis, just stop.
-        if input[position] == ')' {
+        if position < input.len() && input[position] == ')' {
             break;
         }
 
@@ -374,7 +375,6 @@ fn collect_function_arguments(
 
 #[cfg(test)]
 mod tests {
-    use crate::update_function::UnaryFn::Ceil;
     use crate::update_function::expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
     use crate::update_function::expression_token::{
         BmaTokenData, try_tokenize_bma_formula, try_tokenize_recursive,
@@ -383,7 +383,7 @@ mod tests {
     use ArithOp::{Minus, Plus};
     use BmaTokenData::{Aggregate, Atomic, Binary, TokenList, Unary};
     use Literal::Const;
-    use UnaryFn::Abs;
+    use UnaryFn::{Abs, Ceil};
 
     #[test]
     fn test_simple_arithmetic() {
@@ -491,6 +491,11 @@ mod tests {
         let input = "var(42)";
         let result = try_tokenize_bma_formula(input, &vars).unwrap();
         assert_eq!(result, vec![var_literal.clone().at(0)]);
+
+        // Also test with whitespace
+        let input = " var ( 42 ) ";
+        let result = try_tokenize_bma_formula(input, &vars).unwrap();
+        assert_eq!(result, vec![var_literal.clone().at(1)]);
 
         let input = "var(y)";
         let result = try_tokenize_bma_formula(input, &vars).unwrap_err();
@@ -643,5 +648,13 @@ mod tests {
             "Function `max` expects at least one argument"
         );
         assert_eq!(result.position, 3);
+    }
+
+    #[test]
+    fn test_args_not_closed() {
+        let input = "max(";
+        let result = try_tokenize_bma_formula(input, &[]).unwrap_err();
+        assert_eq!(result.message.as_str(), "Input ended while expecting `)`");
+        assert_eq!(result.position, 4);
     }
 }

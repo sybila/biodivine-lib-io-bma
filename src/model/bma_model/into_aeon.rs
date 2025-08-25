@@ -195,6 +195,10 @@ fn canonical_var_name(var: &BmaVariable) -> String {
 /// This function is created the same way as BMA does it, even though that
 /// can feel weird at times.
 ///
+/// **WARNING**: Variables with only negative regulators will always evaluate to
+/// constant zero due to BMA's averaging logic. This may not match biological
+/// intuition but maintains compatibility with BMA.
+///
 /// The function assumes every regulator relationship is either activation,
 /// or inhibition. Unknown relationship types are ignored.
 fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction {
@@ -251,11 +255,14 @@ impl BmaModel {
     }
 
     /// Modify this BMA model such that the given variable uses the default update function.
-    /// Panics if the given `var_id` does not reference a network variable.
     ///
     /// Returns the previous update function.
     ///
     /// See also [`BmaModel::build_default_update_function`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given `var_id` does not reference a network variable.
     pub fn set_default_function(
         &mut self,
         var_id: u32,

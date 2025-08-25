@@ -3,10 +3,9 @@ use crate::{
     BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaModel, BmaNetwork, BmaRelationship,
     BmaVariable, RelationshipType,
 };
-use Monotonicity::Activation;
 use anyhow::anyhow;
-use biodivine_lib_param_bn::Monotonicity::Inhibition;
-use biodivine_lib_param_bn::{BooleanNetwork, Monotonicity};
+use biodivine_lib_param_bn::BooleanNetwork;
+use biodivine_lib_param_bn::Monotonicity::{Activation, Inhibition};
 use std::collections::HashMap;
 
 /// Construct a [`BmaModel`] instance from a provided [`BooleanNetwork`].
@@ -105,7 +104,9 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
             }
         }
 
-        // sort relationships in deterministic alphabetical order
+        // Sort relationships deterministically by (source, target) to ensure
+        // consistent output regardless of input order. This aids reproducibility
+        // in tests and serialization/deserialization cycles.
         relationships.sort_by_key(|rel| (rel.from_variable, rel.to_variable));
 
         // each variable gets default layout settings

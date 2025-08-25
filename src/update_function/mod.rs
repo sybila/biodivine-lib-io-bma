@@ -23,7 +23,7 @@ mod tests {
     use crate::update_function::BmaUpdateFunction;
     use crate::{BmaModel, BmaNetwork, BmaRelationship, BmaVariable};
 
-    /// Build a model with two variables, each having update function "a & b".
+    /// Build a model with two variables, each having update function "a * b" (boolean AND on {0,1}).
     pub fn and_model() -> BmaModel {
         let expression = BmaUpdateFunction::try_from("var(1) * var(2)").unwrap();
 

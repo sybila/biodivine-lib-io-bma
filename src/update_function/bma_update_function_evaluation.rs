@@ -217,7 +217,7 @@ impl BmaUpdateFunction {
     /// that aggregation operations with no arguments should be caught as errors by the parser
     /// or constructor, but the user could make a custom function with no arguments.
     ///
-    /// See also [`BmaVariable::evaluate`].
+    /// See also [`BmaModel::evaluate`].
     pub fn evaluate_raw(&self, valuation: &BTreeMap<u32, Decimal>) -> anyhow::Result<Decimal> {
         match &self.as_data() {
             Terminal(Literal::Const(value)) => Ok(Decimal::from(*value)),

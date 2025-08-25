@@ -19,7 +19,7 @@ impl BmaModel {
             } else if value == 1 {
                 Ok(true)
             } else {
-                Err(anyhow!("Value is not binary"))
+                Err(anyhow!("Value `{value}` is not binary"))
             }
         }
 

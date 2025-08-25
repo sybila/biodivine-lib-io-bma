@@ -1,5 +1,5 @@
 use crate::BmaLayout;
-use crate::serde::xml::XmlBmaModel;
+use crate::serde::xml::{XmlBmaModel, XmlContainers};
 use crate::utils::{clone_into_vec, decimal_or_default, f64_or_default};
 use serde::{Deserialize, Serialize};
 
@@ -54,9 +54,10 @@ impl From<&XmlBmaModel> for BmaLayout {
         } else {
             (None, None)
         };
+        let empty = XmlContainers::default();
         BmaLayout {
             variables: clone_into_vec(&value.variables.variable),
-            containers: clone_into_vec(&value.containers.clone().unwrap_or_default().container),
+            containers: clone_into_vec(&value.containers.as_ref().unwrap_or(&empty).container),
             description: value.description.clone(),
             zoom_level,
             pan,

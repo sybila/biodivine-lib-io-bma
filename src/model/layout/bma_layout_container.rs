@@ -30,7 +30,7 @@ impl Default for BmaLayoutContainer {
 
 impl BmaLayoutContainer {
     /// Create a new container using the given `id` and `name`. Remaining values use
-    /// default values.
+    /// default values (size = 1, position = (0,0)).
     #[must_use]
     pub fn new(id: u32, name: &str) -> Self {
         BmaLayoutContainer {

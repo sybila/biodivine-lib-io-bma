@@ -22,13 +22,13 @@ pub struct BmaLayout {
 }
 
 impl BmaLayout {
-    /// Find an instances of [`BmaLayoutVariable`] stored in this layout, assuming it exists.
+    /// Find an instance of [`BmaLayoutVariable`] stored in this layout, if it exists.
     #[must_use]
     pub fn find_variable(&self, id: u32) -> Option<&BmaLayoutVariable> {
         self.variables.iter().find(|v| v.id == id)
     }
 
-    /// Find an instances of [`BmaLayoutContainer`] stored in this layout, assuming it exists.
+    /// Find an instance of [`BmaLayoutContainer`] stored in this layout, if it exists.
     #[must_use]
     pub fn find_container(&self, id: u32) -> Option<&BmaLayoutContainer> {
         self.containers.iter().find(|v| v.id == id)

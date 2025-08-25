@@ -108,7 +108,7 @@ impl From<XmlVariable> for BmaLayoutVariable {
         BmaLayoutVariable {
             id: value.id,
             container_id: value.container_id,
-            r#type: VariableType::default(),
+            r#type: VariableType::from(value.r#type.as_str()),
             name: value.name.clone(),
             description: String::default(),
             position: (
