@@ -1,0 +1,66 @@
+use crate::BmaLayout;
+use crate::serde::xml::{XmlBmaModel, XmlContainers};
+use crate::utils::{clone_into_vec, decimal_or_default, f64_or_default};
+use serde::{Deserialize, Serialize};
+
+/// Structure to deserialize XML info about layout. This includes only a few
+/// metadata items like zoom level and pan position. Info about variables and
+/// containers is stored directly in the model object of BMA XML (as weird as it is...).
+///
+/// The zoom and pan values can be missing in the XML. If not provided, default
+/// values are used.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub(crate) struct XmlLayout {
+    #[serde(default, rename = "Columns")]
+    pub columns: u32,
+    #[serde(default, rename = "Rows")]
+    pub rows: u32,
+    #[serde(default, rename = "ZoomLevel")]
+    pub zoom_level: f64,
+    #[serde(default, rename = "PanX")]
+    pub pan_x: f64,
+    #[serde(default, rename = "PanY")]
+    pub pan_y: f64,
+}
+
+impl From<BmaLayout> for XmlLayout {
+    fn from(value: BmaLayout) -> Self {
+        // As far as I can tell, `columns` and `rows` are no longer used...
+        let (pan_x, pan_y) = value.pan.unwrap_or_default();
+        XmlLayout {
+            columns: 1,
+            rows: 1,
+            zoom_level: f64_or_default(value.zoom_level.unwrap_or_default()),
+            pan_x: f64_or_default(pan_x),
+            pan_y: f64_or_default(pan_y),
+        }
+    }
+}
+
+/*
+   There is no conversion for `XmlLayout` to `BmaLayout`. Instead, this is built into the
+   `XmlModel` conversion, since that's where most of the data stored in `BmaLayout` really is.
+*/
+
+impl From<&XmlBmaModel> for BmaLayout {
+    fn from(value: &XmlBmaModel) -> Self {
+        let (zoom_level, pan) = if let Some(layout) = value.layout.as_ref() {
+            let zoom_level = decimal_or_default(layout.zoom_level);
+            let pan = (
+                decimal_or_default(layout.pan_x),
+                decimal_or_default(layout.pan_y),
+            );
+            (Some(zoom_level), Some(pan))
+        } else {
+            (None, None)
+        };
+        let empty = XmlContainers::default();
+        BmaLayout {
+            variables: clone_into_vec(&value.variables.variable),
+            containers: clone_into_vec(&value.containers.as_ref().unwrap_or(&empty).container),
+            description: value.description.clone(),
+            zoom_level,
+            pan,
+        }
+    }
+}

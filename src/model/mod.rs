@@ -1,12 +1,41 @@
-/// Basic BMA model methods, including coverting from BN instances.
-mod _impl_bma_model;
-/// Implementation of (de)serialization from/into JSON format.
-mod _impl_json_serde;
-/// Converting BMA model into a regulatory graph and BN.
-mod _impl_to_bn;
-/// Implementation of deserialization from XML format.
-mod _impl_xml_serde;
-/// Main BMA model struct and its components.
-mod bma_model;
+pub(crate) mod bma_model;
+pub(crate) mod bma_network;
+pub(crate) mod bma_relationship;
+pub(crate) mod bma_variable;
+pub(crate) mod layout;
 
-pub use bma_model::BmaModel;
+#[cfg(test)]
+mod tests {
+    use crate::{
+        BmaLayout, BmaLayoutContainer, BmaLayoutVariable, BmaNetwork, BmaRelationship, BmaVariable,
+    };
+    use rust_decimal::Decimal;
+
+    pub fn simple_network() -> BmaNetwork {
+        BmaNetwork {
+            name: "Some network".to_string(),
+            variables: vec![
+                BmaVariable::new_boolean(3, "var_B", None),
+                BmaVariable::new(0, "var_A", (1, 3), None),
+            ],
+            relationships: vec![
+                BmaRelationship::new_activator(0, 0, 3),
+                BmaRelationship::new_inhibitor(1, 3, 3),
+            ],
+            ..Default::default()
+        }
+    }
+
+    pub fn simple_layout() -> BmaLayout {
+        BmaLayout {
+            variables: vec![
+                BmaLayoutVariable::new(0, "l_var_A", None),
+                BmaLayoutVariable::new(3, "l_var_B", Some(13)),
+            ],
+            containers: vec![BmaLayoutContainer::new(13, "Test container")],
+            description: "Lorem ipsum".to_string(),
+            zoom_level: Some(Decimal::from(1) / Decimal::from(3)),
+            pan: Some((Decimal::from(3), Decimal::from(10))),
+        }
+    }
+}
