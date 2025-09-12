@@ -72,7 +72,7 @@ impl BmaNetwork {
     ///
     /// Returns the previous update function.
     ///
-    /// See also [`BmaModel::build_default_update_function`].
+    /// See also [`BmaNetwork::build_default_update_function`].
     ///
     /// # Panics
     ///

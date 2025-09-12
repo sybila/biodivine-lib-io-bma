@@ -33,7 +33,7 @@ impl BmaNetwork {
     ///  - The valuation does not contain all necessary values.
     ///  - Invalid arithmetic operation occurs (e.g., division by zero).
     ///
-    /// See also: [`BmaModel::set_default_function`], [`BmaModel::populate_missing_functions`],
+    /// See also: [`BmaNetwork::set_default_function`], [`BmaNetwork::populate_missing_functions`],
     /// [`BmaVariable::normalize_input_level`] and [`BmaUpdateFunction::evaluate_raw`].
     pub fn evaluate(&self, var_id: u32, valuation: &BTreeMap<u32, u32>) -> anyhow::Result<u32> {
         let target_var = self
@@ -61,11 +61,11 @@ impl BmaNetwork {
     /// Build a complete [`FunctionTable`] with all input-output combinations.
     ///
     /// If the update function is missing, the function computes a function table for the
-    /// "default" update function (see [`BmaModel::build_default_update_function`]).
+    /// "default" update function (see [`BmaNetwork::build_default_update_function`]).
     ///
     /// The function can fail if the variable does not exist, its update function is in an
     /// error state, contains invalid variables, or performs division by zero.
-    /// See also [`BmaModel::evaluate`] for possible error states.
+    /// See also [`BmaNetwork::evaluate`] for possible error states.
     ///
     /// *[`FunctionTable`] will use inputs declared as regulators in
     /// [`BmaNetwork`], so the network has to be correctly configured.*
@@ -252,7 +252,7 @@ impl BmaUpdateFunction {
     /// that aggregation operations with no arguments should be caught as errors by the parser
     /// or constructor, but the user could make a custom function with no arguments.
     ///
-    /// See also [`BmaModel::evaluate`].
+    /// See also [`BmaNetwork::evaluate`].
     pub fn evaluate_raw(&self, valuation: &BTreeMap<u32, Decimal>) -> anyhow::Result<Decimal> {
         match &self.as_data() {
             Terminal(Literal::Const(value)) => Ok(Decimal::from(*value)),
