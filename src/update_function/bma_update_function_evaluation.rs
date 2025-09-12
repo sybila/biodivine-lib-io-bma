@@ -86,13 +86,12 @@ impl BmaNetwork {
                 .map_err(|e| anyhow!(e.to_string()))?,
         };
 
-
         // Use actual regulators declared in the function, not regulations in the model.
         let mut regulators_map = BTreeMap::new();
         for id in self.get_regulators(var_id, &None) {
             let var = self
                 .find_variable(id)
-                .ok_or_else(|| anyhow!("Regulator variable `{id}` not found"))?;
+                .ok_or_else(|| anyhow!("Regulator variable `{id}` does not exist"))?;
             regulators_map.insert(id, var);
         }
 
@@ -261,7 +260,9 @@ impl BmaUpdateFunction {
                 if let Some(value) = valuation.get(var_id) {
                     Ok(*value)
                 } else {
-                    Err(anyhow!(format!("No value found for variable `{var_id}`")))
+                    Err(anyhow!(format!(
+                        "Missing input value for variable `{var_id}`"
+                    )))
                 }
             }
             BmaExpressionNodeData::Arithmetic(operator, left, right) => {
