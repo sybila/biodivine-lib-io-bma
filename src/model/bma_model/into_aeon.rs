@@ -52,7 +52,10 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
                             if matches!(var_error, BmaVariableError::RangeInvalid { .. }) {
                                 return Err(var_error.into());
                             }
-                            if matches!(var_error, BmaVariableError::UpdateFunctionInvalid { .. }) {
+                            if matches!(
+                                var_error,
+                                BmaVariableError::UpdateFunctionExpressionInvalid { .. }
+                            ) {
                                 return Err(var_error.into());
                             }
                         }

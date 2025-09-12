@@ -1,6 +1,6 @@
 use crate::update_function::expression_parser::parse_bma_formula;
 use crate::update_function::{
-    AggregateFn, ArithOp, BmaExpressionNodeData, InvalidBmaUpdateFunction, Literal, UnaryFn,
+    AggregateFn, ArithOp, BmaExpressionNodeData, InvalidBmaExpression, Literal, UnaryFn,
 };
 use crate::utils::take_if_not_blank;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -87,9 +87,9 @@ impl BmaUpdateFunction {
     pub fn parse_with_hint(
         expression: &str,
         variable_id_hint: &[(u32, String)],
-    ) -> Result<BmaUpdateFunction, InvalidBmaUpdateFunction> {
+    ) -> Result<BmaUpdateFunction, InvalidBmaExpression> {
         parse_bma_formula(expression, variable_id_hint)
-            .map_err(|e| InvalidBmaUpdateFunction::from_parser_error(e, expression.to_string()))
+            .map_err(|e| InvalidBmaExpression::from_parser_error(e, expression.to_string()))
     }
 
     /// The same as [`BmaUpdateFunction::parse_with_hint`], but if the string is empty, the
@@ -98,7 +98,7 @@ impl BmaUpdateFunction {
     pub fn parse_optional_with_hint(
         expression: &str,
         variable_id_hint: &[(u32, String)],
-    ) -> Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>> {
+    ) -> Option<Result<BmaUpdateFunction, InvalidBmaExpression>> {
         let expression = take_if_not_blank(expression)?;
         Some(BmaUpdateFunction::parse_with_hint(
             expression.as_str(),
@@ -108,7 +108,7 @@ impl BmaUpdateFunction {
 }
 
 impl TryFrom<&str> for BmaUpdateFunction {
-    type Error = InvalidBmaUpdateFunction;
+    type Error = InvalidBmaExpression;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Self::parse_with_hint(value, &[])

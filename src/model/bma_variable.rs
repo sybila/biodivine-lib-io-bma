@@ -1,4 +1,4 @@
-use crate::update_function::{BmaUpdateFunction, InvalidBmaUpdateFunction};
+use crate::update_function::{BmaUpdateFunction, FunctionTable, InvalidBmaExpression};
 use crate::utils::is_unique_id;
 use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ pub struct BmaVariable {
     pub id: u32,
     pub name: String,
     pub range: (u32, u32),
-    pub formula: Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>>,
+    pub formula: Option<Result<BmaUpdateFunction, InvalidBmaExpression>>,
 }
 
 impl BmaVariable {
@@ -126,7 +126,7 @@ pub enum BmaVariableError {
     UpdateFunctionInvalid {
         id: u32,
         #[source]
-        source: InvalidBmaUpdateFunction,
+        source: InvalidBmaExpression,
     },
 }
 
@@ -155,7 +155,7 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
         }
 
         if let Some(Err(error)) = &self.formula {
-            reporter.report(BmaVariableError::UpdateFunctionInvalid {
+            reporter.report(BmaVariableError::UpdateFunctionExpressionInvalid {
                 id: self.id,
                 source: error.clone(),
             });
