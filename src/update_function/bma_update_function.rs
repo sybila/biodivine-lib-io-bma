@@ -28,7 +28,7 @@ impl BmaUpdateFunction {
     }
 }
 
-/// Utility constructors
+/// Utility constructors and methods
 impl BmaUpdateFunction {
     /// Create a "unary" [`BmaUpdateFunction`] from the given arguments.
     ///
@@ -74,6 +74,27 @@ impl BmaUpdateFunction {
     pub fn mk_aggregation(op: AggregateFn, inner_nodes: &[BmaUpdateFunction]) -> BmaUpdateFunction {
         assert!(!inner_nodes.is_empty(), "At least one argument required.");
         BmaExpressionNodeData::Aggregation(op, inner_nodes.to_vec()).into()
+    }
+
+    /// Return true if this function is a constant.
+    ///
+    /// Note that this only performs a syntactic check. Something like `0 - 0` will not be
+    /// considered constant in this case.
+    #[must_use]
+    pub fn is_constant(&self) -> bool {
+        self.as_constant().is_some()
+    }
+
+    /// If this function represents a constant, return its value; otherwise return `None`.
+    ///
+    /// Note that this only performs a syntactic check. Something like `0 - 0` will not be
+    /// considered constant in this case.
+    #[must_use]
+    pub fn as_constant(&self) -> Option<i32> {
+        match self.as_data() {
+            BmaExpressionNodeData::Terminal(Literal::Const(value)) => Some(*value),
+            _ => None,
+        }
     }
 }
 
