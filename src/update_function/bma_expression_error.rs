@@ -6,7 +6,7 @@ use thiserror::Error;
 /// not contain the original input string.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Error)]
 #[error("Invalid expression: {message} at position `{position}`")]
-pub struct ParserError {
+pub(crate) struct ParserError {
     pub position: usize,
     pub message: String,
 }

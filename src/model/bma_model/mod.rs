@@ -232,7 +232,7 @@ mod tests {
             .push(BmaRelationship::new_inhibitor(10, 1, 2));
         network
             .relationships
-            .push(BmaRelationship::new_activator(10, 3, 2));
+            .push(BmaRelationship::new_activator(11, 3, 2));
         let model = BmaModel {
             network,
             layout: Default::default(),
