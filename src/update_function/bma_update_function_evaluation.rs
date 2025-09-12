@@ -86,7 +86,7 @@ impl BmaNetwork {
                 .map_err(|e| anyhow!(e.to_string()))?,
         };
 
-        // Use actual regulators declared in the function, not regulations in the model.
+        // Regulators declared in the model, not what actually appears in function.
         let mut regulators_map = BTreeMap::new();
         for id in self.get_regulators(var_id, &None) {
             let var = self

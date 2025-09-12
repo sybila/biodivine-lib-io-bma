@@ -50,7 +50,7 @@ impl BmaUpdateFunction {
         BmaExpressionNodeData::Arithmetic(op, left.clone(), right.clone()).into()
     }
 
-    /// Create a [`BmaUpdateFunction`] representing a Boolean constant.
+    /// Create a [`BmaUpdateFunction`] representing an integer constant.
     ///
     /// See also [`BmaExpressionNodeData::Terminal`] and [`Literal::Const`].
     #[must_use]
