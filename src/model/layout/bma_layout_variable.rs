@@ -108,14 +108,38 @@ pub enum BmaLayoutVariableError {
     ContainerNotFound { id: u32, container_id: u32 },
     #[error("(Layout var.: `{id}`) Unknown variable type `{value}`")]
     UnknownVariableType { id: u32, value: String },
+    #[error("(Layout var.: `{id}`) Variable type `{type}` is invalid: {message}")]
+    InvalidVariableType {
+        id: u32,
+        r#type: VariableType,
+        message: String,
+    },
 }
 
 impl ContextualValidation<BmaModel> for BmaLayoutVariable {
     type Error = BmaLayoutVariableError;
 
     fn validate_all<R: ErrorReporter<Self::Error>>(&self, context: &BmaModel, reporter: &mut R) {
-        // Ensure referenced IDs exist.
-        if context.network.find_variable(self.id).is_none() {
+        if let Some(bma_var) = context.network.find_variable(self.id) {
+            // Ensure that constant variables have the correct type.
+            let is_const = self.r#type == VariableType::Constant;
+            let bma_is_const = bma_var.has_constant_range();
+            if is_const && !bma_is_const {
+                reporter.report(BmaLayoutVariableError::InvalidVariableType {
+                    id: self.id,
+                    r#type: self.r#type.clone(),
+                    message: "Variable is not actually constant".to_string(),
+                });
+            }
+            if bma_is_const && !is_const {
+                reporter.report(BmaLayoutVariableError::InvalidVariableType {
+                    id: self.id,
+                    r#type: self.r#type.clone(),
+                    message: "Variable is not declared as constant".to_string(),
+                });
+            }
+        } else {
+            // Ensure corresponding variable exists.
             reporter.report(BmaLayoutVariableError::VariableNotFound { id: self.id });
         }
 
@@ -256,5 +280,45 @@ mod tests {
         model.layout.variables.push(l_var.clone());
         let issues = l_var.validate(&model).unwrap_err();
         assert_eq!(issues, vec![BmaLayoutVariableError::IdNotUnique { id: 5 }]);
+    }
+
+    #[test]
+    fn non_constant_variable_declaration() {
+        let l_var = BmaLayoutVariable {
+            id: 5,
+            r#type: VariableType::Constant,
+            ..Default::default()
+        };
+        let mut model = make_model_for_variable(&l_var);
+        model.network.variables[0].range = (0, 4);
+        let issues = l_var.validate(&model).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![BmaLayoutVariableError::InvalidVariableType {
+                id: 5,
+                r#type: VariableType::Constant,
+                message: "Variable is not actually constant".to_string(),
+            }]
+        );
+    }
+
+    #[test]
+    fn constant_variable_non_declaration() {
+        let l_var = BmaLayoutVariable {
+            id: 5,
+            r#type: VariableType::MembraneReceptor,
+            ..Default::default()
+        };
+        let mut model = make_model_for_variable(&l_var);
+        model.network.variables[0].range = (4, 4);
+        let issues = l_var.validate(&model).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![BmaLayoutVariableError::InvalidVariableType {
+                id: 5,
+                r#type: VariableType::MembraneReceptor,
+                message: "Variable is not declared as constant".to_string(),
+            }]
+        );
     }
 }
