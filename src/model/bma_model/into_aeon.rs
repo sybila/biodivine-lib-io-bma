@@ -189,52 +189,6 @@ fn canonical_var_name(var: &BmaVariable) -> String {
     format!("v_{}_{}", var.id, sanitized_name)
 }
 
-/// Create a default update function for a variable in the BMA model with
-/// an originally empty formula.
-///
-/// This function is created the same way as BMA does it, even though that
-/// can feel weird at times.
-///
-/// **WARNING**: Variables with only negative regulators will always evaluate to
-/// constant zero due to BMA's averaging logic. This may not match biological
-/// intuition but maintains compatibility with BMA.
-///
-/// The function assumes every regulator relationship is either activation,
-/// or inhibition. Unknown relationship types are ignored.
-fn create_default_update_fn(model: &BmaModel, var_id: u32) -> BmaUpdateFunction {
-    fn create_average(variables: &HashSet<u32>) -> BmaUpdateFunction {
-        if variables.is_empty() {
-            // This makes little sense because it means any variable with only negative
-            // regulators is ALWAYS a constant zero. But this is how BMA seems to be doing it, so
-            // that's what we are doing as well...
-            BmaUpdateFunction::mk_constant(0)
-        } else {
-            let args = variables
-                .iter()
-                .map(|x| BmaUpdateFunction::mk_variable(*x))
-                .collect::<Vec<_>>();
-            BmaUpdateFunction::mk_aggregation(AggregateFn::Avg, &args)
-        }
-    }
-
-    let positive = model.get_regulators(var_id, &Some(RelationshipType::Activator));
-    let negative = model.get_regulators(var_id, &Some(RelationshipType::Inhibitor));
-    if positive.is_empty() && negative.is_empty() {
-        // This is an undetermined input, in which case we set it to zero,
-        // because that's what BMA does.
-        return BmaUpdateFunction::mk_constant(0);
-    }
-
-    // We build the default function the same way as BMA does.
-
-    // We average the positive and negative regulators
-    let p_avr = create_average(&positive);
-    let n_avr = create_average(&negative);
-
-    // Finally, we subtract the negative average from the positive average
-    BmaUpdateFunction::mk_arithmetic(ArithOp::Minus, &p_avr, &n_avr)
-}
-
 /// Build a map which assigns each BMA variable ID an AEON variable ID.
 fn build_variable_id_map(model: &BmaModel) -> HashMap<u32, VariableId> {
     model
@@ -244,54 +198,6 @@ fn build_variable_id_map(model: &BmaModel) -> HashMap<u32, VariableId> {
         .enumerate()
         .map(|(i, v)| (v.id, VariableId::from_index(i)))
         .collect::<HashMap<u32, VariableId>>()
-}
-
-/// Utility methods associated with function conversions.
-impl BmaModel {
-    /// Build the default update function which is used by BMA if no other function is provided.
-    #[must_use]
-    pub fn build_default_update_function(&self, var_id: u32) -> BmaUpdateFunction {
-        create_default_update_fn(self, var_id)
-    }
-
-    /// Modify this BMA model such that the given variable uses the default update function.
-    ///
-    /// Returns the previous update function.
-    ///
-    /// See also [`BmaModel::build_default_update_function`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if the given `var_id` does not reference a network variable.
-    pub fn set_default_function(
-        &mut self,
-        var_id: u32,
-    ) -> Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>> {
-        let update = self.build_default_update_function(var_id);
-        let variable = self
-            .network
-            .variables
-            .iter_mut()
-            .find(|v| v.id == var_id)
-            .expect("Precondition violated: No variable with given id.");
-        let mut to_swap = Some(Ok(update));
-        swap(&mut to_swap, &mut variable.formula);
-        to_swap
-    }
-
-    /// Add default update functions for all variables where the update function is missing.
-    pub fn populate_missing_functions(&mut self) {
-        let missing_var_ids = self
-            .network
-            .variables
-            .iter()
-            .filter(|v| v.formula.is_none())
-            .map(|v| v.id)
-            .collect::<Vec<_>>();
-        for id in missing_var_ids {
-            let _ = self.set_default_function(id); // throw away the old function
-        }
-    }
 }
 
 #[cfg(test)]

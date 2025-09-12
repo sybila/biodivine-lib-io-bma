@@ -1,4 +1,5 @@
 use crate::model::bma_relationship::BmaRelationshipError;
+use crate::update_function::{BmaUpdateFunction, InvalidBmaExpression, create_default_update_fn};
 use crate::{
     BmaRelationship, BmaVariable, BmaVariableError, ContextualValidation, ErrorReporter,
     RelationshipType, Validation,
@@ -6,6 +7,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::HashSet;
+use std::mem::swap;
 use thiserror::Error;
 
 /// Named model with several [`BmaVariable`] objects that are connected through various
@@ -55,6 +57,52 @@ impl BmaNetwork {
             .filter(|r| relationship.as_ref().is_none_or(|x| *x == r.r#type))
             .map(|r| r.from_variable)
             .collect()
+    }
+}
+
+/// Utility methods for dealing with default functions.
+impl BmaNetwork {
+    /// Build the default update function which is used by BMA if no other function is provided.
+    #[must_use]
+    pub fn build_default_update_function(&self, var_id: u32) -> BmaUpdateFunction {
+        create_default_update_fn(self, var_id)
+    }
+
+    /// Modify this BMA model such that the given variable uses the default update function.
+    ///
+    /// Returns the previous update function.
+    ///
+    /// See also [`BmaModel::build_default_update_function`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given `var_id` does not reference a network variable.
+    pub fn set_default_function(
+        &mut self,
+        var_id: u32,
+    ) -> Option<Result<BmaUpdateFunction, InvalidBmaExpression>> {
+        let update = self.build_default_update_function(var_id);
+        let variable = self
+            .variables
+            .iter_mut()
+            .find(|v| v.id == var_id)
+            .expect("Precondition violated: No variable with given id.");
+        let mut to_swap = Some(Ok(update));
+        swap(&mut to_swap, &mut variable.formula);
+        to_swap
+    }
+
+    /// Add default update functions for all variables where the update function is missing.
+    pub fn populate_missing_functions(&mut self) {
+        let missing_var_ids = self
+            .variables
+            .iter()
+            .filter(|v| v.formula.is_none())
+            .map(|v| v.id)
+            .collect::<Vec<_>>();
+        for id in missing_var_ids {
+            let _ = self.set_default_function(id); // throw away the old function
+        }
     }
 }
 

@@ -4,6 +4,7 @@ mod expression_node_data;
 
 mod bma_update_function_error;
 mod bma_update_function_evaluation;
+mod expression_default_builder;
 mod expression_parser;
 mod expression_token;
 mod from_aeon;
@@ -15,6 +16,7 @@ pub use expression_node_data::BmaExpressionNodeData;
 
 pub use bma_update_function_error::InvalidBmaUpdateFunction;
 pub(crate) use bma_update_function_error::ParserError;
+pub(crate) use expression_default_builder::create_default_update_fn;
 
 pub use bma_update_function_evaluation::FunctionTable;
 
