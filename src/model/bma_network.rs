@@ -1,9 +1,11 @@
 use crate::model::bma_relationship::BmaRelationshipError;
 use crate::{
-    BmaRelationship, BmaVariable, BmaVariableError, ContextualValidation, ErrorReporter, Validation,
+    BmaRelationship, BmaVariable, BmaVariableError, ContextualValidation, ErrorReporter,
+    RelationshipType, Validation,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::collections::HashSet;
 use thiserror::Error;
 
 /// Named model with several [`BmaVariable`] objects that are connected through various
@@ -33,6 +35,26 @@ impl BmaNetwork {
     #[must_use]
     pub fn find_variable(&self, id: u32) -> Option<&BmaVariable> {
         self.variables.iter().find(|v| v.id == id)
+    }
+
+    /// Get regulators of a particular variable, optionally filtered by regulator type.
+    /// The regulators are represented by their IDs.
+    ///
+    /// If network validation passed successfully, you can assume that there is no
+    /// [`RelationshipType::Unknown`] (i.e. every relationship is either an activator,
+    /// or an inhibitor).
+    #[must_use]
+    pub fn get_regulators(
+        &self,
+        target_var: u32,
+        relationship: &Option<RelationshipType>,
+    ) -> HashSet<u32> {
+        self.relationships
+            .iter()
+            .filter(|r| r.to_variable == target_var)
+            .filter(|r| relationship.as_ref().is_none_or(|x| *x == r.r#type))
+            .map(|r| r.from_variable)
+            .collect()
     }
 }
 

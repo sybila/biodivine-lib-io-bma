@@ -5,12 +5,12 @@ use crate::serde::json::JsonBmaModel;
 use crate::serde::xml::XmlBmaModel;
 use crate::{
     BmaLayout, BmaLayoutError, BmaNetwork, BmaNetworkError, ContextualValidation, ErrorReporter,
-    RelationshipType, Validation,
+    Validation,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::cmp::max;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// Main structure with all the important parts of a BMA model.
@@ -92,27 +92,6 @@ impl BmaModel {
         });
         max_level
     }
-
-    /// Get regulators of a particular variable, optionally filtered by regulator type.
-    /// The regulators are represented by their IDs.
-    ///
-    /// If network validation passed successfully, you can assume that there is no
-    /// [`RelationshipType::Unknown`] (i.e. every relationship is either an activator,
-    /// or an inhibitor).
-    #[must_use]
-    pub fn get_regulators(
-        &self,
-        target_var: u32,
-        relationship: &Option<RelationshipType>,
-    ) -> HashSet<u32> {
-        self.network
-            .relationships
-            .iter()
-            .filter(|r| r.to_variable == target_var)
-            .filter(|r| relationship.as_ref().is_none_or(|x| *x == r.r#type))
-            .map(|r| r.from_variable)
-            .collect()
-    }
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -140,6 +119,7 @@ mod tests {
         BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, RelationshipType,
         Validation,
     };
+    use RelationshipType::{Activator, Inhibitor};
     use rust_decimal::Decimal;
     use std::collections::{HashMap, HashSet};
 
@@ -253,11 +233,11 @@ mod tests {
             metadata: Default::default(),
         };
 
-        let regulators = model.get_regulators(2, &Some(RelationshipType::Activator));
+        let regulators = model.network.get_regulators(2, &Some(Activator));
         assert_eq!(regulators, HashSet::from_iter(vec![3]));
-        let regulators = model.get_regulators(2, &Some(RelationshipType::Inhibitor));
+        let regulators = model.network.get_regulators(2, &Some(Inhibitor));
         assert_eq!(regulators, HashSet::from_iter(vec![1]));
-        let regulators = model.get_regulators(2, &None);
+        let regulators = model.network.get_regulators(2, &None);
         assert_eq!(regulators, HashSet::from_iter(vec![1, 3]));
     }
 }
