@@ -102,6 +102,12 @@ impl BmaVariable {
         self.range.0 == self.range.1
     }
 
+    /// True if the domain is exactly `[0,1]`.
+    #[must_use]
+    pub fn is_boolean(&self) -> bool {
+        self.range == (0, 1)
+    }
+
     /// Returns a reference to the update function of this variable, assuming the function is
     /// set and was parsed successfully.
     #[must_use]
