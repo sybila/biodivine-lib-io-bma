@@ -124,9 +124,9 @@ impl BmaVariable {
     pub(crate) fn mk_level_identifier(&self, level: u32) -> String {
         assert!(level >= self.range.0 && level <= self.range.1);
         if self.name.is_empty() {
-            format!("{}[{}]", self.id, level)
+            format!("v_{}_b{}", self.id, level)
         } else {
-            format!("{}_{}[{}]", self.id, self.name, level)
+            format!("v_{}_{}_b{}", self.id, self.name, level)
         }
     }
 }
