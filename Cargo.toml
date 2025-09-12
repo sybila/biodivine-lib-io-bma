@@ -25,7 +25,7 @@ name = "load-xml"
 path = "src/bin/load_xml.rs"
 
 [dependencies]
-biodivine-lib-bdd = ">=0.5, <1.0.0"
+biodivine-lib-bdd = ">=0.5, <0.6.0"
 biodivine-lib-param-bn = ">=0.5.14, <1.0.0"
 regex = "1.11"
 serde = { version = "1.0", features = ["derive"] }
