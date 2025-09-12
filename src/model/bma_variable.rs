@@ -35,7 +35,7 @@ use thiserror::Error;
 /// cases, we require that (1) the variable has no regulators, and (b) the `formula` is either
 /// empty, or set to a constant value that is `0` or `x`. At the same time, if a corresponding
 /// [`crate::BmaLayoutVariable`] exists, its `type` should be also set to `Constant`. Everything
-/// else will be reported as validation error. However, These conditions are checked by
+/// else will be reported as validation error.
 ///
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -107,6 +107,21 @@ impl BmaVariable {
     #[must_use]
     pub fn try_get_update_function(&self) -> Option<&BmaUpdateFunction> {
         self.formula.as_ref().and_then(|it| it.as_ref().ok())
+    }
+
+    /// Create a string identifier that contains the variable ID, variable name (if set) and
+    /// given level in a human-readable format.
+    ///
+    /// # Panics
+    /// The given `level` must be valid in the range of this variable.
+    #[must_use]
+    pub(crate) fn mk_level_identifier(&self, level: u32) -> String {
+        assert!(level >= self.range.0 && level <= self.range.1);
+        if self.name.is_empty() {
+            format!("{}[{}]", self.id, level)
+        } else {
+            format!("{}_{}[{}]", self.id, self.name, level)
+        }
     }
 }
 
@@ -360,8 +375,8 @@ fn infer_relationship_type(table: &mut FunctionTable, regulator: u32) -> Vec<Rel
 
     // Compute the domain size (first entry should have the lowest and last
     // entry the greatest level)
-    let min_level = table[0].0.get(&regulator).unwrap();
-    let max_level = table[table.len() - 1].0.get(&regulator).unwrap();
+    let min_level = table[0].0.get(&regulator).copied().unwrap();
+    let max_level = table[table.len() - 1].0.get(&regulator).copied().unwrap();
     let domain_size = usize::try_from(max_level - min_level + 1).unwrap();
 
     // Table length should be divisible by domain size.
@@ -681,7 +696,7 @@ mod tests {
 
     #[test]
     fn dual_monotonicity() {
-        // Basically a XOR on integer domains:
+        // Basically an XOR on integer domains:
         let update =
             BmaUpdateFunction::try_from("max(var(0), var(1)) - min(var(0), var(1))").unwrap();
         let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
