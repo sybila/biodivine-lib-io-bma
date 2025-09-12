@@ -364,7 +364,10 @@ fn validate_constant_variable_update<R: ErrorReporter<BmaVariableError>>(
 /// it is not modified.
 fn infer_relationship_type(table: &mut FunctionTable, regulator: u32) -> Vec<RelationshipType> {
     // If there is at least one regulator, the table should have at least two entries.
-    debug_assert!(table.len() > 1);
+    // If that's not the case, there are no regulators and that means this one is unused.
+    if table.len() <= 1 {
+        return vec![];
+    }
 
     // Gather all other regulators (arbitrary order is fine)
     let mut regulator_ordering = table[0]
