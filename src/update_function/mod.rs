@@ -8,7 +8,6 @@ mod expression_default_builder;
 mod expression_parser;
 mod expression_token;
 mod from_aeon;
-mod into_aeon;
 
 pub use bma_update_function::BmaUpdateFunction;
 pub use expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
