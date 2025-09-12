@@ -1,219 +1,485 @@
-use crate::{
-    BmaModel, BmaModelError, BmaNetworkError, BmaRelationshipError, BmaVariable, BmaVariableError,
-    Validation,
-};
-use BmaRelationshipError::{RegulatorVariableNotFound, TargetVariableNotFound};
+use crate::update_function::FunctionTable;
+use crate::{BmaModel, BmaVariable};
 use anyhow::anyhow;
-use biodivine_lib_param_bn::{
-    BooleanNetwork, FnUpdate, Monotonicity, Regulation, RegulatoryGraph, VariableId,
+use biodivine_lib_bdd::{
+    Bdd, BddPartialValuation, BddVariable, BddVariableSet, BddVariableSetBuilder,
 };
-use regex::Regex;
+use biodivine_lib_param_bn::{BooleanNetwork, FnUpdate, Regulation, RegulatoryGraph, VariableId};
 use std::collections::HashMap;
+use std::ops::RangeInclusive;
 
-/// Convert [`BmaModel`] into a [`BooleanNetwork`] instance. At the moment, this only supports
-/// pure Boolean models (not multivalued that would need additional conversion).
+/// Symbolic update function stores a [`Bdd`] condition for each output level of
+/// a specific update function. The conditions should be mutually exclusive and exhaustive
+/// (i.e. each input valuation satisfies exactly one of the stored BDDs). Levels should
+/// represent a continuous interval, such that one BDD is given for every value from the
+/// corresponding variable domain.
+#[derive(Clone)]
+struct SymbolicUpdateFunction(Vec<(u32, Bdd)>);
+
+/// Allows encoding multivalued variables as symbolic states.
 ///
-/// By default, all regulations are considered as observable, and their sign is taken from the
-/// BMA model as is. This may be inconsistent with the update functions, which may or may not be
-/// intended. You can use [`BooleanNetwork::infer_valid_graph`] to fix this after the conversion.
+/// The encoding is unary, such that each variable is assigned to `|domain| - 1` symbolic
+/// variables. The value of the variable is then the value of the highest active "bit",
+/// although it is assumed that all smaller bits should be set as well (states where
+/// this does not happen are generally considered invalid).
 ///
-/// TODO: For now, we do not handle multi-valued models. However, some internal
-/// methods are made general to deal with multi-valued networks in future.
+/// ```text
+/// (0,0,0) => 0
+/// (1,0,0) => 1
+/// (1,1,0) => 2
+/// (1,1,1) => 3
+/// (0,1,0) => "2-like" (but can update to `(1,1,0)`)
+/// ```
+///
+#[derive(Clone)]
+pub(crate) struct SymbolicVariable {
+    // Directly taken from the BMA variable.
+    id: u32,
+    // Minimum and maximum value (inclusive).
+    range: (u32, u32),
+    // BDD variables corresponding to each level except for the minimum.
+    bdd_vars: Vec<BddVariable>,
+}
+
+impl SymbolicVariable {
+    /// Make a new symbolic variable matching the given BMA variable while using the given
+    /// BDD variables to encode the levels.
+    ///
+    /// The number of symbolic variables must be exactly the number of levels minus one, except
+    /// for constants, where one variable is expected.
+    pub(crate) fn new(var: &BmaVariable, bdd_vars: Vec<BddVariable>) -> SymbolicVariable {
+        if var.has_constant_range() {
+            assert_eq!(bdd_vars.len(), 1);
+        } else {
+            assert_eq!((var.range.1 - var.range.0 - 1) as usize, bdd_vars.len());
+        }
+        SymbolicVariable {
+            id: var.id,
+            range: var.range,
+            bdd_vars,
+        }
+    }
+}
+
+/// Encodes the dynamics of a multivalued model using symbolic variables.
+///
+/// Do not confuse with [`biodivine_lib_param_bn::symbolic_async_graph::SymbolicContext`],
+/// which does something very similar. However, for now, this structure is for internal use
+/// only. We might use this implementation as a base for some future "multivalued context".
+#[derive(Clone)]
+struct SymbolicContext {
+    bdd_ctx: BddVariableSet,
+    variables: Vec<(SymbolicVariable, SymbolicUpdateFunction)>,
+}
+
+// In this module, we assume that by construction, BDD variables and network
+// variables have the same indices. It means we can safely do this:
+fn cast_id(bdd_variable: BddVariable) -> VariableId {
+    VariableId::from_index(bdd_variable.to_index())
+}
+
+/// Convert [`BmaModel`] into a [`BooleanNetwork`] instance, binarizing any multivalued variables.
+///
+/// A valid regulatory graph is inferred at the end of the conversion, because the binarization
+/// tends to mess with the relationships anyway.
 impl TryFrom<&BmaModel> for BooleanNetwork {
     type Error = anyhow::Error;
 
     fn try_from(model: &BmaModel) -> Result<Self, Self::Error> {
-        if !model.is_boolean() {
+        let context = SymbolicContext::try_from(model)?;
+        BooleanNetwork::try_from(&context)
+    }
+}
+
+impl TryFrom<BmaModel> for BooleanNetwork {
+    type Error = anyhow::Error;
+
+    fn try_from(value: BmaModel) -> Result<Self, Self::Error> {
+        BooleanNetwork::try_from(&value)
+    }
+}
+
+impl TryFrom<&SymbolicContext> for BooleanNetwork {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &SymbolicContext) -> Result<Self, Self::Error> {
+        let rg = RegulatoryGraph::try_from(value)?;
+        let mut bn = BooleanNetwork::new(rg);
+
+        // Build update functions
+        for (var, update) in &value.variables {
+            // Go through all levels except for the lowest one (that's the default).
+            for (i, level) in var.range().skip(1).enumerate() {
+                let level_var = cast_id(var.bdd_vars[i]);
+                let (output, level_update) = &update.0[i + 1];
+
+                // Just make sure the iterators are not broken...
+                assert_eq!(*output, level);
+
+                // Turn the DNF into update function.
+                let optimized_dnf = level_update.to_optimized_dnf();
+                let mut aeon_clauses = Vec::new();
+                for bdd_clause in optimized_dnf {
+                    let mut aeon_clause = Vec::new();
+                    for (bdd_var, value) in bdd_clause.to_values() {
+                        let var_fn = FnUpdate::mk_var(cast_id(bdd_var));
+                        if value {
+                            aeon_clause.push(var_fn);
+                        } else {
+                            aeon_clause.push(FnUpdate::mk_not(var_fn));
+                        }
+                    }
+                    aeon_clauses.push(FnUpdate::mk_conjunction(&aeon_clause));
+                }
+                let level_fn = FnUpdate::mk_disjunction(&aeon_clauses);
+
+                // Now we have four options:
+                //  - There is no lower/higher level.
+                //  - There is a lower level, but not higher.
+                //  - There is a higher level, but not lower.
+                //  - There is both a lower and higher level.
+                // This is based on: https://link.springer.com/chapter/10.1007/978-3-642-49321-8_15
+                // (just steal it on scihub if you need to read it)
+
+                let lower_var = i
+                    .checked_sub(1)
+                    .and_then(|x| var.bdd_vars.get(x))
+                    .map(|var| cast_id(*var));
+
+                let higher_var = i
+                    .checked_add(1)
+                    .and_then(|x| var.bdd_vars.get(x))
+                    .map(|var| cast_id(*var));
+
+                let level_fn = match (lower_var, higher_var) {
+                    (None, None) => {
+                        // This is a Boolean variable, no need to change the update function.
+                        level_fn
+                    }
+                    (Some(lower), None) => {
+                        // This is the highest level of a multivalued variable.
+                        // It can only activate if lower level is active.
+                        level_fn.and(FnUpdate::mk_var(lower))
+                    }
+                    (None, Some(higher)) => {
+                        // This is the lowest level of a multivalued variable.
+                        // It has to stay active if higher level is active.
+                        level_fn.or(FnUpdate::mk_var(higher))
+                    }
+                    (Some(lower), Some(higher)) => {
+                        // This is a middle level of a multivalued variable.
+                        // It has to stay active if higher level is active, and can
+                        // only activate if the lower level is active.
+                        level_fn
+                            .and(FnUpdate::mk_var(lower))
+                            .or(FnUpdate::mk_var(higher))
+                    }
+                };
+
+                bn.set_update_function(level_var, Some(level_fn))
+                    .map_err(|e| anyhow!("Generated invalid update function: {e}"))?;
+            }
+        }
+
+        bn.infer_valid_graph()
+            .map_err(|e| anyhow!("Cannot normalize graph: {e}"))
+    }
+}
+
+impl TryFrom<&SymbolicContext> for RegulatoryGraph {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &SymbolicContext) -> Result<Self, Self::Error> {
+        /// A helper method to make sure a regulation exists in a graph.
+        fn ensure_regulation(
+            rg: &mut RegulatoryGraph,
+            edge: (BddVariable, BddVariable),
+        ) -> Result<(), anyhow::Error> {
+            let (regulator, target) = (cast_id(edge.0), cast_id(edge.1));
+            if rg.find_regulation(regulator, target).is_none() {
+                rg.add_raw_regulation(Regulation {
+                    regulator,
+                    target,
+                    observable: true,
+                    monotonicity: None,
+                })
+                .map_err(|e| anyhow!("{e}"))
+            } else {
+                Ok(())
+            }
+        }
+
+        // Start by building the regulation graph.
+        let variable_names = value.bdd_ctx.variable_names();
+        let mut rg = RegulatoryGraph::new(variable_names);
+
+        // Make regulations between variables that actually regulate each other.
+        for (var, update) in &value.variables {
+            // Invariant: The number of variables must be smaller than the number of
+            // output levels by one.
+            assert_eq!(var.bdd_vars.len() + 1, update.0.len());
+
+            let non_minimal_levels = update.0.iter().skip(1);
+            for (target_var, (_, bdd)) in var.bdd_vars.iter().zip(non_minimal_levels) {
+                // Add a regulation from all variables that influence the update function.
+                // At this point, we are checking the symbolic representation, not relationships
+                // in BmaNetwork, mostly because not every level is going to be influenced by
+                // every other level. This automatically removes unused relationships.
+                // Sorting is just to make sure the iteration is deterministic.
+
+                let mut support = Vec::from_iter(bdd.support_set());
+                support.sort();
+                for source_var in &support {
+                    ensure_regulation(&mut rg, (*source_var, *target_var))?;
+                }
+            }
+
+            // Also make regulations from x to x+1 and from x+1 to x.
+            for (var_x, var_xx) in var.bdd_vars.iter().zip(var.bdd_vars.iter().skip(1)) {
+                ensure_regulation(&mut rg, (*var_x, *var_xx))?;
+                ensure_regulation(&mut rg, (*var_xx, *var_x))?;
+            }
+        }
+
+        Ok(rg)
+    }
+}
+
+impl TryFrom<&BmaModel> for SymbolicContext {
+    type Error = anyhow::Error;
+
+    fn try_from(model: &BmaModel) -> Result<Self, Self::Error> {
+        // First, prepare the BDD context by declaring all symbolic variables.
+
+        let mut builder = BddVariableSetBuilder::new();
+        let mut variables = Vec::new();
+        for var in &model.network.variables {
+            let (min, max) = (var.min_level(), var.max_level());
+            if min == max {
+                // This is a constant. Constants are turned into Boolean "inputs" with a
+                // constant update function. These will need some special handling later on.
+                let name = var.mk_level_identifier(min);
+                let bdd_var = builder.make_variable(name.as_str());
+                variables.push(SymbolicVariable::new(var, vec![bdd_var]));
+            } else {
+                let mut bdd_variables = Vec::new();
+                // For a variable with N values, we only build N-1 BDD variables,
+                // because the lowest value is represented as all zeros.
+                for level in (min + 1)..=max {
+                    let name = var.mk_level_identifier(level);
+                    let bdd_var = builder.make_variable(name.as_str());
+                    bdd_variables.push(bdd_var);
+                }
+                variables.push(SymbolicVariable::new(var, bdd_variables));
+            }
+        }
+
+        let bdd_ctx = builder.build();
+
+        // Second, build all update functions.
+
+        let mut variable_and_function = Vec::new();
+        for var in &variables {
+            let table = model.network.build_function_table(var.id)?;
+
+            let symbolic_update = if var.is_constant() {
+                // For constant variables, we don't build the update function normally.
+                // We instead decide based on the constant value.
+
+                assert_eq!(table.len(), 1); // Invariant: Constant update functions have one row.
+
+                let const_level = var.range.0;
+                let value = table[0].1;
+
+                let (f, t) = (bdd_ctx.mk_false(), bdd_ctx.mk_true());
+                if value == const_level {
+                    SymbolicUpdateFunction(vec![(0, f), (const_level, t)])
+                } else {
+                    SymbolicUpdateFunction(vec![(0, t), (const_level, f)])
+                }
+            } else {
+                SymbolicUpdateFunction::for_bma_function(&bdd_ctx, &variables, var.range, &table)?
+            };
+
+            variable_and_function.push((var.clone(), symbolic_update));
+        }
+
+        Ok(SymbolicContext {
+            bdd_ctx,
+            variables: variable_and_function,
+        })
+    }
+}
+
+impl SymbolicVariable {
+    /// Fix BDD variables in the given [`BddPartialValuation`] such that they represent exactly
+    /// all valuations that map to the given `level` in the symbolic variable encoding (or those
+    /// that are technically invalid, but most related to that level).
+    ///
+    /// Precondition: `level` must be valid for this variable.
+    pub fn write_symbolic_level(&self, valuation: &mut BddPartialValuation, level: u32) {
+        // Right now, these are not part of the public API, so we can be a bit stricter
+        // about error handling. If we every make this available to users, the method
+        // must throw an error instead.
+        assert!(level >= self.range.0);
+        assert!(level <= self.range.1);
+
+        // We need to skip one, because the first value is the "default" (all BDD vars are false).
+        for (i, l) in self.range().skip(1).enumerate() {
+            if level > l {
+                // These variables can be true/false, we don't care. We only start setting
+                // variables once l == level.
+                continue;
+            }
+            let value = level >= l;
+            valuation.set_value(self.bdd_vars[i], value);
+        }
+    }
+
+    /// A range of all variable levels.
+    pub fn range(&self) -> RangeInclusive<u32> {
+        self.range.0..=self.range.1
+    }
+
+    /// True if the variable represents a constant.
+    pub fn is_constant(&self) -> bool {
+        self.range.0 == self.range.1
+    }
+}
+
+impl SymbolicUpdateFunction {
+    /// Build a symbolic update function representation based on:
+    ///  - A prepared BDD context.
+    ///  - List of system variables describing the encoding.
+    ///  - Expected variable range (in case some output levels do not appear
+    ///    in the function explicitly)
+    ///  - The actual function table.
+    pub fn for_bma_function(
+        bdd_ctx: &BddVariableSet,
+        variables: &[SymbolicVariable],
+        range: (u32, u32),
+        function: &FunctionTable,
+    ) -> anyhow::Result<SymbolicUpdateFunction> {
+        let (min_level, max_level) = range;
+
+        // Build a DNF representation for each level based on each input-output pair.
+
+        let mut level_dnf_vec = Vec::new();
+        for level in min_level..=max_level {
+            level_dnf_vec.push((level, Vec::new()));
+        }
+
+        // Just a map to quickly resolve symbolic variables based on IDs.
+        let var_id_map = variables
+            .iter()
+            .map(|it| (it.id, it))
+            .collect::<HashMap<_, _>>();
+
+        for (input, output) in function {
+            // If this is violated, there is something very wrong with the function table.
+            if *output < min_level || *output >= max_level {
+                return Err(anyhow!(
+                    "Output level {output} outside of expected range [{min_level}..={max_level}]"
+                ));
+            }
+
+            // Write all input variable values into the valuation.
+            let mut input_valuation = BddPartialValuation::empty();
+            for (var_id, var_level) in input {
+                let Some(var_ref) = var_id_map.get(var_id) else {
+                    return Err(anyhow!("Function table uses unknown variable `{var_id}`"));
+                };
+                var_ref.write_symbolic_level(&mut input_valuation, *var_level);
+            }
+
+            let output_index =
+                usize::try_from(*output - min_level).expect("16-bit devices are not supported.");
+
+            // Add the input valuation to the respective output BDD.
+            level_dnf_vec[output_index].1.push(input_valuation);
+        }
+
+        let level_bdd_vec = level_dnf_vec
+            .into_iter()
+            .map(|(level, dnf)| (level, bdd_ctx.mk_dnf(&dnf)))
+            .collect::<Vec<_>>();
+
+        // At this point, the function should cover all valuations.
+        let all_valuations = level_bdd_vec
+            .iter()
+            .fold(bdd_ctx.mk_false(), |a, (_, b)| a.or(b));
+
+        if !all_valuations.is_true() {
             return Err(anyhow!(
-                "Multi-valued model cannot be converted into Boolean network"
+                "Function table does not cover every possible input."
             ));
         }
 
-        let graph = RegulatoryGraph::try_from(model)?;
-        let mut bn = BooleanNetwork::new(graph);
+        // And also all levels should be pair-wise disjoint.
+        for (l_a, bdd_a) in &level_bdd_vec {
+            for (l_b, bdd_b) in &level_bdd_vec {
+                if l_a == l_b {
+                    continue;
+                }
 
-        let bma_id_to_aeon_id = build_variable_id_map(model);
-
-        // Errors that prevent the model from being converted:
-        //  - Anything that breaks the regulatory graph conversion (already resolved above).
-        //  - Any variable with invalid update function.
-        //  - Any variable with invalid range.
-        if let Err(errors) = model.validate() {
-            for e in errors {
-                match e {
-                    BmaModelError::Network(network_error) => match network_error {
-                        BmaNetworkError::Variable(var_error) => {
-                            if matches!(var_error, BmaVariableError::RangeInvalid { .. }) {
-                                return Err(var_error.into());
-                            }
-                            if matches!(
-                                var_error,
-                                BmaVariableError::UpdateFunctionExpressionInvalid { .. }
-                            ) {
-                                return Err(var_error.into());
-                            }
-                        }
-                        BmaNetworkError::Relationship(_) => (),
-                    },
-                    BmaModelError::Layout(_) => {}
+                if !bdd_a.and(bdd_b).is_false() {
+                    return Err(anyhow!(
+                        "Function levels {l_a} and {l_b} are not exclusive."
+                    ));
                 }
             }
         }
 
-        // Build update functions:
-        for bma_var in &model.network.variables {
-            // Unwrap is safe because regulatory graph was constructed successfully.
-            let aeon_var = *bma_id_to_aeon_id.get(&bma_var.id).unwrap();
-
-            if bma_var.max_level() == 0 {
-                // We can have zero constants, and we must deal with these accordingly.
-                // BMA sets the update function to zero in this case regardless of the formula.
-                // Setting a constant update function should never fail, hence unwrap is safe.
-                bn.set_update_function(aeon_var, Some(FnUpdate::Const(false)))
-                    .unwrap();
-                continue;
-            }
-
-            let aeon_formula = model.export_function_to_aeon(bma_var, &bma_id_to_aeon_id)?;
-
-            // Note that this operation can fail if some regulations in the BMA model are
-            // not set up properly. Unless we "infer" the network structure from update functions,
-            // we can't really prevent this.
-            bn.set_update_function(aeon_var, Some(aeon_formula))
-                .map_err(|e| anyhow!(e))?;
-        }
-
-        Ok(bn)
+        Ok(SymbolicUpdateFunction(level_bdd_vec))
     }
-}
-
-/// Extract a regulatory graph from this BMA model.
-///
-/// Returns a [`RegulatoryGraph`] instance (extracting variables and regulations from
-/// this model) and a mapping of BMA variable IDs to their canonical names used in
-/// the new graph.
-///
-/// It is possible that the BMA model has more than one regulation between the same pair
-/// of variables. If they have the same type, we simply add it once. If they have different
-/// signs, we add a regulation with unspecified monotonicity.
-/// Moreover, all regulations are made observable by default.
-impl TryFrom<&BmaModel> for RegulatoryGraph {
-    type Error = anyhow::Error;
-
-    fn try_from(model: &BmaModel) -> Result<Self, anyhow::Error> {
-        // Errors that prevent the model from being converted:
-        //  - Variables with duplicate ID (can cause canonical names to clash).
-        //  - Relationships using unknown variable IDs.
-        if let Err(errors) = model.validate() {
-            for e in errors {
-                match e {
-                    BmaModelError::Network(network_error) => match network_error {
-                        BmaNetworkError::Variable(var_error) => {
-                            if matches!(var_error, BmaVariableError::IdNotUnique { .. }) {
-                                return Err(var_error.into());
-                            }
-                        }
-                        BmaNetworkError::Relationship(rel_error) => {
-                            if matches!(rel_error, TargetVariableNotFound { .. }) {
-                                return Err(rel_error.into());
-                            }
-                            if matches!(rel_error, RegulatorVariableNotFound { .. }) {
-                                return Err(rel_error.into());
-                            }
-                        }
-                    },
-                    BmaModelError::Layout(_) => {}
-                }
-            }
-        }
-
-        let variable_names = model
-            .network
-            .variables
-            .iter()
-            .map(canonical_var_name)
-            .collect::<Vec<_>>();
-
-        let bma_id_to_aeon_id = build_variable_id_map(model);
-
-        // This must be successful, because variable names are unique (because they use
-        // unique IDs).
-        let mut regulatory_graph = RegulatoryGraph::new(variable_names);
-
-        for relationship in &model.network.relationships {
-            // These unwrap operations must succeed, because regulations
-            // only use valid variable IDs.
-            let source = bma_id_to_aeon_id
-                .get(&relationship.from_variable)
-                .expect("Invariant violation: Relationship source variable not found.");
-            let target = bma_id_to_aeon_id
-                .get(&relationship.to_variable)
-                .expect("Invariant violation: Relationship target variable not found.");
-            let mut regulation = Regulation {
-                regulator: *source,
-                target: *target,
-                observable: true,
-                monotonicity: Monotonicity::try_from(relationship.r#type.clone()).ok(),
-            };
-            // If no invariants are broken, these operations should not panic.
-            if let Some(existing) = regulatory_graph.find_regulation(*source, *target) {
-                if existing.monotonicity != regulation.monotonicity {
-                    regulation.monotonicity = None;
-                    regulatory_graph
-                        .remove_regulation(*source, *target)
-                        .expect("Invariant violated: Regulation already missing.");
-                    regulatory_graph
-                        .add_raw_regulation(regulation)
-                        .expect("Invariant violated: Regulation already exists.");
-                }
-            } else {
-                regulatory_graph
-                    .add_raw_regulation(regulation)
-                    .expect("Invariant violated: Regulation already exists.");
-            }
-        }
-
-        Ok(regulatory_graph)
-    }
-}
-
-/// Generate a canonical name for a BMA variable by combining its ID and name.
-/// This canonical name will be used in a `BooleanNetwork`.
-fn canonical_var_name(var: &BmaVariable) -> String {
-    // Regex that matches non-alphanumeric and non-underscore characters
-    let re = Regex::new(r"[^0-9a-zA-Z_]").unwrap();
-    let sanitized_name = re.replace_all(var.name.as_str(), "");
-    format!("v_{}_{}", var.id, sanitized_name)
-}
-
-/// Build a map which assigns each BMA variable ID an AEON variable ID.
-fn build_variable_id_map(model: &BmaModel) -> HashMap<u32, VariableId> {
-    model
-        .network
-        .variables
-        .iter()
-        .enumerate()
-        .map(|(i, v)| (v.id, VariableId::from_index(i)))
-        .collect::<HashMap<u32, VariableId>>()
 }
 
 #[cfg(test)]
 mod tests {
     use crate::BmaModel;
-    use anyhow::anyhow;
     use biodivine_lib_param_bn::BooleanNetwork;
-    use biodivine_lib_param_bn::RegulatoryGraph;
 
-    /// Wrapper to get a simple BMA model for testing.
-    ///
-    /// The model has:
-    /// - two variables `(a=1, b=2)`
-    /// - two relationships `(a -| b, b -> a)`
-    /// - the following update functions: `(a: var(2), b: 1-var(a))`
-    ///
-    /// There is no layout or additional information in the model.
-    fn get_simple_test_model() -> BmaModel {
-        let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
+    #[test]
+    fn basic_binarization_test() {
+        let folders = [
+            "./models/json-repo",
+            "./models/json-export-from-repo",
+            "./models/json-export-from-tool",
+        ];
+        for folder in &folders {
+            for file in std::fs::read_dir(folder).unwrap() {
+                let file = file.unwrap();
+                let file_name = file.file_name().to_str().unwrap().to_owned();
+                if !file_name.ends_with(".json") || file_name != "Skin2D_5X2_TF.json" {
+                    continue;
+                }
+                println!("File: {}/{}", folder, file_name);
+
+                // Right now, even though JSON models have some validation issues, they should
+                // not affect boolean conversion.
+                let json_data = std::fs::read_to_string(file.path()).unwrap();
+                let model = BmaModel::from_json_string(json_data.as_str()).unwrap();
+                let _network = BooleanNetwork::try_from(&model).unwrap();
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::BmaModel;
+        use anyhow::anyhow;
+        use biodivine_lib_param_bn::BooleanNetwork;
+
+        /// Wrapper to get a simple BMA model for testing.
+        ///
+        /// The model has:
+        /// - two variables `(a=1, b=2)`
+        /// - two relationships `(a -| b, b -> a)`
+        /// - the following update functions: `(a: var(2), b: 1-var(a))`
+        ///
+        /// There is no layout or additional information in the model.
+        fn get_simple_test_model() -> BmaModel {
+            let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
         <AnalysisInput ModelName="New Model">
             <Variables>
                 <Variable Id="1">
@@ -242,17 +508,17 @@ mod tests {
                 </Relationship>
             </Relationships>
         </AnalysisInput>"#;
-        BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
-    }
+            BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
+        }
 
-    /// Wrapper to get a little bit more complex BMA model for testing.
-    ///
-    /// The model has:
-    /// - three variables `(a=1, b=2, c=3)`
-    /// - five relationships `(a -| b, b -> a, a -> c, b -> c, c -> c)`
-    /// - the following update functions: `(a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))`
-    fn get_test_model() -> BmaModel {
-        let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
+        /// Wrapper to get a little bit more complex BMA model for testing.
+        ///
+        /// The model has:
+        /// - three variables `(a=1, b=2, c=3)`
+        /// - five relationships `(a -| b, b -> a, a -> c, b -> c, c -> c)`
+        /// - the following update functions: `(a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))`
+        fn get_test_model() -> BmaModel {
+            let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
         <AnalysisInput ModelName="New Model">
             <Variables>
                 <Variable Id="1">
@@ -302,64 +568,34 @@ mod tests {
                 </Relationship>
             </Relationships>
         </AnalysisInput>"#;
-        BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
-    }
+            BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
+        }
 
-    #[test]
-    fn test_to_reg_graph_simple() {
-        let bma_model = get_simple_test_model();
-        let result_graph = RegulatoryGraph::try_from(&bma_model).unwrap();
+        #[test]
+        fn test_to_bn_simple() {
+            let bma_model = get_simple_test_model();
+            let result_bn = BooleanNetwork::try_from(&bma_model)
+                .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
-        let expected_regulations = vec!["v_1_a -| v_2_b".to_string(), "v_2_b -> v_1_a".to_string()];
-        let expected_graph =
-            RegulatoryGraph::try_from_string_regulations(expected_regulations).unwrap();
-
-        assert_eq!(result_graph, expected_graph);
-    }
-
-    #[test]
-    fn test_to_reg_graph() {
-        let bma_model = get_test_model();
-        let result_graph = RegulatoryGraph::try_from(&bma_model).unwrap();
-
-        let expected_regulations = vec![
-            "v_1_a -| v_2_b".to_string(),
-            "v_1_a -> v_3_c".to_string(),
-            "v_2_b -> v_1_a".to_string(),
-            "v_2_b -> v_3_c".to_string(),
-            "v_3_c -> v_3_c".to_string(),
-        ];
-        let expected_graph =
-            RegulatoryGraph::try_from_string_regulations(expected_regulations).unwrap();
-
-        assert_eq!(result_graph, expected_graph);
-    }
-
-    #[test]
-    fn test_to_bn_simple() {
-        let bma_model = get_simple_test_model();
-        let result_bn = BooleanNetwork::try_from(&bma_model)
-            .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
-
-        let bn_str = r#"
+            let bn_str = r#"
             v_1_a -| v_2_b
             v_2_b -> v_1_a
             $v_1_a: v_2_b
             $v_2_b: !v_1_a
         "#;
-        let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
+            let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
 
-        assert!(result_bn.is_ok());
-        assert_eq!(result_bn.unwrap(), expected_bn);
-    }
+            assert!(result_bn.is_ok());
+            assert_eq!(result_bn.unwrap(), expected_bn);
+        }
 
-    #[test]
-    fn test_to_bn() {
-        let bma_model = get_test_model();
-        let result_bn = BooleanNetwork::try_from(&bma_model)
-            .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
+        #[test]
+        fn test_to_bn() {
+            let bma_model = get_test_model();
+            let result_bn = BooleanNetwork::try_from(&bma_model)
+                .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
-        let bn_str = r#"
+            let bn_str = r#"
             v_1_a -| v_2_b
             v_1_a -> v_3_c
             v_2_b -> v_1_a
@@ -369,9 +605,10 @@ mod tests {
             $v_2_b: !v_1_a
             $v_3_c: (v_1_a & v_2_b & v_3_c)
         "#;
-        let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
+            let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
 
-        assert!(result_bn.is_ok());
-        assert_eq!(result_bn.unwrap(), expected_bn);
+            assert!(result_bn.is_ok());
+            assert_eq!(result_bn.unwrap(), expected_bn);
+        }
     }
 }

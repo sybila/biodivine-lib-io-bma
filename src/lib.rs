@@ -9,8 +9,6 @@ pub(crate) mod model;
 /// Internal module that implements serialization via dedicated types for XML and JSON.
 pub(crate) mod serde;
 
-/// Internal module that implements binarization of update functions.
-pub(crate) mod binarization;
 /// Structures and utilities for parsing/evaluating update functions.
 pub mod update_function;
 
