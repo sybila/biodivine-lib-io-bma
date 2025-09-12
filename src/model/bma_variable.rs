@@ -22,6 +22,14 @@ use thiserror::Error;
 /// Additional non-functional information like the variable position, description, or type are
 /// present as part of [`crate::BmaLayout`].
 ///
+/// ## Constant variables
+///
+/// A variable is considered to be a constant if its range only admits a single value `x`. In such
+/// cases, we require that (1) the variable has no regulators, and (b) the `formula` is either
+/// empty, or set to a constant value that is `0` or `x`. At the same time, if a corresponding
+/// [`crate::BmaLayoutVariable`] exists, its `type` should be also set to `Constant`. Everything
+/// else will be reported as validation error. However, These conditions are checked by
+///
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BmaVariable {
@@ -75,6 +83,23 @@ impl BmaVariable {
         } else {
             String::default()
         }
+    }
+
+    /// Returns true if the range of this variable is a single number.
+    ///
+    /// These variables are expected to have a constant update function. Note that there
+    /// is also a constant variable type [`crate::VariableType`], but this is not always
+    /// set consistently.
+    #[must_use]
+    pub fn has_constant_range(&self) -> bool {
+        self.range.0 == self.range.1
+    }
+
+    /// Returns a reference to the update function of this variable, assuming the function is
+    /// set and was parsed successfully.
+    #[must_use]
+    pub fn try_get_update_function(&self) -> Option<&BmaUpdateFunction> {
+        self.formula.as_ref().and_then(|it| it.as_ref().ok())
     }
 }
 
