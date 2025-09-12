@@ -77,7 +77,7 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
                 continue;
             }
 
-            let aeon_formula = model.convert_function_to_aeon(bma_var, &bma_id_to_aeon_id)?;
+            let aeon_formula = model.export_function_to_aeon(bma_var, &bma_id_to_aeon_id)?;
 
             // Note that this operation can fail if some regulations in the BMA model are
             // not set up properly. Unless we "infer" the network structure from update functions,

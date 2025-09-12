@@ -5,10 +5,10 @@ use biodivine_lib_param_bn::{FnUpdate, VariableId};
 use std::collections::{BTreeMap, HashMap};
 
 impl BmaModel {
-    /// Convert the function of the given `target_var` into AEON update function.
+    /// Export the function of the given `target_var` into AEON update function.
     ///
     /// **The function must be defined and all of its inputs must be Boolean variables.**
-    pub(crate) fn convert_function_to_aeon<'a>(
+    pub(crate) fn export_function_to_aeon<'a>(
         &'a self,
         target_var: &'a BmaVariable,
         bma_id_to_aeon_id: &HashMap<u32, VariableId>,
@@ -114,7 +114,7 @@ mod tests {
             (2, VariableId::from_index(1)),
         ]);
 
-        let result_fn = model.convert_function_to_aeon(var, &id_map).unwrap();
+        let result_fn = model.export_function_to_aeon(var, &id_map).unwrap();
 
         let expected_bn = BooleanNetwork::try_from_bnet(
             r#"
@@ -145,7 +145,7 @@ mod tests {
             (3, VariableId::from_index(2)),
         ]);
 
-        let result_fn = model.convert_function_to_aeon(var, &id_map).unwrap();
+        let result_fn = model.export_function_to_aeon(var, &id_map).unwrap();
 
         // expected function values are [1, 0, 0, 0, 1, 1, 1, 1]
 
