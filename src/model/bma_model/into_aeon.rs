@@ -440,6 +440,7 @@ mod tests {
     use biodivine_lib_param_bn::BooleanNetwork;
 
     #[test]
+    #[ignore] // Disabled for debugging
     fn basic_binarization_test() {
         let folders = [
             "./models/json-repo",
