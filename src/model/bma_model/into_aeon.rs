@@ -51,7 +51,7 @@ impl SymbolicVariable {
         if var.has_constant_range() {
             assert_eq!(bdd_vars.len(), 1);
         } else {
-            assert_eq!((var.range.1 - var.range.0 - 1) as usize, bdd_vars.len());
+            assert_eq!((var.range.1 - var.range.0) as usize, bdd_vars.len());
         }
         SymbolicVariable {
             id: var.id,
@@ -377,7 +377,7 @@ impl SymbolicUpdateFunction {
 
         for (input, output) in function {
             // If this is violated, there is something very wrong with the function table.
-            if *output < min_level || *output >= max_level {
+            if *output < min_level || *output > max_level {
                 return Err(anyhow!(
                     "Output level {output} outside of expected range [{min_level}..={max_level}]"
                 ));
@@ -578,10 +578,10 @@ mod tests {
                 .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
             let bn_str = r#"
-            v_1_a -| v_2_b
-            v_2_b -> v_1_a
-            $v_1_a: v_2_b
-            $v_2_b: !v_1_a
+            v_1_a_b1 -| v_2_b_b1
+            v_2_b_b1 -> v_1_a_b1
+            $v_1_a_b1: v_2_b_b1
+            $v_2_b_b1: !v_1_a_b1
         "#;
             let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
 
@@ -596,18 +596,16 @@ mod tests {
                 .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
             let bn_str = r#"
-            v_1_a -| v_2_b
-            v_1_a -> v_3_c
-            v_2_b -> v_1_a
-            v_2_b -> v_3_c
-            v_3_c -> v_3_c
-            $v_1_a: v_2_b
-            $v_2_b: !v_1_a
-            $v_3_c: (v_1_a & v_2_b & v_3_c)
+            v_1_a_b1 -| v_2_b_b1
+            v_1_a_b1 -> v_3_c_b1
+            v_2_b_b1 -> v_1_a_b1
+            v_2_b_b1 -> v_3_c_b1
+            v_3_c_b1 -> v_3_c_b1
+            $v_1_a_b1: v_2_b_b1
+            $v_2_b_b1: !v_1_a_b1
+            $v_3_c_b1: (v_1_a_b1 & v_2_b_b1 & v_3_c_b1)
         "#;
             let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
-
-            assert!(result_bn.is_ok());
             assert_eq!(result_bn.unwrap(), expected_bn);
         }
     }
