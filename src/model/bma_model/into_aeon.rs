@@ -1,7 +1,6 @@
-use crate::update_function::{AggregateFn, ArithOp, BmaUpdateFunction, InvalidBmaUpdateFunction};
 use crate::{
     BmaModel, BmaModelError, BmaNetworkError, BmaRelationshipError, BmaVariable, BmaVariableError,
-    RelationshipType, Validation,
+    Validation,
 };
 use BmaRelationshipError::{RegulatorVariableNotFound, TargetVariableNotFound};
 use anyhow::anyhow;
@@ -9,8 +8,7 @@ use biodivine_lib_param_bn::{
     BooleanNetwork, FnUpdate, Monotonicity, Regulation, RegulatoryGraph, VariableId,
 };
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
-use std::mem::swap;
+use std::collections::HashMap;
 
 /// Convert [`BmaModel`] into a [`BooleanNetwork`] instance. At the moment, this only supports
 /// pure Boolean models (not multivalued that would need additional conversion).
@@ -25,20 +23,16 @@ impl TryFrom<&BmaModel> for BooleanNetwork {
     type Error = anyhow::Error;
 
     fn try_from(model: &BmaModel) -> Result<Self, Self::Error> {
-        // First, make sure all missing functions are now included in the model.
-        let mut model = model.clone();
-        model.populate_missing_functions();
-
         if !model.is_boolean() {
             return Err(anyhow!(
                 "Multi-valued model cannot be converted into Boolean network"
             ));
         }
 
-        let graph = RegulatoryGraph::try_from(&model)?;
+        let graph = RegulatoryGraph::try_from(model)?;
         let mut bn = BooleanNetwork::new(graph);
 
-        let bma_id_to_aeon_id = build_variable_id_map(&model);
+        let bma_id_to_aeon_id = build_variable_id_map(model);
 
         // Errors that prevent the model from being converted:
         //  - Anything that breaks the regulatory graph conversion (already resolved above).
