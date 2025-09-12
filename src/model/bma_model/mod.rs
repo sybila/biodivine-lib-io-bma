@@ -112,6 +112,7 @@ impl Validation for BmaModel {
 
 #[cfg(test)]
 mod tests {
+    use crate::model::bma_variable::RegulatorErrorType::UnusedRelationship;
     use crate::model::tests::{simple_layout, simple_network};
     use crate::{
         BmaLayout, BmaLayoutContainer, BmaLayoutContainerError, BmaLayoutError, BmaLayoutVariable,
@@ -119,6 +120,11 @@ mod tests {
         BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, RelationshipType,
         Validation,
     };
+    use BmaLayoutError::Container;
+    use BmaModelError::{Layout, Network};
+    use BmaNetworkError::{Relationship, Variable};
+    use BmaRelationshipError::{IdNotUnique, TargetVariableNotFound};
+    use BmaVariableError::{RangeInvalid, UpdateFunctionRegulatorInvalid};
     use RelationshipType::{Activator, Inhibitor};
     use rust_decimal::Decimal;
     use std::collections::{HashMap, HashSet};
@@ -174,34 +180,34 @@ mod tests {
         };
 
         let expected = vec![
-            BmaModelError::Network(BmaNetworkError::Variable(BmaVariableError::RangeInvalid {
+            Network(Variable(UpdateFunctionRegulatorInvalid {
+                id: 2,
+                regulator: 3,
+                source: UnusedRelationship,
+            })),
+            Network(Variable(RangeInvalid {
                 id: 3,
                 range: (3, 2),
             })),
-            BmaModelError::Network(BmaNetworkError::Relationship(
-                BmaRelationshipError::IdNotUnique { id: 5 },
-            )),
-            BmaModelError::Network(BmaNetworkError::Relationship(
-                BmaRelationshipError::IdNotUnique { id: 5 },
-            )),
-            BmaModelError::Network(BmaNetworkError::Relationship(
-                BmaRelationshipError::TargetVariableNotFound {
-                    id: 6,
-                    to_variable: 4,
-                },
-            )),
-            BmaModelError::Layout(BmaLayoutError::Variable(
+            Network(Variable(UpdateFunctionRegulatorInvalid {
+                id: 3,
+                regulator: 2,
+                source: UnusedRelationship,
+            })),
+            Network(Relationship(IdNotUnique { id: 5 })),
+            Network(Relationship(IdNotUnique { id: 5 })),
+            Network(Relationship(TargetVariableNotFound {
+                id: 6,
+                to_variable: 4,
+            })),
+            Layout(BmaLayoutError::Variable(
                 BmaLayoutVariableError::ContainerNotFound {
                     id: 2,
                     container_id: 7,
                 },
             )),
-            BmaModelError::Layout(BmaLayoutError::Container(
-                BmaLayoutContainerError::IdNotUnique { id: 4 },
-            )),
-            BmaModelError::Layout(BmaLayoutError::Container(
-                BmaLayoutContainerError::IdNotUnique { id: 4 },
-            )),
+            Layout(Container(BmaLayoutContainerError::IdNotUnique { id: 4 })),
+            Layout(Container(BmaLayoutContainerError::IdNotUnique { id: 4 })),
         ];
 
         let issues = model.validate().unwrap_err();
