@@ -7,7 +7,6 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::HashSet;
-use std::mem::replace;
 use thiserror::Error;
 
 /// Named model with several [`BmaVariable`] objects that are connected through various
@@ -87,7 +86,7 @@ impl BmaNetwork {
             .iter_mut()
             .find(|v| v.id == var_id)
             .expect("Precondition violated: No variable with given id.");
-        replace(&mut variable.formula, Some(Ok(update)))
+        variable.formula.replace(Ok(update))
     }
 
     /// Add default update functions for all variables where the update function is missing.
