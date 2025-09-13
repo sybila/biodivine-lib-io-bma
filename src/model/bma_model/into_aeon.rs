@@ -108,6 +108,19 @@ impl TryFrom<&SymbolicContext> for BooleanNetwork {
 
         // Build update functions
         for (var, update) in &value.variables {
+            if var.is_constant() {
+                // Constant variables are handled separately, because they don't really have
+                // a "normal" update function but a special constant function.
+                assert_eq!(var.bdd_vars.len(), 1);
+                assert_eq!(update.0.len(), 2);
+                let bdd_var = var.bdd_vars[0];
+                let level_zero_bdd = &update.0[0].1;
+                let is_true = !level_zero_bdd.is_true();
+                bn.set_update_function(cast_id(bdd_var), Some(FnUpdate::Const(is_true)))
+                    .map_err(|e| anyhow!("Generated invalid update function: {e}"))?;
+
+                continue;
+            }
             // Go through all levels except for the lowest one (that's the default).
             for (i, level) in var.range().skip(1).enumerate() {
                 let level_var = cast_id(var.bdd_vars[i]);
