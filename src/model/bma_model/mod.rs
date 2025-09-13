@@ -183,6 +183,7 @@ mod tests {
             Network(Variable(UpdateFunctionRegulatorInvalid {
                 id: 2,
                 regulator: 3,
+                expression: "(0 - avg(var(3)))".to_string(),
                 source: UnusedRelationship,
             })),
             Network(Variable(RangeInvalid {
@@ -192,6 +193,7 @@ mod tests {
             Network(Variable(UpdateFunctionRegulatorInvalid {
                 id: 3,
                 regulator: 2,
+                expression: "(avg(var(2)) - avg(var(2)))".to_string(),
                 source: UnusedRelationship,
             })),
             Network(Relationship(IdNotUnique { id: 5 })),

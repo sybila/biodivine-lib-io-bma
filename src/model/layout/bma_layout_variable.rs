@@ -59,7 +59,7 @@ pub enum VariableType {
 impl From<&str> for VariableType {
     fn from(value: &str) -> Self {
         match value {
-            "Default" => VariableType::Default,
+            "Default" | "" => VariableType::Default,
             "Constant" => VariableType::Constant,
             "MembraneReceptor" => VariableType::MembraneReceptor,
             value => VariableType::Unknown(value.to_string()),
@@ -128,14 +128,20 @@ impl ContextualValidation<BmaModel> for BmaLayoutVariable {
                 reporter.report(BmaLayoutVariableError::InvalidVariableType {
                     id: self.id,
                     r#type: self.r#type.clone(),
-                    message: "Variable is not actually constant".to_string(),
+                    message: format!(
+                        "Variable declared as constant, but has range `{:?}`",
+                        bma_var.range
+                    ),
                 });
             }
             if bma_is_const && !is_const {
                 reporter.report(BmaLayoutVariableError::InvalidVariableType {
                     id: self.id,
                     r#type: self.r#type.clone(),
-                    message: "Variable is not declared as constant".to_string(),
+                    message: format!(
+                        "Variable has range {:?}, but is not declared as constant",
+                        bma_var.range
+                    ),
                 });
             }
         } else {
@@ -297,7 +303,7 @@ mod tests {
             vec![BmaLayoutVariableError::InvalidVariableType {
                 id: 5,
                 r#type: VariableType::Constant,
-                message: "Variable is not actually constant".to_string(),
+                message: "Variable declared as constant, but has range `(0, 4)`".to_string(),
             }]
         );
     }
@@ -317,7 +323,7 @@ mod tests {
             vec![BmaLayoutVariableError::InvalidVariableType {
                 id: 5,
                 r#type: VariableType::MembraneReceptor,
-                message: "Variable is not declared as constant".to_string(),
+                message: "Variable has range (4, 4), but is not declared as constant".to_string(),
             }]
         );
     }

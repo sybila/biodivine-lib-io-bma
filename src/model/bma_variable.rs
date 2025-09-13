@@ -172,15 +172,22 @@ pub enum BmaVariableError {
         #[source]
         source: InvalidBmaExpression,
     },
-    #[error("(Variable id: `{id}`) Regulator `{regulator}` is invalid: {source}")]
+    #[error(
+        "(Variable id: `{id}`) Regulator `{regulator}` is invalid in expression `{expression}`: {source}"
+    )]
     UpdateFunctionRegulatorInvalid {
         id: u32,
         regulator: u32,
+        expression: String,
         #[source]
         source: RegulatorErrorType,
     },
     #[error("(Variable id: `{id}`) Cannot build function table: {error}")]
-    CannotBuildFunctionTable { id: u32, error: String },
+    CannotBuildFunctionTable {
+        id: u32,
+        expression: String,
+        error: String,
+    },
 }
 
 /// Possible validation error type for [`BmaVariable`] concerning function regulators.
@@ -254,26 +261,44 @@ fn validate_dynamic_variable_update<R: ErrorReporter<BmaVariableError>>(
     //       relationship validation error, so we don't need to test for it here.
 
     // 1. All used variables exist and are regulators.
+    let mut has_valid_regulators = true;
     if let Some(formula) = variable.try_get_update_function() {
         let syntactic_regulators = formula.collect_variables();
 
         for reg_var in syntactic_regulators {
-            if context.find_variable(reg_var).is_none() {
+            let error_type = if context.find_variable(reg_var).is_none() {
+                Some(RegulatorErrorType::MissingVariable)
+            } else if !regulators.contains(&reg_var) {
+                Some(RegulatorErrorType::MissingRelationship)
+            } else {
+                None
+            };
+            if let Some(error_type) = error_type {
                 reporter.report(UpdateFunctionRegulatorInvalid {
                     id: variable.id,
                     regulator: reg_var,
-                    source: RegulatorErrorType::MissingVariable,
+                    expression: formula.to_string(),
+                    source: error_type,
                 });
-            }
-            if !regulators.contains(&reg_var) {
-                reporter.report(UpdateFunctionRegulatorInvalid {
-                    id: variable.id,
-                    regulator: reg_var,
-                    source: RegulatorErrorType::MissingRelationship,
-                });
+                has_valid_regulators = false;
             }
         }
     }
+
+    // If the regulators are incorrect, no need to validate the function table.
+    if !has_valid_regulators {
+        return;
+    }
+
+    // Also, do not try to validate function table if the formula is already
+    // known to be corrupted.
+    let expression = match &variable.formula {
+        None => context
+            .build_default_update_function(variable.id)
+            .to_string(),
+        Some(Ok(formula)) => formula.to_string(),
+        Some(Err(_)) => return,
+    };
 
     // 2. All declared regulations have valid monotonicity and essentiality.
 
@@ -282,18 +307,30 @@ fn validate_dynamic_variable_update<R: ErrorReporter<BmaVariableError>>(
         Err(error) => reporter.report(CannotBuildFunctionTable {
             id: variable.id,
             error: error.to_string(),
+            expression,
         }),
         Ok(mut function_table) => {
             let declared_activators = context.get_regulators(variable.id, &Some(Activator));
             let declared_inhibitors = context.get_regulators(variable.id, &Some(Inhibitor));
 
             for reg_var in regulators {
+                let regulator = context
+                    .find_variable(*reg_var)
+                    .expect("Invariant violation: regulators must be valid at this point.");
+
+                if regulator.has_constant_range() {
+                    // Constants are allowed to be non-essential, since they are
+                    // by definition constant.
+                    continue;
+                }
+
                 let observed = infer_relationship_type(&mut function_table, *reg_var);
                 if observed.is_empty() {
                     reporter.report(UpdateFunctionRegulatorInvalid {
                         id: variable.id,
                         regulator: *reg_var,
                         source: RegulatorErrorType::UnusedRelationship,
+                        expression: expression.clone(),
                     });
                 } else {
                     let mut declared = Vec::new();
@@ -308,6 +345,7 @@ fn validate_dynamic_variable_update<R: ErrorReporter<BmaVariableError>>(
                             id: variable.id,
                             regulator: *reg_var,
                             source: RegulatorErrorType::BadMonotonicity { declared, observed },
+                            expression: expression.clone(),
                         });
                     }
                 }
@@ -337,7 +375,8 @@ fn validate_constant_variable_update<R: ErrorReporter<BmaVariableError>>(
     }
 
     // A constant should have update function that is either empty, or constant/zero
-    if let Some(formula) = variable.try_get_update_function() {
+    // (if the function is corrupted, just ignore it, it will be reported as other error).
+    if let Some(Ok(formula)) = &variable.formula {
         let is_ok = if let Some(const_i32) = formula.as_constant() {
             // If the function is constant, the value must be zero or constant.
             u32::try_from(const_i32).is_ok_and(|it| it == 0 || it == const_value)
@@ -603,17 +642,12 @@ mod tests {
         let issues = variable.validate(&network).unwrap_err();
         assert_eq!(
             issues,
-            vec![
-                UpdateFunctionRegulatorInvalid {
-                    id: 0,
-                    regulator: 2,
-                    source: RegulatorErrorType::MissingVariable,
-                },
-                CannotBuildFunctionTable {
-                    id: 0,
-                    error: "Regulator variable `2` does not exist".to_string(),
-                }
-            ]
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 2,
+                expression: "var(2)".to_string(),
+                source: RegulatorErrorType::MissingVariable,
+            },]
         );
     }
 
@@ -626,17 +660,12 @@ mod tests {
         let issues = variable.validate(&network).unwrap_err();
         assert_eq!(
             issues,
-            vec![
-                UpdateFunctionRegulatorInvalid {
-                    id: 0,
-                    regulator: 0,
-                    source: RegulatorErrorType::MissingRelationship,
-                },
-                CannotBuildFunctionTable {
-                    id: 0,
-                    error: "Missing input value for variable `0`".to_string(),
-                }
-            ]
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 0,
+                expression: "var(0)".to_string(),
+                source: RegulatorErrorType::MissingRelationship,
+            },]
         );
     }
 
@@ -655,6 +684,7 @@ mod tests {
             vec![UpdateFunctionRegulatorInvalid {
                 id: 0,
                 regulator: 0,
+                expression: "1".to_string(),
                 source: RegulatorErrorType::UnusedRelationship,
             },]
         );
@@ -675,7 +705,25 @@ mod tests {
             vec![UpdateFunctionRegulatorInvalid {
                 id: 0,
                 regulator: 0,
+                expression: "(var(0) - var(0))".to_string(),
                 source: RegulatorErrorType::UnusedRelationship,
+            },]
+        );
+    }
+
+    #[test]
+    fn function_valuation_error() {
+        let update = BmaUpdateFunction::try_from("1 / 0").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let network = network_for_variable(&variable);
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![CannotBuildFunctionTable {
+                id: 0,
+                expression: "(1 / 0)".to_string(),
+                error: "Division by zero".to_string(),
             },]
         );
     }
@@ -695,6 +743,7 @@ mod tests {
             vec![UpdateFunctionRegulatorInvalid {
                 id: 0,
                 regulator: 0,
+                expression: "var(0)".to_string(),
                 source: RegulatorErrorType::BadMonotonicity {
                     declared: vec![Inhibitor],
                     observed: vec![Activator],
@@ -728,6 +777,7 @@ mod tests {
             vec![UpdateFunctionRegulatorInvalid {
                 id: 0,
                 regulator: 0,
+                expression: "(max(var(0), var(1)) - min(var(0), var(1)))".to_string(),
                 source: RegulatorErrorType::BadMonotonicity {
                     declared: vec![Inhibitor],
                     observed: vec![Activator, Inhibitor],
