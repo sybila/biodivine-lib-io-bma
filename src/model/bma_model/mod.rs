@@ -5,12 +5,12 @@ use crate::serde::json::JsonBmaModel;
 use crate::serde::xml::XmlBmaModel;
 use crate::{
     BmaLayout, BmaLayoutError, BmaNetwork, BmaNetworkError, ContextualValidation, ErrorReporter,
-    RelationshipType, Validation,
+    Validation,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::cmp::max;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// Main structure with all the important parts of a BMA model.
@@ -92,27 +92,6 @@ impl BmaModel {
         });
         max_level
     }
-
-    /// Get regulators of a particular variable, optionally filtered by regulator type.
-    /// The regulators are represented by their IDs.
-    ///
-    /// If network validation passed successfully, you can assume that there is no
-    /// [`RelationshipType::Unknown`] (i.e. every relationship is either an activator,
-    /// or an inhibitor).
-    #[must_use]
-    pub fn get_regulators(
-        &self,
-        target_var: u32,
-        relationship: &Option<RelationshipType>,
-    ) -> HashSet<u32> {
-        self.network
-            .relationships
-            .iter()
-            .filter(|r| r.to_variable == target_var)
-            .filter(|r| relationship.as_ref().is_none_or(|x| *x == r.r#type))
-            .map(|r| r.from_variable)
-            .collect()
-    }
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -133,6 +112,7 @@ impl Validation for BmaModel {
 
 #[cfg(test)]
 mod tests {
+    use crate::model::bma_variable::RegulatorErrorType::UnusedRelationship;
     use crate::model::tests::{simple_layout, simple_network};
     use crate::{
         BmaLayout, BmaLayoutContainer, BmaLayoutContainerError, BmaLayoutError, BmaLayoutVariable,
@@ -140,6 +120,12 @@ mod tests {
         BmaRelationship, BmaRelationshipError, BmaVariable, BmaVariableError, RelationshipType,
         Validation,
     };
+    use BmaLayoutError::Container;
+    use BmaModelError::{Layout, Network};
+    use BmaNetworkError::{Relationship, Variable};
+    use BmaRelationshipError::{IdNotUnique, TargetVariableNotFound};
+    use BmaVariableError::{RangeInvalid, UpdateFunctionRegulatorInvalid};
+    use RelationshipType::{Activator, Inhibitor};
     use rust_decimal::Decimal;
     use std::collections::{HashMap, HashSet};
 
@@ -194,34 +180,36 @@ mod tests {
         };
 
         let expected = vec![
-            BmaModelError::Network(BmaNetworkError::Variable(BmaVariableError::RangeInvalid {
+            Network(Variable(UpdateFunctionRegulatorInvalid {
+                id: 2,
+                regulator: 3,
+                expression: "(0 - avg(var(3)))".to_string(),
+                source: UnusedRelationship,
+            })),
+            Network(Variable(RangeInvalid {
                 id: 3,
                 range: (3, 2),
             })),
-            BmaModelError::Network(BmaNetworkError::Relationship(
-                BmaRelationshipError::IdNotUnique { id: 5 },
-            )),
-            BmaModelError::Network(BmaNetworkError::Relationship(
-                BmaRelationshipError::IdNotUnique { id: 5 },
-            )),
-            BmaModelError::Network(BmaNetworkError::Relationship(
-                BmaRelationshipError::TargetVariableNotFound {
-                    id: 6,
-                    to_variable: 4,
-                },
-            )),
-            BmaModelError::Layout(BmaLayoutError::Variable(
+            Network(Variable(UpdateFunctionRegulatorInvalid {
+                id: 3,
+                regulator: 2,
+                expression: "(avg(var(2)) - avg(var(2)))".to_string(),
+                source: UnusedRelationship,
+            })),
+            Network(Relationship(IdNotUnique { id: 5 })),
+            Network(Relationship(IdNotUnique { id: 5 })),
+            Network(Relationship(TargetVariableNotFound {
+                id: 6,
+                to_variable: 4,
+            })),
+            Layout(BmaLayoutError::Variable(
                 BmaLayoutVariableError::ContainerNotFound {
                     id: 2,
                     container_id: 7,
                 },
             )),
-            BmaModelError::Layout(BmaLayoutError::Container(
-                BmaLayoutContainerError::IdNotUnique { id: 4 },
-            )),
-            BmaModelError::Layout(BmaLayoutError::Container(
-                BmaLayoutContainerError::IdNotUnique { id: 4 },
-            )),
+            Layout(Container(BmaLayoutContainerError::IdNotUnique { id: 4 })),
+            Layout(Container(BmaLayoutContainerError::IdNotUnique { id: 4 })),
         ];
 
         let issues = model.validate().unwrap_err();
@@ -246,18 +234,18 @@ mod tests {
             .push(BmaRelationship::new_inhibitor(10, 1, 2));
         network
             .relationships
-            .push(BmaRelationship::new_activator(10, 3, 2));
+            .push(BmaRelationship::new_activator(11, 3, 2));
         let model = BmaModel {
             network,
             layout: Default::default(),
             metadata: Default::default(),
         };
 
-        let regulators = model.get_regulators(2, &Some(RelationshipType::Activator));
+        let regulators = model.network.get_regulators(2, &Some(Activator));
         assert_eq!(regulators, HashSet::from_iter(vec![3]));
-        let regulators = model.get_regulators(2, &Some(RelationshipType::Inhibitor));
+        let regulators = model.network.get_regulators(2, &Some(Inhibitor));
         assert_eq!(regulators, HashSet::from_iter(vec![1]));
-        let regulators = model.get_regulators(2, &None);
+        let regulators = model.network.get_regulators(2, &None);
         assert_eq!(regulators, HashSet::from_iter(vec![1, 3]));
     }
 }

@@ -2,7 +2,7 @@ use crate::update_function::BmaExpressionNodeData::Terminal;
 use crate::update_function::{
     AggregateFn, ArithOp, BmaExpressionNodeData, BmaUpdateFunction, Literal, UnaryFn,
 };
-use crate::{BmaModel, BmaVariable};
+use crate::{BmaNetwork, BmaVariable};
 use anyhow::anyhow;
 use num_traits::Zero;
 use rust_decimal::Decimal;
@@ -20,7 +20,7 @@ use std::collections::{BTreeMap, HashSet};
 /// computation within the update function can involve
 pub type FunctionTable = Vec<(BTreeMap<u32, u32>, u32)>;
 
-impl BmaModel {
+impl BmaNetwork {
     /// Evaluate the BMA function expression assigned to the given variable. The result is a level
     /// within the allowed range of this variable (the value is truncated if it does not fit
     /// within this range) and the function performs all necessary normalization steps on
@@ -33,18 +33,16 @@ impl BmaModel {
     ///  - The valuation does not contain all necessary values.
     ///  - Invalid arithmetic operation occurs (e.g., division by zero).
     ///
-    /// See also: [`BmaModel::set_default_function`], [`BmaModel::populate_missing_functions`],
+    /// See also: [`BmaNetwork::set_default_function`], [`BmaNetwork::populate_missing_functions`],
     /// [`BmaVariable::normalize_input_level`] and [`BmaUpdateFunction::evaluate_raw`].
     pub fn evaluate(&self, var_id: u32, valuation: &BTreeMap<u32, u32>) -> anyhow::Result<u32> {
         let target_var = self
-            .network
             .find_variable(var_id)
             .ok_or_else(|| anyhow!("Target variable with id `{var_id}` not found"))?;
 
         let mut normalized_valuation = BTreeMap::new();
         for (source_id, level) in valuation {
             let source_var = self
-                .network
                 .find_variable(*source_id)
                 .ok_or_else(|| anyhow!("Source variable with id `{source_id}` not found"))?;
             let normalized_level = target_var.normalize_input_level(source_var, *level);
@@ -62,31 +60,68 @@ impl BmaModel {
 
     /// Build a complete [`FunctionTable`] with all input-output combinations.
     ///
-    /// The function can fail if the update function is missing, is in the error state,
-    /// contains invalid variables, or performs division by zero. See also [`BmaModel::evaluate`]
-    /// for possible error states.
+    /// If the update function is missing, the function computes a function table for the
+    /// "default" update function (see [`BmaNetwork::build_default_update_function`]).
+    ///
+    /// The function can fail if the variable does not exist, its update function is in an
+    /// error state, contains invalid variables, or performs division by zero.
+    /// See also [`BmaNetwork::evaluate`] for possible error states.
+    ///
+    /// *[`FunctionTable`] will use inputs declared as regulators in
+    /// [`BmaNetwork`], so the network has to be correctly configured.*
+    ///
+    /// For constant variables, the update function always contains exactly one row, and the
+    /// output for that row is either the sole value in the variable's domain, or `0`.
+    ///
     pub fn build_function_table(&self, var_id: u32) -> anyhow::Result<FunctionTable> {
         let target_var = self
-            .network
             .find_variable(var_id)
             .ok_or_else(|| anyhow!("Target variable with id `{var_id}` not found"))?;
 
-        let Some(function) = &target_var.formula else {
-            return Err(anyhow!("No update function found for variable `{var_id}`"));
+        let function = match &target_var.formula {
+            None => self.build_default_update_function(var_id),
+            Some(function) => function
+                .as_ref()
+                .cloned()
+                .map_err(|e| anyhow!(e.to_string()))?,
         };
 
-        let function = function.as_ref().map_err(|e| anyhow!(e.to_string()))?;
-
+        // Regulators declared in the model, not what actually appears in function.
         let mut regulators_map = BTreeMap::new();
-        for id in function.collect_variables() {
+        for id in self.get_regulators(var_id, &None) {
             let var = self
-                .network
                 .find_variable(id)
-                .ok_or_else(|| anyhow!("Regulator variable `{id}` not found"))?;
+                .ok_or_else(|| anyhow!("Regulator variable `{id}` does not exist"))?;
             regulators_map.insert(id, var);
         }
 
-        target_var.build_function_table(function, &regulators_map)
+        if target_var.has_constant_range() {
+            // For constant variables, the update function is built a bit differently, because
+            // we technically allow them to be 0 even if that value is outside variable range.
+
+            if !regulators_map.is_empty() {
+                return Err(anyhow!("Constant variable cannot have regulators."));
+            }
+
+            let const_level = target_var.min_level();
+            let output = match function.as_constant() {
+                Some(value) => {
+                    let Ok(value) = u32::try_from(value) else {
+                        return Err(anyhow!("Constant value cannot be negative."));
+                    };
+                    if value == 0 || value == const_level {
+                        value
+                    } else {
+                        return Err(anyhow!("Constant value does not match variable level."));
+                    }
+                }
+                _ => return Err(anyhow!("Non-constant function in constant variable.")),
+            };
+
+            Ok(vec![(BTreeMap::new(), output)])
+        } else {
+            target_var.build_function_table(&function, &regulators_map)
+        }
     }
 }
 
@@ -217,7 +252,7 @@ impl BmaUpdateFunction {
     /// that aggregation operations with no arguments should be caught as errors by the parser
     /// or constructor, but the user could make a custom function with no arguments.
     ///
-    /// See also [`BmaModel::evaluate`].
+    /// See also [`BmaNetwork::evaluate`].
     pub fn evaluate_raw(&self, valuation: &BTreeMap<u32, Decimal>) -> anyhow::Result<Decimal> {
         match &self.as_data() {
             Terminal(Literal::Const(value)) => Ok(Decimal::from(*value)),
@@ -225,7 +260,9 @@ impl BmaUpdateFunction {
                 if let Some(value) = valuation.get(var_id) {
                     Ok(*value)
                 } else {
-                    Err(anyhow!(format!("No value found for variable `{var_id}`")))
+                    Err(anyhow!(format!(
+                        "Missing input value for variable `{var_id}`"
+                    )))
                 }
             }
             BmaExpressionNodeData::Arithmetic(operator, left, right) => {
@@ -423,7 +460,7 @@ mod tests {
     fn test_build_fn_table_binary_and() {
         let model = and_model();
 
-        let result_table = model.build_function_table(1).unwrap();
+        let result_table = model.network.build_function_table(1).unwrap();
         let expected_table = prepare_truth_table(&[1, 2], &[0, 0, 0, 1]);
 
         assert_eq!(result_table, expected_table);
@@ -434,7 +471,7 @@ mod tests {
         let model = complex_model();
 
         let expected_table = prepare_truth_table(&[1, 2, 3], &[1, 0, 0, 0, 1, 1, 1, 1]);
-        let result_table = model.build_function_table(1).unwrap();
+        let result_table = model.network.build_function_table(1).unwrap();
 
         assert_eq!(result_table, expected_table);
     }

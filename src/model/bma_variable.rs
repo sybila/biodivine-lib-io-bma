@@ -1,8 +1,15 @@
-use crate::update_function::{BmaUpdateFunction, InvalidBmaUpdateFunction};
+use crate::update_function::{BmaUpdateFunction, FunctionTable, InvalidBmaExpression};
 use crate::utils::is_unique_id;
-use crate::{BmaNetwork, ContextualValidation, ErrorReporter};
+use crate::{BmaNetwork, ContextualValidation, ErrorReporter, RelationshipType};
+use BmaVariableError::{
+    CannotBuildFunctionTable, ConstantWithRegulators, ConstantWithUpdateFunction,
+    UpdateFunctionRegulatorInvalid,
+};
+use RelationshipType::{Activator, Inhibitor};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 /// A discrete variable identified by an integer `id`. Each [`BmaVariable`] consists
@@ -22,13 +29,21 @@ use thiserror::Error;
 /// Additional non-functional information like the variable position, description, or type are
 /// present as part of [`crate::BmaLayout`].
 ///
+/// ## Constant variables
+///
+/// A variable is considered to be a constant if its range only admits a single value `x`. In such
+/// cases, we require that (1) the variable has no regulators, and (b) the `formula` is either
+/// empty, or set to a constant value that is `0` or `x`. At the same time, if a corresponding
+/// [`crate::BmaLayoutVariable`] exists, its `type` should be also set to `Constant`. Everything
+/// else will be reported as validation error.
+///
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BmaVariable {
     pub id: u32,
     pub name: String,
     pub range: (u32, u32),
-    pub formula: Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>>,
+    pub formula: Option<Result<BmaUpdateFunction, InvalidBmaExpression>>,
 }
 
 impl BmaVariable {
@@ -76,6 +91,64 @@ impl BmaVariable {
             String::default()
         }
     }
+
+    /// Returns true if the range of this variable is a single number.
+    ///
+    /// These variables are expected to have a constant update function. Note that there
+    /// is also a constant variable type [`crate::VariableType`], but this is not always
+    /// set consistently.
+    #[must_use]
+    pub fn has_constant_range(&self) -> bool {
+        self.range.0 == self.range.1
+    }
+
+    /// True if the domain is exactly `[0,1]`.
+    #[must_use]
+    pub fn is_boolean(&self) -> bool {
+        self.range == (0, 1)
+    }
+
+    /// Returns a reference to the update function of this variable, assuming the function is
+    /// set and was parsed successfully.
+    #[must_use]
+    pub fn try_get_update_function(&self) -> Option<&BmaUpdateFunction> {
+        self.formula.as_ref().and_then(|it| it.as_ref().ok())
+    }
+
+    /// Create a string identifier that contains the variable ID, variable name (if set) and
+    /// given level in a human-readable format.
+    ///
+    /// # Panics
+    /// The given `level` must be valid in the range of this variable.
+    #[must_use]
+    pub(crate) fn mk_level_identifier(&self, level: u32) -> String {
+        assert!(level >= self.range.0 && level <= self.range.1);
+        if self.name.is_empty() {
+            format!("v_{}_b{}", self.id, level)
+        } else {
+            format!(
+                "v_{}_{}_b{}",
+                self.id,
+                sanitize_name(self.name.as_str()),
+                level
+            )
+        }
+    }
+}
+
+const NOT_IN_VAR_NAME: [char; 11] = ['!', '&', '|', '^', '=', '<', '>', '(', ')', '?', ':'];
+
+/// Make sure a name is safe for use with lib-bdd and lib-param-bn
+fn sanitize_name(name: &str) -> String {
+    name.chars()
+        .map(|it| {
+            if NOT_IN_VAR_NAME.contains(&it) {
+                '_'
+            } else {
+                it
+            }
+        })
+        .collect::<String>()
 }
 
 /// The default [`BmaVariable`] is Boolean, with no name or formula.
@@ -97,11 +170,59 @@ pub enum BmaVariableError {
     IdNotUnique { id: u32 },
     #[error("(Variable id: `{id}`) Range `{range:?}` is invalid; must be an interval")]
     RangeInvalid { id: u32, range: (u32, u32) },
+    #[error(
+        "(Variable id: `{id}`) Variable appears to be a constant (`{value}`), but has update function `{expression}`"
+    )]
+    ConstantWithUpdateFunction {
+        id: u32,
+        value: u32,
+        expression: String,
+    },
+    #[error(
+        "(Variable id: `{id}`) Variable appears to be a constant (`{value}`), but has regulators `{regulators:?}`"
+    )]
+    ConstantWithRegulators {
+        id: u32,
+        value: u32,
+        regulators: Vec<u32>,
+    },
     #[error("(Variable id: `{id}`) {source}")]
-    UpdateFunctionInvalid {
+    UpdateFunctionExpressionInvalid {
         id: u32,
         #[source]
-        source: InvalidBmaUpdateFunction,
+        source: InvalidBmaExpression,
+    },
+    #[error(
+        "(Variable id: `{id}`) Regulator `{regulator}` is invalid in expression `{expression}`: {source}"
+    )]
+    UpdateFunctionRegulatorInvalid {
+        id: u32,
+        regulator: u32,
+        expression: String,
+        #[source]
+        source: RegulatorErrorType,
+    },
+    #[error("(Variable id: `{id}`) Cannot build function table: {error}")]
+    CannotBuildFunctionTable {
+        id: u32,
+        expression: String,
+        error: String,
+    },
+}
+
+/// Possible validation error type for [`BmaVariable`] concerning function regulators.
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RegulatorErrorType {
+    #[error("Variable does not exist")]
+    MissingVariable,
+    #[error("Variable not declared as regulator")]
+    MissingRelationship,
+    #[error("Variable does not influence function output")]
+    UnusedRelationship,
+    #[error("Declared monotonicity is `{declared:?}`, but observed monotonicity is `{observed:?}`")]
+    BadMonotonicity {
+        declared: Vec<RelationshipType>,
+        observed: Vec<RelationshipType>,
     },
 }
 
@@ -130,19 +251,262 @@ impl ContextualValidation<BmaNetwork> for BmaVariable {
         }
 
         if let Some(Err(error)) = &self.formula {
-            reporter.report(BmaVariableError::UpdateFunctionInvalid {
+            reporter.report(BmaVariableError::UpdateFunctionExpressionInvalid {
                 id: self.id,
                 source: error.clone(),
+            });
+        }
+
+        let mut regulators = Vec::from_iter(context.get_regulators(self.id, &None));
+        regulators.sort_unstable();
+
+        if self.has_constant_range() {
+            validate_constant_variable_update(self, &regulators, reporter);
+        } else {
+            validate_dynamic_variable_update(context, self, &regulators, reporter);
+        }
+    }
+}
+
+fn validate_dynamic_variable_update<R: ErrorReporter<BmaVariableError>>(
+    context: &BmaNetwork,
+    variable: &BmaVariable,
+    regulators: &[u32],
+    reporter: &mut R,
+) {
+    // For non-constant variables, we need to make sure they use valid regulators
+    // and have a "reasonable" update function.
+
+    // Note: If a variable from regulators does not exist, this is already reported as
+    //       relationship validation error, so we don't need to test for it here.
+
+    // 1. All used variables exist and are regulators.
+    let mut has_valid_regulators = true;
+    if let Some(formula) = variable.try_get_update_function() {
+        let syntactic_regulators = formula.collect_variables();
+
+        for reg_var in syntactic_regulators {
+            let error_type = if context.find_variable(reg_var).is_none() {
+                Some(RegulatorErrorType::MissingVariable)
+            } else if !regulators.contains(&reg_var) {
+                Some(RegulatorErrorType::MissingRelationship)
+            } else {
+                None
+            };
+            if let Some(error_type) = error_type {
+                reporter.report(UpdateFunctionRegulatorInvalid {
+                    id: variable.id,
+                    regulator: reg_var,
+                    expression: formula.to_string(),
+                    source: error_type,
+                });
+                has_valid_regulators = false;
+            }
+        }
+    }
+
+    // If the regulators are incorrect, no need to validate the function table.
+    if !has_valid_regulators {
+        return;
+    }
+
+    // Also, do not try to validate function table if the formula is already
+    // known to be corrupted.
+    let expression = match &variable.formula {
+        None => context
+            .build_default_update_function(variable.id)
+            .to_string(),
+        Some(Ok(formula)) => formula.to_string(),
+        Some(Err(_)) => return,
+    };
+
+    // 2. All declared regulations have valid monotonicity and essentiality.
+
+    let function_table = context.build_function_table(variable.id);
+    match function_table {
+        Err(error) => reporter.report(CannotBuildFunctionTable {
+            id: variable.id,
+            error: error.to_string(),
+            expression,
+        }),
+        Ok(mut function_table) => {
+            let declared_activators = context.get_regulators(variable.id, &Some(Activator));
+            let declared_inhibitors = context.get_regulators(variable.id, &Some(Inhibitor));
+
+            for reg_var in regulators {
+                let regulator = context
+                    .find_variable(*reg_var)
+                    .expect("Invariant violation: regulators must be valid at this point.");
+
+                if regulator.has_constant_range() {
+                    // Constants are allowed to be non-essential, since they are
+                    // by definition constant.
+                    continue;
+                }
+
+                let observed = infer_relationship_type(&mut function_table, *reg_var);
+                if observed.is_empty() {
+                    reporter.report(UpdateFunctionRegulatorInvalid {
+                        id: variable.id,
+                        regulator: *reg_var,
+                        source: RegulatorErrorType::UnusedRelationship,
+                        expression: expression.clone(),
+                    });
+                } else {
+                    let mut declared = Vec::new();
+                    if declared_activators.contains(reg_var) {
+                        declared.push(Activator);
+                    }
+                    if declared_inhibitors.contains(reg_var) {
+                        declared.push(Inhibitor);
+                    }
+                    if declared != observed {
+                        reporter.report(UpdateFunctionRegulatorInvalid {
+                            id: variable.id,
+                            regulator: *reg_var,
+                            source: RegulatorErrorType::BadMonotonicity { declared, observed },
+                            expression: expression.clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Validate the update function of a single constant variable.
+fn validate_constant_variable_update<R: ErrorReporter<BmaVariableError>>(
+    variable: &BmaVariable,
+    regulators: &[u32],
+    reporter: &mut R,
+) {
+    // Make sure that a constant has no regulators and has an update function that is
+    // compatible with its domain.
+
+    let const_value = variable.min_level();
+
+    // A constant should have no regulators.
+    if !regulators.is_empty() {
+        reporter.report(ConstantWithRegulators {
+            id: variable.id,
+            value: const_value,
+            regulators: regulators.to_vec(),
+        });
+    }
+
+    // A constant should have update function that is either empty, or constant/zero
+    // (if the function is corrupted, just ignore it, it will be reported as other error).
+    if let Some(Ok(formula)) = &variable.formula {
+        let is_ok = if let Some(const_i32) = formula.as_constant() {
+            // If the function is constant, the value must be zero or constant.
+            u32::try_from(const_i32).is_ok_and(|it| it == 0 || it == const_value)
+        } else {
+            // If the function is not constant, this is immediately an error.
+            false
+        };
+        if !is_ok {
+            reporter.report(ConstantWithUpdateFunction {
+                id: variable.id,
+                value: const_value,
+                expression: formula.to_string(),
             });
         }
     }
 }
 
+/// Infer the type of relationships that are present for the given regulator in the given
+/// function table. If the regulator has no impact on the output, result is empty. If the regulator
+/// is non-monotonic, the result contains both relationship types (activation, inhibition).
+/// Otherwise, only one relationship type is returned.
+///
+/// The reason why we need a mutable reference to `table` is that we need to sort it. Otherwise,
+/// it is not modified.
+fn infer_relationship_type(table: &mut FunctionTable, regulator: u32) -> Vec<RelationshipType> {
+    // If there is at least one regulator, the table should have at least two entries.
+    // If that's not the case, there are no regulators and that means this one is unused.
+    if table.len() <= 1 {
+        return vec![];
+    }
+
+    // Gather all other regulators (arbitrary order is fine)
+    let mut regulator_ordering = table[0]
+        .0
+        .keys()
+        .copied()
+        .filter(|it| *it != regulator)
+        .collect::<Vec<_>>();
+    // Tested regulator then comes first.
+    regulator_ordering.insert(0, regulator);
+
+    // Sort the table so that the "primary key" for the input valuations is the regulator.
+    table.sort_by(|(v1, _), (v2, _)| compare_two_inputs(v1, v2, &regulator_ordering));
+
+    // Compute the domain size (first entry should have the lowest and last
+    // entry the greatest level)
+    let min_level = table[0].0.get(&regulator).copied().unwrap();
+    let max_level = table[table.len() - 1].0.get(&regulator).copied().unwrap();
+    let domain_size = usize::try_from(max_level - min_level + 1).unwrap();
+
+    // Table length should be divisible by domain size.
+    assert_eq!(table.len() % domain_size, 0);
+
+    let skip_by = table.len() / domain_size;
+
+    let mut is_activation = false;
+    let mut is_inhibition = false;
+
+    for i in 0..(table.len() - skip_by) {
+        let j = i + skip_by;
+        let out_i = table[i].1;
+        let out_j = table[j].1;
+        if out_i < out_j {
+            is_activation = true;
+        }
+        if out_i > out_j {
+            is_inhibition = true;
+        }
+    }
+
+    let mut result = Vec::new();
+    if is_activation {
+        result.push(Activator);
+    }
+    if is_inhibition {
+        result.push(Inhibitor);
+    }
+
+    result
+}
+
+/// Compare two input valuations using the given variable ordering. Variables not present
+/// in the ordering will not be considered in the comparison.
+fn compare_two_inputs(
+    a: &BTreeMap<u32, u32>,
+    b: &BTreeMap<u32, u32>,
+    priority: &[u32],
+) -> Ordering {
+    for var in priority {
+        let a_val = a.get(var).unwrap();
+        let b_val = b.get(var).unwrap();
+        let ord = a_val.cmp(b_val);
+        if ord != Ordering::Equal {
+            return ord;
+        }
+    }
+    Ordering::Equal
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::model::bma_variable::BmaVariableError;
+    use crate::BmaVariableError::CannotBuildFunctionTable;
+    use crate::RelationshipType::{Activator, Inhibitor};
+    use crate::model::bma_variable::{BmaVariableError, RegulatorErrorType};
     use crate::update_function::BmaUpdateFunction;
-    use crate::{BmaNetwork, BmaVariable, ContextualValidation};
+    use crate::{BmaNetwork, BmaRelationship, BmaVariable, ContextualValidation};
+    use BmaVariableError::{
+        ConstantWithRegulators, ConstantWithUpdateFunction, IdNotUnique, RangeInvalid,
+        UpdateFunctionRegulatorInvalid,
+    };
 
     fn network_for_variable(variable: &BmaVariable) -> BmaNetwork {
         BmaNetwork {
@@ -229,7 +593,7 @@ mod tests {
         let issues = variable.validate(&network).unwrap_err();
         assert_eq!(
             issues,
-            vec![BmaVariableError::RangeInvalid {
+            vec![RangeInvalid {
                 id: 0,
                 range: (3, 1)
             }]
@@ -247,6 +611,198 @@ mod tests {
         };
 
         let issues = v1.validate(&network).unwrap_err();
-        assert_eq!(issues, vec![BmaVariableError::IdNotUnique { id: 0 }]);
+        assert_eq!(issues, vec![IdNotUnique { id: 0 }]);
+    }
+
+    #[test]
+    fn constant_with_regulators() {
+        let variable = BmaVariable::new(0, "v1", (3, 3), None);
+        let mut network = network_for_variable(&variable);
+        network
+            .relationships
+            .push(BmaRelationship::new_activator(0, 2, 0));
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![ConstantWithRegulators {
+                id: 0,
+                value: 3,
+                regulators: vec![2],
+            }]
+        );
+    }
+
+    #[test]
+    fn constant_with_update_function() {
+        let update = BmaUpdateFunction::try_from("var(0) + var(1)").unwrap();
+        let variable = BmaVariable::new(0, "v1", (3, 3), Some(update));
+        let network = network_for_variable(&variable);
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![ConstantWithUpdateFunction {
+                id: 0,
+                value: 3,
+                expression: "(var(0) + var(1))".to_string(),
+            }]
+        );
+    }
+
+    #[test]
+    fn unknown_regulator() {
+        let update = BmaUpdateFunction::try_from("var(2)").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let mut network = network_for_variable(&variable);
+        network
+            .relationships
+            .push(BmaRelationship::new_activator(0, 2, 0));
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 2,
+                expression: "var(2)".to_string(),
+                source: RegulatorErrorType::MissingVariable,
+            },]
+        );
+    }
+
+    #[test]
+    fn missing_relationship() {
+        let update = BmaUpdateFunction::try_from("var(0)").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let network = network_for_variable(&variable);
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 0,
+                expression: "var(0)".to_string(),
+                source: RegulatorErrorType::MissingRelationship,
+            },]
+        );
+    }
+
+    #[test]
+    fn unused_relationship_syntactic() {
+        let update = BmaUpdateFunction::try_from("1").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let mut network = network_for_variable(&variable);
+        network
+            .relationships
+            .push(BmaRelationship::new_activator(0, 0, 0));
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 0,
+                expression: "1".to_string(),
+                source: RegulatorErrorType::UnusedRelationship,
+            },]
+        );
+    }
+
+    #[test]
+    fn unused_relationship_semantic() {
+        let update = BmaUpdateFunction::try_from("var(0) - var(0)").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let mut network = network_for_variable(&variable);
+        network
+            .relationships
+            .push(BmaRelationship::new_activator(0, 0, 0));
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 0,
+                expression: "(var(0) - var(0))".to_string(),
+                source: RegulatorErrorType::UnusedRelationship,
+            },]
+        );
+    }
+
+    #[test]
+    fn function_valuation_error() {
+        let update = BmaUpdateFunction::try_from("1 / 0").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let network = network_for_variable(&variable);
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![CannotBuildFunctionTable {
+                id: 0,
+                expression: "(1 / 0)".to_string(),
+                error: "Division by zero".to_string(),
+            },]
+        );
+    }
+
+    #[test]
+    fn inverted_monotonicity() {
+        let update = BmaUpdateFunction::try_from("var(0)").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let mut network = network_for_variable(&variable);
+        network
+            .relationships
+            .push(BmaRelationship::new_inhibitor(0, 0, 0));
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 0,
+                expression: "var(0)".to_string(),
+                source: RegulatorErrorType::BadMonotonicity {
+                    declared: vec![Inhibitor],
+                    observed: vec![Activator],
+                },
+            },]
+        );
+    }
+
+    #[test]
+    fn dual_monotonicity() {
+        // Basically an XOR on integer domains:
+        let update =
+            BmaUpdateFunction::try_from("max(var(0), var(1)) - min(var(0), var(1))").unwrap();
+        let variable = BmaVariable::new(0, "v1", (0, 3), Some(update));
+        let variable_2 = BmaVariable::new(1, "v2", (0, 3), None);
+        let mut network = network_for_variable(&variable);
+        network.variables.push(variable_2);
+        network
+            .relationships
+            .push(BmaRelationship::new_inhibitor(0, 0, 0));
+        network
+            .relationships
+            .push(BmaRelationship::new_inhibitor(1, 1, 0));
+        network
+            .relationships
+            .push(BmaRelationship::new_activator(1, 1, 0));
+
+        let issues = variable.validate(&network).unwrap_err();
+        assert_eq!(
+            issues,
+            vec![UpdateFunctionRegulatorInvalid {
+                id: 0,
+                regulator: 0,
+                expression: "(max(var(0), var(1)) - min(var(0), var(1)))".to_string(),
+                source: RegulatorErrorType::BadMonotonicity {
+                    declared: vec![Inhibitor],
+                    observed: vec![Activator, Inhibitor],
+                },
+            },]
+        );
     }
 }

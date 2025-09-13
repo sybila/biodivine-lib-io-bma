@@ -2,19 +2,20 @@ mod bma_update_function;
 mod expression_enums;
 mod expression_node_data;
 
-mod bma_update_function_error;
+mod bma_expression_error;
 mod bma_update_function_evaluation;
+mod expression_default_builder;
 mod expression_parser;
 mod expression_token;
 mod from_aeon;
-mod into_aeon;
 
 pub use bma_update_function::BmaUpdateFunction;
 pub use expression_enums::{AggregateFn, ArithOp, Literal, UnaryFn};
 pub use expression_node_data::BmaExpressionNodeData;
 
-pub use bma_update_function_error::InvalidBmaUpdateFunction;
-pub(crate) use bma_update_function_error::ParserError;
+pub use bma_expression_error::InvalidBmaExpression;
+pub(crate) use bma_expression_error::ParserError;
+pub(crate) use expression_default_builder::create_default_update_fn;
 
 pub use bma_update_function_evaluation::FunctionTable;
 

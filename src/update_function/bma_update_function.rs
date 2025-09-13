@@ -1,6 +1,6 @@
 use crate::update_function::expression_parser::parse_bma_formula;
 use crate::update_function::{
-    AggregateFn, ArithOp, BmaExpressionNodeData, InvalidBmaUpdateFunction, Literal, UnaryFn,
+    AggregateFn, ArithOp, BmaExpressionNodeData, InvalidBmaExpression, Literal, UnaryFn,
 };
 use crate::utils::take_if_not_blank;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -28,7 +28,7 @@ impl BmaUpdateFunction {
     }
 }
 
-/// Utility constructors
+/// Utility constructors and methods
 impl BmaUpdateFunction {
     /// Create a "unary" [`BmaUpdateFunction`] from the given arguments.
     ///
@@ -50,7 +50,7 @@ impl BmaUpdateFunction {
         BmaExpressionNodeData::Arithmetic(op, left.clone(), right.clone()).into()
     }
 
-    /// Create a [`BmaUpdateFunction`] representing a Boolean constant.
+    /// Create a [`BmaUpdateFunction`] representing an integer constant.
     ///
     /// See also [`BmaExpressionNodeData::Terminal`] and [`Literal::Const`].
     #[must_use]
@@ -75,6 +75,27 @@ impl BmaUpdateFunction {
         assert!(!inner_nodes.is_empty(), "At least one argument required.");
         BmaExpressionNodeData::Aggregation(op, inner_nodes.to_vec()).into()
     }
+
+    /// Return true if this function is a constant.
+    ///
+    /// Note that this only performs a syntactic check. Something like `0 - 0` will not be
+    /// considered constant in this case.
+    #[must_use]
+    pub fn is_constant(&self) -> bool {
+        self.as_constant().is_some()
+    }
+
+    /// If this function represents a constant, return its value; otherwise return `None`.
+    ///
+    /// Note that this only performs a syntactic check. Something like `0 - 0` will not be
+    /// considered constant in this case.
+    #[must_use]
+    pub fn as_constant(&self) -> Option<i32> {
+        match self.as_data() {
+            BmaExpressionNodeData::Terminal(Literal::Const(value)) => Some(*value),
+            _ => None,
+        }
+    }
 }
 
 impl BmaUpdateFunction {
@@ -87,9 +108,9 @@ impl BmaUpdateFunction {
     pub fn parse_with_hint(
         expression: &str,
         variable_id_hint: &[(u32, String)],
-    ) -> Result<BmaUpdateFunction, InvalidBmaUpdateFunction> {
+    ) -> Result<BmaUpdateFunction, InvalidBmaExpression> {
         parse_bma_formula(expression, variable_id_hint)
-            .map_err(|e| InvalidBmaUpdateFunction::from_parser_error(e, expression.to_string()))
+            .map_err(|e| InvalidBmaExpression::from_parser_error(e, expression.to_string()))
     }
 
     /// The same as [`BmaUpdateFunction::parse_with_hint`], but if the string is empty, the
@@ -98,7 +119,7 @@ impl BmaUpdateFunction {
     pub fn parse_optional_with_hint(
         expression: &str,
         variable_id_hint: &[(u32, String)],
-    ) -> Option<Result<BmaUpdateFunction, InvalidBmaUpdateFunction>> {
+    ) -> Option<Result<BmaUpdateFunction, InvalidBmaExpression>> {
         let expression = take_if_not_blank(expression)?;
         Some(BmaUpdateFunction::parse_with_hint(
             expression.as_str(),
@@ -108,7 +129,7 @@ impl BmaUpdateFunction {
 }
 
 impl TryFrom<&str> for BmaUpdateFunction {
-    type Error = InvalidBmaUpdateFunction;
+    type Error = InvalidBmaExpression;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Self::parse_with_hint(value, &[])
