@@ -451,29 +451,58 @@ impl SymbolicUpdateFunction {
 mod tests {
     use crate::BmaModel;
     use biodivine_lib_param_bn::BooleanNetwork;
+    use biodivine_lib_param_bn::symbolic_async_graph::SymbolicAsyncGraph;
+    use std::cmp::max;
 
     #[test]
-    #[ignore] // Disabled for debugging
     fn basic_binarization_test() {
         let folders = [
             "./models/json-repo",
             "./models/json-export-from-repo",
             "./models/json-export-from-tool",
         ];
+
+        // These three models have a constant node with weird/invalid update functions.
+        let unsafe_models = vec![
+            "./models/json-export-from-repo/Skin2D_5X2_TF.json",
+            "./models/json-export-from-repo/Skin2D_5X2.json",
+            "./models/json-export-from-tool/Leukaemia.json",
+        ];
+
         for folder in &folders {
             for file in std::fs::read_dir(folder).unwrap() {
                 let file = file.unwrap();
                 let file_name = file.file_name().to_str().unwrap().to_owned();
-                if !file_name.ends_with(".json") || file_name != "Skin2D_5X2_TF.json" {
+                if !file_name.ends_with(".json") {
                     continue;
                 }
+
+                let path = format!("{}/{}", folder, file_name);
+                if unsafe_models.contains(&path.as_str()) {
+                    println!("Skipping {}", path);
+                    continue;
+                }
+
                 println!("File: {}/{}", folder, file_name);
 
-                // Right now, even though JSON models have some validation issues, they should
-                // not affect boolean conversion.
+                // Even though remaining JSON models have some validation issues, they should
+                // not affect the Boolean conversion.
                 let json_data = std::fs::read_to_string(file.path()).unwrap();
                 let model = BmaModel::from_json_string(json_data.as_str()).unwrap();
-                let _network = BooleanNetwork::try_from(&model).unwrap();
+                let network = BooleanNetwork::try_from(&model).unwrap();
+
+                // We can easily test the variable count.
+                let mut expected_var_count = 0;
+                for var in &model.network.variables {
+                    expected_var_count += max(1, var.max_level() - var.min_level());
+                }
+                assert_eq!(network.num_vars(), expected_var_count as usize);
+
+                // And we can also test that the symbolic graph is "valid".
+                assert!(SymbolicAsyncGraph::new(&network).is_ok());
+
+                assert_eq!(network.num_implicit_parameters(), 0);
+                assert_eq!(network.num_parameters(), 0);
             }
         }
     }
