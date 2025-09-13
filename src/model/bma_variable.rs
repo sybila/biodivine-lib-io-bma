@@ -126,9 +126,29 @@ impl BmaVariable {
         if self.name.is_empty() {
             format!("v_{}_b{}", self.id, level)
         } else {
-            format!("v_{}_{}_b{}", self.id, self.name, level)
+            format!(
+                "v_{}_{}_b{}",
+                self.id,
+                sanitize_name(self.name.as_str()),
+                level
+            )
         }
     }
+}
+
+const NOT_IN_VAR_NAME: [char; 11] = ['!', '&', '|', '^', '=', '<', '>', '(', ')', '?', ':'];
+
+/// Make sure a name is safe for use with lib-bdd and lib-param-bn
+fn sanitize_name(name: &str) -> String {
+    name.chars()
+        .map(|it| {
+            if NOT_IN_VAR_NAME.contains(&it) {
+                '_'
+            } else {
+                it
+            }
+        })
+        .collect::<String>()
 }
 
 /// The default [`BmaVariable`] is Boolean, with no name or formula.
