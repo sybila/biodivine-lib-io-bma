@@ -1,13 +1,22 @@
-# Biodivine BMA Data
+[![Crates.io](https://img.shields.io/crates/v/biodivine-lib-io-bma?style=flat-square)](https://crates.io/crates/biodivine-lib-io-bma)
+[![Api Docs](https://img.shields.io/badge/docs-api-yellowgreen?style=flat-square)](https://docs.rs/biodivine-lib-io-bma/)
+[![Continuous integration](https://img.shields.io/github/actions/workflow/status/sybila/biodivine-lib-io-bma/build.yml?branch=master&style=flat-square)](https://github.com/sybila/biodivine-lib-io-bma/actions?query=workflow%3Abuild)
+[![Coverage](https://img.shields.io/codecov/c/github/sybila/biodivine-lib-io-bma?style=flat-square)](https://codecov.io/gh/sybila/biodivine-lib-io-bma)
+[![GitHub issues](https://img.shields.io/github/issues/sybila/biodivine-lib-io-bma?style=flat-square)](https://github.com/sybila/biodivine-lib-io-bma/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/sybila/biodivine-lib-io-bma?style=flat-square)](https://github.com/sybila/biodivine-lib-io-bma/commits/master)
+[![Crates.io](https://img.shields.io/crates/l/biodivine-lib-io-bma?style=flat-square)](https://github.com/sybila/biodivine-lib-io-bma/blob/master/LICENSE)
 
-Rust library for working with models in BMA format.
+# Biodivine BMA IO Library
 
-> Work in progress.
+Rust library for working with models in the [BMA format](https://biomodelanalyzer.org/).
 
-This library should offer functionality for:
-- Parsing BMA models from JSON and XML. We aim to support the newest BMA JSON format, but also try to handle older JSON and XML variants.
-- Creating new BMA models and exporting them into the latest BMA JSON format.
-- Converting BMA models into `RegulatoryGraph` and `BooleanNetwork` instances of `lib-param-bn`.
-  - This includes processing BMA real-number update expressions into BDD-based counterparts.
-- Converting `BooleanNetwork` instances into BMA models.
-- Translating between BMA and AEON model formats.
+Currently supported features:
+ - Input and output from both `.json` and `.xml` BMA files (to the best of our ability, parts of the format seem
+   to have changed over the years).
+ - Detection of model integrity issues:
+   - Invalid IDs, variable types, variable ranges, function expressions, etc.;
+   - Invalid regulations and errors in regulation monotonicity;
+   - Errors in function evaluation (division by zero, etc.).
+ - Function evaluation, including the normalization process used by BMA.
+ - Conversions between `BmaModel` and `biodivine-lib-param-bn::BooleanNetwork` (**including 
+   binarization of multivalued models**).

@@ -1,11 +1,14 @@
 name: build
-# This should ensure that the workflow won't run on `dev-*` branches, but will
-# otherwise execute on any other branch and any pull request (including dev
-# branches).
+
+# This should ensure that the workflow won't run on `feat/*`, `fix/*` and `chore/*` branches, but will
+# otherwise execute on any other branch and any pull request (including PRs
+# from dev branches).
 on:
   push:
     branches-ignore:
-      - 'dev-*'
+      - '**/feat/*'
+      - '**/fix/*'
+      - '**/chore/*'
   pull_request:
     branches:
       - '*'
@@ -20,7 +23,7 @@ env:
   RUSTDOCFLAGS: "-D warnings"
 
 jobs:
-  # Check formatting
+  # Checks syntax formatting.
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -55,10 +58,10 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - run: cargo check --all-features
 
-    # Run all tests
+  # Run tests.
   test:
     needs: check
-    name: Test Suite
+    name: Test Suite (linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +70,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - run: cargo test --all-features
 
-  # Check code style
+  # Checks code style.
   clippy:
     needs: check
     name: Clippy
