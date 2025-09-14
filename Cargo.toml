@@ -26,7 +26,7 @@ path = "src/bin/load_xml.rs"
 
 [dependencies]
 biodivine-lib-bdd = ">=0.6.1, <1.0.0"
-biodivine-lib-param-bn = ">=0.6.0, <1.0.0"
+biodivine-lib-param-bn = ">=0.6.1, <1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "3.12.0"
