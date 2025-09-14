@@ -71,7 +71,7 @@ jobs:
         run: |
           source .venv/bin/activate
           python -m llm_release_notes.cli --verbose synthesize \
-            --repo https://github.com/sybila/biodivine-lib-bdd \
+            --repo https://github.com/sybila/biodivine-lib-io-bma \
             --version ${{ steps.version.outputs.tag }} \
             --output release-notes.md \
             --config .releasenotes.yml
