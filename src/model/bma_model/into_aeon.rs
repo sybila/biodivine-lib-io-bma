@@ -16,6 +16,20 @@ use std::ops::RangeInclusive;
 #[derive(Clone)]
 struct SymbolicUpdateFunction(Vec<(u32, Bdd)>);
 
+impl SymbolicUpdateFunction {
+    /// Build a BDD that is true for every value that evaluates to `x >= level`. For such values,
+    /// the `level` bit of the variable should be set.
+    pub fn mk_unitary_level(&self, ctx: &BddVariableSet, level: u32) -> Bdd {
+        let mut result = ctx.mk_false();
+        for (bdd_level, bdd) in &self.0 {
+            if *bdd_level >= level {
+                result = result.or(bdd);
+            }
+        }
+        result
+    }
+}
+
 /// Allows encoding multivalued variables as symbolic states.
 ///
 /// The encoding is unary, such that each variable is assigned to `|domain| - 1` symbolic
@@ -124,13 +138,14 @@ impl TryFrom<&SymbolicContext> for BooleanNetwork {
             // Go through all levels except for the lowest one (that's the default).
             for (i, level) in var.range().skip(1).enumerate() {
                 let level_var = cast_id(var.bdd_vars[i]);
-                let (output, level_update) = &update.0[i + 1];
-
-                // Just make sure the iterators are not broken...
-                assert_eq!(*output, level);
+                // To activate level X, it is sufficient to have itself, or one of the
+                // higher levels satisfied. This ensures that "unitary" semantics, e.g.
+                // that when f(x) = 4, but variable value is 0, we can move from 0 to 1
+                // (since we cannot go directly into 4).
+                let unitary_update = update.mk_unitary_level(&value.bdd_ctx, level);
 
                 // Turn the DNF into update function.
-                let optimized_dnf = level_update.to_optimized_dnf();
+                let optimized_dnf = unitary_update.to_optimized_dnf();
                 let mut aeon_clauses = Vec::new();
                 for bdd_clause in optimized_dnf {
                     let mut aeon_clause = Vec::new();
@@ -233,14 +248,15 @@ impl TryFrom<&SymbolicContext> for RegulatoryGraph {
             assert_eq!(var.bdd_vars.len() + 1, update.0.len());
 
             let non_minimal_levels = update.0.iter().skip(1);
-            for (target_var, (_, bdd)) in var.bdd_vars.iter().zip(non_minimal_levels) {
+            for (target_var, (level, _bdd)) in var.bdd_vars.iter().zip(non_minimal_levels) {
                 // Add a regulation from all variables that influence the update function.
                 // At this point, we are checking the symbolic representation, not relationships
                 // in BmaNetwork, mostly because not every level is going to be influenced by
                 // every other level. This automatically removes unused relationships.
                 // Sorting is just to make sure the iteration is deterministic.
 
-                let mut support = Vec::from_iter(bdd.support_set());
+                let unitary_update = update.mk_unitary_level(&value.bdd_ctx, *level);
+                let mut support = Vec::from_iter(unitary_update.support_set());
                 support.sort();
                 for source_var in &support {
                     ensure_regulation(&mut rg, (*source_var, *target_var))?;
@@ -451,9 +467,11 @@ impl SymbolicUpdateFunction {
 mod tests {
     use crate::BmaModel;
     use anyhow::anyhow;
-    use biodivine_lib_param_bn::BooleanNetwork;
     use biodivine_lib_param_bn::symbolic_async_graph::SymbolicAsyncGraph;
+    use biodivine_lib_param_bn::trap_spaces::{SymbolicSpaceContext, TrapSpaces};
+    use biodivine_lib_param_bn::{BooleanNetwork, Space};
     use std::cmp::max;
+    use std::collections::BTreeMap;
 
     #[test]
     fn basic_binarization_test() {
@@ -616,10 +634,10 @@ mod tests {
             .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
         let bn_str = r#"
-        v_1_a_b1 -| v_2_b_b1
-        v_2_b_b1 -> v_1_a_b1
-        $v_1_a_b1: v_2_b_b1
-        $v_2_b_b1: !v_1_a_b1
+        v1_a_b1 -| v2_b_b1
+        v2_b_b1 -> v1_a_b1
+        $v1_a_b1: v2_b_b1
+        $v2_b_b1: !v1_a_b1
     "#;
         let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
 
@@ -634,16 +652,377 @@ mod tests {
             .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
         let bn_str = r#"
-        v_1_a_b1 -| v_2_b_b1
-        v_1_a_b1 -> v_3_c_b1
-        v_2_b_b1 -> v_1_a_b1
-        v_2_b_b1 -> v_3_c_b1
-        v_3_c_b1 -> v_3_c_b1
-        $v_1_a_b1: v_2_b_b1
-        $v_2_b_b1: !v_1_a_b1
-        $v_3_c_b1: (v_1_a_b1 & v_2_b_b1 & v_3_c_b1)
+        v1_a_b1 -| v2_b_b1
+        v1_a_b1 -> v3_c_b1
+        v2_b_b1 -> v1_a_b1
+        v2_b_b1 -> v3_c_b1
+        v3_c_b1 -> v3_c_b1
+        $v1_a_b1: v2_b_b1
+        $v2_b_b1: !v1_a_b1
+        $v3_c_b1: (v1_a_b1 & v2_b_b1) & v3_c_b1
     "#;
         let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
         assert_eq!(result_bn.unwrap(), expected_bn);
+    }
+
+    fn get_traps(path: &str) -> (BooleanNetwork, Vec<Space>) {
+        let json_data = std::fs::read_to_string(path).unwrap();
+        let bma_model = BmaModel::from_json_string(json_data.as_str()).unwrap();
+        let network = BooleanNetwork::try_from(&bma_model).unwrap();
+
+        let ctx = SymbolicSpaceContext::new(&network);
+        let stg = SymbolicAsyncGraph::with_space_context(&network, &ctx).unwrap();
+        let all_spaces = ctx.mk_unit_colored_spaces(&stg);
+        let minimal = TrapSpaces::minimal_symbolic(&ctx, &stg, &all_spaces, None);
+        (network, minimal.spaces().iter().collect())
+    }
+
+    fn test_traps(path: &str, expected: Vec<BTreeMap<String, u32>>) {
+        let (network, spaces) = get_traps(path);
+        for space in &spaces {
+            println!(
+                "{:?}",
+                space
+                    .to_values()
+                    .into_iter()
+                    .map(|(a, b)| { (network.get_variable_name(a), b) })
+                    .collect::<Vec<_>>()
+            );
+
+            let mut space_map = BTreeMap::new();
+            for (v, b) in space.to_values() {
+                let full_name = network.get_variable_name(v).split("_").collect::<Vec<_>>();
+                let _id = full_name[0];
+                let name = full_name[1..(full_name.len() - 1)].join("_");
+                let level = full_name.last().unwrap()[1..].parse::<u32>().unwrap();
+
+                let level = if b { level } else { 0 };
+                if let Some(value) = space_map.get_mut(&name) {
+                    *value = max(*value, level);
+                } else {
+                    space_map.insert(name, level);
+                }
+            }
+
+            println!("{:?}", space_map);
+            assert!(expected.contains(&space_map));
+        }
+
+        assert_eq!(spaces.len(), expected.len());
+    }
+
+    #[test]
+    fn test_traps_activator_inhibitor() {
+        // A_id4	B_id7	C_id8	D_id5	E_id6	I_id2	O_id3
+        // [2]	[2]	[2]	[2]	[2]	[2]	[2]
+        test_traps(
+            "./models/json-export-from-tool/Activator-Inhibitor Oscillation.json",
+            vec![BTreeMap::from_iter([
+                ("A".to_string(), 2u32),
+                ("B".to_string(), 2u32),
+                ("C".to_string(), 2u32),
+                ("D".to_string(), 2u32),
+                ("E".to_string(), 2u32),
+                ("I".to_string(), 2u32),
+                ("O".to_string(), 2u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_cancer_signalling() {
+        let mut expected = BTreeMap::new();
+        let names = [
+            "AKT",
+            "Cetuximab",
+            "EGFR",
+            "EGFR_mutant",
+            "ERK",
+            "GROWTH",
+            "IGFR",
+            "INVASION",
+            "Idelalisib",
+            "Imidazothiazole",
+            "KRAS",
+            "KRAS_mutant",
+            "MDM2",
+            "MEK",
+            "PAK1",
+            "PI3K",
+            "PIP3",
+            "PTEN",
+            "PTEN_mutant",
+            "RAC1",
+            "RAF",
+            "Rapamycin",
+            "SURVIVAL",
+            "TOR",
+            "TP53",
+            "TP53_mutant",
+            "Trametinib",
+        ];
+        for n in names {
+            if n == "TP53" || n == "PTEN" {
+                expected.insert(n.to_string(), 1);
+            } else {
+                expected.insert(n.to_string(), 0);
+            }
+        }
+
+        test_traps(
+            "./models/json-export-from-tool/CancerSignalling.json",
+            vec![expected],
+        );
+    }
+
+    #[test]
+    fn test_traps_homeostasis() {
+        //A_id4	B_id5	I_id2	O_id3
+        //[4]	[9]	[4]	[2]
+        test_traps(
+            "./models/json-export-from-tool/Homeostasis.json",
+            vec![BTreeMap::from_iter([
+                ("A".to_string(), 4u32),
+                ("B".to_string(), 9u32),
+                ("I".to_string(), 4u32),
+                ("O".to_string(), 2u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_hyperbolic() {
+        //A_id4	B_id5	I_id2	O_id3
+        //[4]	[9]	[4]	[2]
+        test_traps(
+            "./models/json-export-from-tool/Hyperbolic.json",
+            vec![BTreeMap::from_iter([
+                ("A_a".to_string(), 0u32),
+                ("I_a".to_string(), 0u32),
+                ("O_a".to_string(), 0u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_leukaemia() {
+        let names = vec![
+            "Abi1_and_2",
+            "Akt",
+            "Apoptosis",
+            "Axin2",
+            "Bad",
+            "Bag",
+            "Bcl2L",
+            "BclXL",
+            "BcrAbl",
+            "Beta_Catenin",
+            "Bim_FasL",
+            "CEBPA",
+            "Cbl",
+            "Correct Differentiation",
+            "CrkL",
+            "EPOR",
+            "EPO",
+            "ERK",
+            "FLI-1",
+            "FoxO",
+            "Frizzled",
+            "GHR",
+            "GH",
+            "Growth Arrest",
+            "Gsk3B",
+            "HCK",
+            "HNRPK",
+            "IL3R",
+            "IL3",
+            "IL6R",
+            "IL6",
+            "Jak2",
+            "JunB",
+            "Jun",
+            "MEK",
+            "Mcl1L",
+            "NF_kB",
+            "PI3K",
+            "Pag_aka_Msp23",
+            "Proliferation",
+            "Raf",
+            "Ras",
+            "SMAD",
+            "SRC",
+            "STAT3",
+            "STAT5",
+            "Self Renewal Capacity",
+            "Sos",
+            "TCF",
+            "VEGFR2",
+            "VEGF",
+            "Wnt",
+            "cMyc",
+            "hnRNP_E2",
+        ];
+        let values = vec![
+            1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 1, 0, 1, 0, 1, 1, 0, 1, 2, 1, 1, 1, 0, 0, 0, 1, 1, 1,
+            1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0,
+        ];
+        let expected = BTreeMap::from_iter(names.iter().map(|it| it.to_string()).zip(values));
+
+        test_traps(
+            "./models/json-export-from-tool/Leukaemia.json",
+            vec![expected],
+        );
+    }
+
+    #[test]
+    fn test_traps_linear() {
+        test_traps(
+            "./models/json-export-from-tool/Linear.json",
+            vec![BTreeMap::from_iter([
+                ("A".to_string(), 2u32),
+                ("I".to_string(), 2u32),
+                ("O".to_string(), 2u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_mutual_inhibition() {
+        test_traps(
+            "./models/json-export-from-tool/Mutual Inhibition.json",
+            vec![
+                BTreeMap::from_iter([
+                    ("A".to_string(), 0u32),
+                    ("B_active".to_string(), 0u32),
+                    ("B_inactive".to_string(), 4u32),
+                    ("C".to_string(), 0u32),
+                    ("I".to_string(), 0u32),
+                    ("O".to_string(), 0u32),
+                ]),
+                BTreeMap::from_iter([
+                    ("A".to_string(), 0u32),
+                    ("B_active".to_string(), 4u32),
+                    ("B_inactive".to_string(), 0u32),
+                    ("C".to_string(), 0u32),
+                    ("I".to_string(), 0u32),
+                    ("O".to_string(), 0u32),
+                ]),
+            ],
+        );
+    }
+
+    #[test]
+    fn test_traps_oscillatory_negative_feedback() {
+        test_traps(
+            "./models/json-export-from-tool/Oscillatory negative feedback.json",
+            vec![BTreeMap::from_iter([
+                ("A_a".to_string(), 1u32),
+                ("B_a".to_string(), 1u32),
+                ("I_a".to_string(), 2u32),
+                ("O_a".to_string(), 1u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_perfect_adaptation() {
+        test_traps(
+            "./models/json-export-from-tool/Perfect Adaptation.json",
+            vec![BTreeMap::from_iter([
+                ("A".to_string(), 0u32),
+                ("B".to_string(), 0u32),
+                ("C".to_string(), 0u32),
+                ("I_a".to_string(), 0u32),
+                ("O_a".to_string(), 0u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_sigmoidal() {
+        test_traps(
+            "./models/json-export-from-tool/Sigmoidal.json",
+            vec![BTreeMap::from_iter([
+                ("A_a".to_string(), 0u32),
+                ("I_a".to_string(), 0u32),
+                ("O_a".to_string(), 0u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_substrate_depletion() {
+        let (network, spaces) =
+            get_traps("./models/json-export-from-tool/Substrate depletion oscillations.json");
+        assert_eq!(spaces.len(), 1);
+        let space = spaces.into_iter().next().unwrap();
+        let mut i = 0;
+        for (var, b) in space.to_values() {
+            let name = network.get_variable_name(var);
+            // Variable A, B and O oscillate across their full range.
+            assert!(!name.contains("A_"));
+            assert!(!name.contains("B_"));
+            assert!(!name.contains("O_"));
+            // `I` is fixed to 4/10.
+            if name.contains("I_") && b {
+                i += 1;
+            }
+        }
+        assert_eq!(i, 4);
+    }
+
+    #[test]
+    fn test_traps_toy_stable() {
+        test_traps(
+            "./models/json-export-from-tool/ToyModelStable.json",
+            vec![BTreeMap::from_iter([
+                ("a".to_string(), 0u32),
+                ("b".to_string(), 0u32),
+                ("c".to_string(), 0u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_toy_unstable() {
+        test_traps(
+            "./models/json-export-from-tool/ToyModelUnstable.json",
+            vec![BTreeMap::from_iter([
+                ("a".to_string(), 2u32),
+                ("b".to_string(), 2u32),
+                ("c".to_string(), 2u32),
+            ])],
+        );
+    }
+
+    // We don't test Metabolism because the result is too large.
+    // We don't test SkinModel and VPC because they contain variables with duplicate names.
+
+    #[test]
+    fn test_traps_e_coli() {
+        test_traps(
+            "./models/json-export-from-repo/E coli Tarfunc.json",
+            vec![BTreeMap::from_iter([
+                ("Aspartate".to_string(), 0u32),
+                ("CheA".to_string(), 2u32),
+                ("CheB".to_string(), 5u32),
+                ("CheR".to_string(), 1u32),
+                ("CheY".to_string(), 1u32),
+                ("Motor".to_string(), 1u32),
+                ("Nickel".to_string(), 0u32),
+                ("Tar".to_string(), 2u32),
+            ])],
+        );
+    }
+
+    #[test]
+    fn test_traps_two_var() {
+        test_traps(
+            "./models/json-export-from-repo/2var_unstable (1).json",
+            vec![
+                BTreeMap::from_iter([("X".to_string(), 1u32), ("Y".to_string(), 1u32)]),
+                BTreeMap::from_iter([("X".to_string(), 0u32), ("Y".to_string(), 0u32)]),
+            ],
+        );
     }
 }

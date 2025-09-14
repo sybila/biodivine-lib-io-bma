@@ -99,10 +99,6 @@ impl BmaNetwork {
             // For constant variables, the update function is built a bit differently, because
             // we technically allow them to be 0 even if that value is outside variable range.
 
-            if !regulators_map.is_empty() {
-                return Err(anyhow!("Constant variable cannot have regulators."));
-            }
-
             let const_level = target_var.min_level();
             let output = match function.as_constant() {
                 Some(value) => {
@@ -115,7 +111,10 @@ impl BmaNetwork {
                         return Err(anyhow!("Constant value does not match variable level."));
                     }
                 }
-                _ => return Err(anyhow!("Non-constant function in constant variable.")),
+                // I would consider this an invalid model, but BMA seems to think this is fine,
+                // so we will accept this as valid, even though validation will report it as
+                // an issue.
+                _ => const_level,
             };
 
             Ok(vec![(BTreeMap::new(), output)])
