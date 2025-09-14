@@ -450,6 +450,7 @@ impl SymbolicUpdateFunction {
 #[cfg(test)]
 mod tests {
     use crate::BmaModel;
+    use anyhow::anyhow;
     use biodivine_lib_param_bn::BooleanNetwork;
     use biodivine_lib_param_bn::symbolic_async_graph::SymbolicAsyncGraph;
     use std::cmp::max;
@@ -507,149 +508,142 @@ mod tests {
         }
     }
 
-    #[cfg(test)]
-    mod tests {
-        use crate::BmaModel;
-        use anyhow::anyhow;
-        use biodivine_lib_param_bn::BooleanNetwork;
+    /// Wrapper to get a simple BMA model for testing.
+    ///
+    /// The model has:
+    /// - two variables `(a=1, b=2)`
+    /// - two relationships `(a -| b, b -> a)`
+    /// - the following update functions: `(a: var(2), b: 1-var(a))`
+    ///
+    /// There is no layout or additional information in the model.
+    fn get_simple_test_model() -> BmaModel {
+        let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
+    <AnalysisInput ModelName="New Model">
+        <Variables>
+            <Variable Id="1">
+                <Name>a</Name>
+                <RangeFrom>0</RangeFrom>
+                <RangeTo>1</RangeTo>
+                <Function>var(2)</Function>
+            </Variable>
+            <Variable Id="2">
+                <Name>b</Name>
+                <RangeFrom>0</RangeFrom>
+                <RangeTo>1</RangeTo>
+                <Function>1-var(1)</Function>
+            </Variable>
+        </Variables>
+        <Relationships>
+            <Relationship Id="1">
+                <FromVariableId>1</FromVariableId>
+                <ToVariableId>2</ToVariableId>
+                <Type>Inhibitor</Type>
+            </Relationship>
+            <Relationship Id="2">
+                <FromVariableId>2</FromVariableId>
+                <ToVariableId>1</ToVariableId>
+                <Type>Activator</Type>
+            </Relationship>
+        </Relationships>
+    </AnalysisInput>"#;
+        BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
+    }
 
-        /// Wrapper to get a simple BMA model for testing.
-        ///
-        /// The model has:
-        /// - two variables `(a=1, b=2)`
-        /// - two relationships `(a -| b, b -> a)`
-        /// - the following update functions: `(a: var(2), b: 1-var(a))`
-        ///
-        /// There is no layout or additional information in the model.
-        fn get_simple_test_model() -> BmaModel {
-            let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
-        <AnalysisInput ModelName="New Model">
-            <Variables>
-                <Variable Id="1">
-                    <Name>a</Name>
-                    <RangeFrom>0</RangeFrom>
-                    <RangeTo>1</RangeTo>
-                    <Function>var(2)</Function>
-                </Variable>
-                <Variable Id="2">
-                    <Name>b</Name>
-                    <RangeFrom>0</RangeFrom>
-                    <RangeTo>1</RangeTo>
-                    <Function>1-var(1)</Function>
-                </Variable>
-            </Variables>
-            <Relationships>
-                <Relationship Id="1">
-                    <FromVariableId>1</FromVariableId>
-                    <ToVariableId>2</ToVariableId>
-                    <Type>Inhibitor</Type>
-                </Relationship>
-                <Relationship Id="2">
-                    <FromVariableId>2</FromVariableId>
-                    <ToVariableId>1</ToVariableId>
-                    <Type>Activator</Type>
-                </Relationship>
-            </Relationships>
-        </AnalysisInput>"#;
-            BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
-        }
+    /// Wrapper to get a little bit more complex BMA model for testing.
+    ///
+    /// The model has:
+    /// - three variables `(a=1, b=2, c=3)`
+    /// - five relationships `(a -| b, b -> a, a -> c, b -> c, c -> c)`
+    /// - the following update functions: `(a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))`
+    fn get_test_model() -> BmaModel {
+        let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
+    <AnalysisInput ModelName="New Model">
+        <Variables>
+            <Variable Id="1">
+                <Name>a</Name>
+                <RangeFrom>0</RangeFrom>
+                <RangeTo>1</RangeTo>
+                <Function>var(2)</Function>
+            </Variable>
+            <Variable Id="2">
+                <Name>b</Name>
+                <RangeFrom>0</RangeFrom>
+                <RangeTo>1</RangeTo>
+                <Function>1-var(1)</Function>
+            </Variable>
+            <Variable Id="3">
+                <Name>c</Name>
+                <RangeFrom>0</RangeFrom>
+                <RangeTo>1</RangeTo>
+                <Function>var(1) * var(2) * var(3)</Function>
+            </Variable>
+        </Variables>
+        <Relationships>
+            <Relationship Id="1">
+                <FromVariableId>1</FromVariableId>
+                <ToVariableId>2</ToVariableId>
+                <Type>Inhibitor</Type>
+            </Relationship>
+            <Relationship Id="2">
+                <FromVariableId>2</FromVariableId>
+                <ToVariableId>1</ToVariableId>
+                <Type>Activator</Type>
+            </Relationship>
+            <Relationship Id="3">
+                <FromVariableId>1</FromVariableId>
+                <ToVariableId>3</ToVariableId>
+                <Type>Activator</Type>
+            </Relationship>
+            <Relationship Id="4">
+                <FromVariableId>2</FromVariableId>
+                <ToVariableId>3</ToVariableId>
+                <Type>Activator</Type>
+            </Relationship>
+            <Relationship Id="5">
+                <FromVariableId>3</FromVariableId>
+                <ToVariableId>3</ToVariableId>
+                <Type>Activator</Type>
+            </Relationship>
+        </Relationships>
+    </AnalysisInput>"#;
+        BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
+    }
 
-        /// Wrapper to get a little bit more complex BMA model for testing.
-        ///
-        /// The model has:
-        /// - three variables `(a=1, b=2, c=3)`
-        /// - five relationships `(a -| b, b -> a, a -> c, b -> c, c -> c)`
-        /// - the following update functions: `(a: var(2), b: 1-var(a), c: var(1) * var(2) * var(3))`
-        fn get_test_model() -> BmaModel {
-            let model_str = r#"<?xml version="1.0" encoding="utf-8"?>
-        <AnalysisInput ModelName="New Model">
-            <Variables>
-                <Variable Id="1">
-                    <Name>a</Name>
-                    <RangeFrom>0</RangeFrom>
-                    <RangeTo>1</RangeTo>
-                    <Function>var(2)</Function>
-                </Variable>
-                <Variable Id="2">
-                    <Name>b</Name>
-                    <RangeFrom>0</RangeFrom>
-                    <RangeTo>1</RangeTo>
-                    <Function>1-var(1)</Function>
-                </Variable>
-                <Variable Id="3">
-                    <Name>c</Name>
-                    <RangeFrom>0</RangeFrom>
-                    <RangeTo>1</RangeTo>
-                    <Function>var(1) * var(2) * var(3)</Function>
-                </Variable>
-            </Variables>
-            <Relationships>
-                <Relationship Id="1">
-                    <FromVariableId>1</FromVariableId>
-                    <ToVariableId>2</ToVariableId>
-                    <Type>Inhibitor</Type>
-                </Relationship>
-                <Relationship Id="2">
-                    <FromVariableId>2</FromVariableId>
-                    <ToVariableId>1</ToVariableId>
-                    <Type>Activator</Type>
-                </Relationship>
-                <Relationship Id="3">
-                    <FromVariableId>1</FromVariableId>
-                    <ToVariableId>3</ToVariableId>
-                    <Type>Activator</Type>
-                </Relationship>
-                <Relationship Id="4">
-                    <FromVariableId>2</FromVariableId>
-                    <ToVariableId>3</ToVariableId>
-                    <Type>Activator</Type>
-                </Relationship>
-                <Relationship Id="5">
-                    <FromVariableId>3</FromVariableId>
-                    <ToVariableId>3</ToVariableId>
-                    <Type>Activator</Type>
-                </Relationship>
-            </Relationships>
-        </AnalysisInput>"#;
-            BmaModel::from_xml_string(model_str).expect("XML was not well-formatted")
-        }
+    #[test]
+    fn test_to_bn_simple() {
+        let bma_model = get_simple_test_model();
+        let result_bn = BooleanNetwork::try_from(&bma_model)
+            .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
-        #[test]
-        fn test_to_bn_simple() {
-            let bma_model = get_simple_test_model();
-            let result_bn = BooleanNetwork::try_from(&bma_model)
-                .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
+        let bn_str = r#"
+        v_1_a_b1 -| v_2_b_b1
+        v_2_b_b1 -> v_1_a_b1
+        $v_1_a_b1: v_2_b_b1
+        $v_2_b_b1: !v_1_a_b1
+    "#;
+        let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
 
-            let bn_str = r#"
-            v_1_a_b1 -| v_2_b_b1
-            v_2_b_b1 -> v_1_a_b1
-            $v_1_a_b1: v_2_b_b1
-            $v_2_b_b1: !v_1_a_b1
-        "#;
-            let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
+        assert!(result_bn.is_ok());
+        assert_eq!(result_bn.unwrap(), expected_bn);
+    }
 
-            assert!(result_bn.is_ok());
-            assert_eq!(result_bn.unwrap(), expected_bn);
-        }
+    #[test]
+    fn test_to_bn() {
+        let bma_model = get_test_model();
+        let result_bn = BooleanNetwork::try_from(&bma_model)
+            .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
 
-        #[test]
-        fn test_to_bn() {
-            let bma_model = get_test_model();
-            let result_bn = BooleanNetwork::try_from(&bma_model)
-                .and_then(|it| it.infer_valid_graph().map_err(|e| anyhow!(e)));
-
-            let bn_str = r#"
-            v_1_a_b1 -| v_2_b_b1
-            v_1_a_b1 -> v_3_c_b1
-            v_2_b_b1 -> v_1_a_b1
-            v_2_b_b1 -> v_3_c_b1
-            v_3_c_b1 -> v_3_c_b1
-            $v_1_a_b1: v_2_b_b1
-            $v_2_b_b1: !v_1_a_b1
-            $v_3_c_b1: (v_1_a_b1 & v_2_b_b1 & v_3_c_b1)
-        "#;
-            let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
-            assert_eq!(result_bn.unwrap(), expected_bn);
-        }
+        let bn_str = r#"
+        v_1_a_b1 -| v_2_b_b1
+        v_1_a_b1 -> v_3_c_b1
+        v_2_b_b1 -> v_1_a_b1
+        v_2_b_b1 -> v_3_c_b1
+        v_3_c_b1 -> v_3_c_b1
+        $v_1_a_b1: v_2_b_b1
+        $v_2_b_b1: !v_1_a_b1
+        $v_3_c_b1: (v_1_a_b1 & v_2_b_b1 & v_3_c_b1)
+    "#;
+        let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
+        assert_eq!(result_bn.unwrap(), expected_bn);
     }
 }
