@@ -18,15 +18,19 @@ use std::collections::HashMap;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "Model")]
 pub(crate) struct XmlBmaModel {
+    // Attributes must come before elements
+    #[serde(default, rename = "@Id", alias = "Id")]
+    pub id: String,
+    #[serde(default, rename = "@Name", alias = "Name", alias = "@ModelName")]
+    pub name: String,
+    #[serde(default, rename = "@BioCheckVersion", alias = "BioCheckVersion")]
+    pub biocheck_version: Option<String>,
+
     #[serde(default, rename = "Variables")]
     pub variables: XmlVariables,
     #[serde(default, rename = "Relationships")]
     pub relationships: XmlRelationships,
 
-    #[serde(default, rename = "@Id", alias = "Id")]
-    pub id: String,
-    #[serde(default, rename = "@Name", alias = "Name", alias = "@ModelName")]
-    pub name: String,
     #[serde(default, rename = "Description")]
     pub description: String,
     #[serde(default, rename = "Layout")]
@@ -34,8 +38,6 @@ pub(crate) struct XmlBmaModel {
     #[serde(default, rename = "Containers")]
     pub containers: Option<XmlContainers>,
 
-    #[serde(default, rename = "@BioCheckVersion", alias = "BioCheckVersion")]
-    pub biocheck_version: Option<String>,
     #[serde(default, rename = "CreatedDate")]
     pub created_date: Option<String>,
     #[serde(default, rename = "ModifiedDate")]

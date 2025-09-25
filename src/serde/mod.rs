@@ -6,6 +6,7 @@ pub(crate) mod quote_num;
 #[cfg(test)]
 mod tests {
     use crate::{BmaModel, Validation};
+    use biodivine_lib_param_bn::BooleanNetwork;
     use std::collections::HashMap;
 
     fn xml_model_error_count() -> HashMap<&'static str, usize> {
@@ -207,6 +208,36 @@ mod tests {
                 validate_model(path.as_str(), &model, &expected);
             }
         }
+    }
+
+    #[test]
+    fn aeon_to_xml() {
+        let network = BooleanNetwork::try_from_file("./models/test.aeon").unwrap();
+        let model = BmaModel::try_from(&network).unwrap();
+
+        let model2 = BmaModel::from_xml_string(model.to_xml_string().unwrap().as_str()).unwrap();
+        let network2 = BooleanNetwork::try_from(model2).unwrap();
+
+        assert_eq!(network.num_vars(), network2.num_vars());
+        assert_eq!(
+            network.as_graph().regulations().count(),
+            network2.as_graph().regulations().count()
+        );
+    }
+
+    #[test]
+    fn aeon_to_json() {
+        let network = BooleanNetwork::try_from_file("./models/test.aeon").unwrap();
+        let model = BmaModel::try_from(&network).unwrap();
+
+        let model2 = BmaModel::from_json_string(model.to_json_string().unwrap().as_str()).unwrap();
+        let network2 = BooleanNetwork::try_from(model2).unwrap();
+
+        assert_eq!(network.num_vars(), network2.num_vars());
+        assert_eq!(
+            network.as_graph().regulations().count(),
+            network2.as_graph().regulations().count()
+        );
     }
 
     fn validate_model(path: &str, model: &BmaModel, expected: &HashMap<&'static str, usize>) {
