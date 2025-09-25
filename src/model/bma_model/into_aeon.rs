@@ -659,7 +659,7 @@ mod tests {
         v3_c_b1 -> v3_c_b1
         $v1_a_b1: v2_b_b1
         $v2_b_b1: !v1_a_b1
-        $v3_c_b1: (v1_a_b1 & v2_b_b1) & v3_c_b1
+        $v3_c_b1: v1_a_b1 & v2_b_b1 & v3_c_b1
     "#;
         let expected_bn = BooleanNetwork::try_from(bn_str).unwrap();
         assert_eq!(result_bn.unwrap(), expected_bn);
