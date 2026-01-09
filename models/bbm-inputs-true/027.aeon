@@ -1,0 +1,55 @@
+v_Pan -> v_Nemo
+v_Wf -| v_Dlp
+v_Ttv -> v_Dlp
+v_Pygo -> v_Targets
+v_Gro -| v_Targets
+v_Nej -> v_Targets
+v_Hyx -> v_Targets
+v_Pan -> v_Targets
+v_Lgs -> v_Targets
+v_Dsh -| v_Axin
+v_APC -? v_Arm
+v_Hipk -> v_Arm
+v_Proteasome -? v_Arm
+v_Sgg -| v_Arm
+v_Axin -? v_Arm
+v_Slmb -? v_Arm
+v_CK1alpha -> v_Arm
+v_Dsh -| v_Sgg
+v_Wf -| v_Dally
+v_Ttv -> v_Dally
+v_Dsh -| v_APC
+v_Wg -> v_Arr
+v_Nkd -| v_Dsh
+v_Arr -> v_Dsh
+v_Fz -> v_Dsh
+v_Arm -> v_Pan
+v_Nemo -| v_Pan
+v_Wg -> v_Fz
+v_Boca -> v_Fz
+$v_APC: !v_Dsh
+$v_Arm: v_Hipk & v_CK1alpha & !(v_Sgg & v_APC & v_Proteasome & v_Axin & v_Slmb)
+$v_Arr: v_Wg
+$v_Axin: !v_Dsh
+$v_Boca: true
+$v_CK1alpha: true
+$v_Dally: v_Ttv & !v_Wf
+$v_Dlp: v_Ttv & !v_Wf
+$v_Dsh: (v_Arr & !v_Nkd) | (v_Fz & !v_Nkd)
+$v_Fz: v_Wg & v_Boca
+$v_Gro: true
+$v_Hipk: true
+$v_Hyx: true
+$v_Lgs: true
+$v_Nej: true
+$v_Nemo: v_Pan
+$v_Nkd: true
+$v_Pan: v_Arm & !v_Nemo
+$v_Proteasome: true
+$v_Pygo: true
+$v_Sgg: !v_Dsh
+$v_Slmb: true
+$v_Targets: v_Pygo & v_Nej & v_Hyx & v_Pan & v_Lgs & !v_Gro
+$v_Ttv: true
+$v_Wf: true
+$v_Wg: true
