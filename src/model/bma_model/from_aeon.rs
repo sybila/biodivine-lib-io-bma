@@ -5,7 +5,8 @@ use crate::{
 };
 use anyhow::anyhow;
 use biodivine_lib_param_bn::BooleanNetwork;
-use biodivine_lib_param_bn::Monotonicity::{Activation, Inhibition};
+use biodivine_lib_param_bn::Monotonicity::Inhibition;
+use rust_decimal::Decimal;
 use std::collections::HashMap;
 
 /// Construct a [`BmaModel`] instance from a provided [`BooleanNetwork`].
@@ -83,22 +84,17 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
                 r#type: RelationshipType::default(),
             };
 
-            // If the regulation is non-monotonic. We translate this as having
-            // both regulations.
-            let (add_activation, add_inhibition) = if let Some(m) = regulation.monotonicity {
-                (m == Activation, m == Inhibition)
-            } else {
-                (true, true)
-            };
-            if add_activation {
-                relationship.id = reg_id;
-                relationship.r#type = RelationshipType::Activator;
-                relationships.push(relationship.clone());
-                reg_id += 1;
-            }
+            // If the regulation is non-monotonic. We translate this as having just activation.
+            // This is not perfect but has a lower chance of completely breaking BMA.
+            let add_inhibition = regulation.monotonicity == Some(Inhibition);
             if add_inhibition {
                 relationship.id = reg_id;
                 relationship.r#type = RelationshipType::Inhibitor;
+                relationships.push(relationship.clone());
+                reg_id += 1;
+            } else {
+                relationship.id = reg_id;
+                relationship.r#type = RelationshipType::Activator;
                 relationships.push(relationship.clone());
                 reg_id += 1;
             }
@@ -112,10 +108,19 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
         // each variable gets default layout settings
         let default_container = BmaLayoutContainer::new(u32::default(), "Default");
 
-        let layout_vars = variables
+        let mut layout_vars = variables
             .iter()
             .map(|v| BmaLayoutVariable::new(v.id, v.name.as_str(), Some(default_container.id)))
             .collect::<Vec<_>>();
+
+        // Models will not import into BMA unless they have non-zero layout positions.
+        // This is by no means a nice "layout", but it should at least allow working with the model.
+        let side = layout_vars.len().isqrt();
+        for (i, var) in layout_vars.iter_mut().enumerate() {
+            let x = i / side;
+            let y = i % side;
+            var.position = (Decimal::from(75 * (x + 1)), Decimal::from(75 * (y + 1)));
+        }
 
         let model = BmaNetwork {
             name: String::default(),
@@ -134,9 +139,6 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
         Ok(BmaModel::new(model, layout, HashMap::new()))
     }
 }
-
-#[cfg(test)]
-extern crate test_generator;
 
 #[cfg(test)]
 mod tests {
@@ -221,19 +223,13 @@ mod tests {
 
         // only check relationships here
         // relationships go alphabetically, sorted by regulator and then target
-        assert_eq!(bma_model.network.relationships.len(), 5);
+        assert_eq!(bma_model.network.relationships.len(), 3);
         let rel_a_activates_a = &bma_model.network.relationships[0];
-        let rel_a_inhibits_a = &bma_model.network.relationships[1];
-        let rel_a_activates_b = &bma_model.network.relationships[2];
-        let rel_b_activates_a = &bma_model.network.relationships[3];
-        let rel_b_inhibits_a = &bma_model.network.relationships[4];
+        let rel_a_activates_b = &bma_model.network.relationships[1];
+        let rel_b_activates_a = &bma_model.network.relationships[2];
         assert_eq!(rel_a_activates_a.from_variable, 0); // A -> A
         assert_eq!(rel_a_activates_a.to_variable, 0);
         assert_eq!(rel_a_activates_a.r#type, RelationshipType::Activator);
-
-        assert_eq!(rel_a_inhibits_a.from_variable, 0); // A -| A
-        assert_eq!(rel_a_inhibits_a.to_variable, 0);
-        assert_eq!(rel_a_inhibits_a.r#type, RelationshipType::Inhibitor);
 
         assert_eq!(rel_a_activates_b.from_variable, 0); // A -> B
         assert_eq!(rel_a_activates_b.to_variable, 1);
@@ -242,10 +238,6 @@ mod tests {
         assert_eq!(rel_b_activates_a.from_variable, 1); // B -> A
         assert_eq!(rel_b_activates_a.to_variable, 0);
         assert_eq!(rel_b_activates_a.r#type, RelationshipType::Activator);
-
-        assert_eq!(rel_b_inhibits_a.from_variable, 1); // B -| A
-        assert_eq!(rel_b_inhibits_a.to_variable, 0);
-        assert_eq!(rel_b_inhibits_a.r#type, RelationshipType::Inhibitor);
     }
 
     #[test]
