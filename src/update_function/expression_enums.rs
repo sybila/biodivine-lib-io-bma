@@ -60,6 +60,7 @@ pub enum UnaryFn {
     Ceil,
     Floor,
     Abs,
+    Neg, // Unary minus operator (negation)
 }
 
 impl fmt::Display for UnaryFn {
@@ -68,6 +69,7 @@ impl fmt::Display for UnaryFn {
             UnaryFn::Ceil => write!(f, "ceil"),
             UnaryFn::Floor => write!(f, "floor"),
             UnaryFn::Abs => write!(f, "abs"),
+            UnaryFn::Neg => write!(f, "-"),
         }
     }
 }

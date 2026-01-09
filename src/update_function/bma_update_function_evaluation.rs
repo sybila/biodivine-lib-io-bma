@@ -286,6 +286,7 @@ impl BmaUpdateFunction {
                     UnaryFn::Abs => child_value.abs(),
                     UnaryFn::Ceil => child_value.ceil(),
                     UnaryFn::Floor => child_value.floor(),
+                    UnaryFn::Neg => -child_value,
                 };
                 Ok(res)
             }

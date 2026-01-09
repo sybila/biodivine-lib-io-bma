@@ -131,100 +131,77 @@ fn try_tokenize_recursive(
                 // Ignore all whitespace.
                 position += 1;
             }
-            c if ['+', '-', '*', '/'].contains(&c) => {
-                let op = ArithOp::try_from(c).unwrap();
+            '-' => {
+                // Check if this is a unary minus or binary minus
+                // Unary minus occurs at start of expression, or after a binary operator
+                // After function calls (Aggregate/Unary) or atomic values, it should be binary
+                let is_unary = result.is_empty()
+                    || matches!(
+                        result.last().map(|t| &t.data),
+                        Some(BmaTokenData::Binary(_))
+                    );
+
+                if is_unary {
+                    // Handle unary minus: skip the '-' and process the following atomic expression
+                    let unary_minus_pos = position;
+                    position += 1;
+                    // Skip whitespace after the minus
+                    position = next_non_whitespace_character(input, position);
+
+                    if position >= input.len() {
+                        let message = "Expected expression after unary minus `-`";
+                        return Err(ParserError::at(unary_minus_pos, message.to_string()));
+                    }
+
+                    // Parse the following atomic expression (number, variable, function, or parenthesized group)
+                    let following_expr_start = position;
+                    let following_token =
+                        parse_atomic_expression(input, &mut position, variable_id_hint)?;
+
+                    // Wrap the following token in a TokenList (to match the pattern of other unary functions)
+                    // and then wrap that in a Unary(Neg, ...) token
+                    let wrapped_arg =
+                        BmaTokenData::TokenList(vec![following_token]).at(following_expr_start);
+                    result.push(
+                        BmaTokenData::Unary(UnaryFn::Neg, Box::new(wrapped_arg))
+                            .at(unary_minus_pos),
+                    );
+                } else {
+                    // Handle binary minus
+                    let op = ArithOp::try_from('-').unwrap();
+                    result.push(BmaTokenData::Binary(op).at(position));
+                    position += 1;
+                }
+            }
+            '+' => {
+                let op = ArithOp::try_from('+').unwrap();
+                result.push(BmaTokenData::Binary(op).at(position));
+                position += 1;
+            }
+            '*' => {
+                let op = ArithOp::try_from('*').unwrap();
+                result.push(BmaTokenData::Binary(op).at(position));
+                position += 1;
+            }
+            '/' => {
+                let op = ArithOp::try_from('/').unwrap();
                 result.push(BmaTokenData::Binary(op).at(position));
                 position += 1;
             }
             '(' => {
-                // Start a nested token group.
-                position += 1;
-                let (group, length) =
-                    try_tokenize_recursive(input, position, false, true, variable_id_hint)?;
-                result.push(BmaTokenData::TokenList(group).at(position));
-                position += length;
+                // Parenthesized expression
+                let token = parse_atomic_expression(input, &mut position, variable_id_hint)?;
+                result.push(token);
             }
-            // Parse integer constants
             '0'..='9' => {
-                let number = collect_number_str(input, position);
-                match number.parse::<i32>() {
-                    Ok(constant) => {
-                        result.push(BmaTokenData::Atomic(Literal::Const(constant)).at(position));
-                        position += number.len();
-                    }
-                    Err(e) => {
-                        let message = format!("Invalid number `{number}`: {e}");
-                        return Err(ParserError::at(position, message));
-                    }
-                }
+                // Number literal
+                let token = parse_atomic_expression(input, &mut position, variable_id_hint)?;
+                result.push(token);
             }
-            // Parse  var literals and functions
             c if is_valid_start_name(c) => {
-                // Used to assign starting position to complex items like function calls.
-                let identifier_start = position;
-                let id = collect_identifier_str(input, position);
-                position += id.len();
-                match id.as_str() {
-                    id if ["min", "max", "avg"].contains(&id) => {
-                        let (args, length) =
-                            collect_function_arguments(input, position, variable_id_hint)?;
-                        // Must not fail due to the test above.
-                        let op = AggregateFn::try_from(id).unwrap();
-                        if args.is_empty() {
-                            let message = format!("Function `{id}` expects at least one argument");
-                            return Err(ParserError::at(position, message));
-                        }
-                        result.push(BmaTokenData::Aggregate(op, args).at(identifier_start));
-                        position += length;
-                    }
-                    id if ["abs", "ceil", "floor"].contains(&id) => {
-                        let (args, length) =
-                            collect_function_arguments(input, position, variable_id_hint)?;
-                        if args.len() != 1 {
-                            let message = format!(
-                                "Function `{}` expects exactly one argument; found `{}`",
-                                id,
-                                args.len()
-                            );
-                            return Err(ParserError::at(position, message));
-                        }
-                        // Must not fail due to the test above.
-                        let op = UnaryFn::try_from(id).unwrap();
-                        let arg = args.into_iter().next().unwrap();
-                        result.push(BmaTokenData::Unary(op, Box::new(arg)).at(identifier_start));
-                        position += length;
-                    }
-                    "var" => {
-                        let (identifier, length) = collect_variable_identifier(input, position)?;
-                        let var_id = if let Ok(var_id) = identifier.parse::<u32>() {
-                            var_id
-                        } else {
-                            let matching_vars = variable_id_hint
-                                .iter()
-                                .filter(|(_id, name)| name.as_str() == identifier.as_str())
-                                .map(|(id, _)| *id)
-                                .collect::<BTreeSet<_>>();
-                            if matching_vars.is_empty() {
-                                let message = format!("`{identifier}` is not a known regulator");
-                                return Err(ParserError::at(position, message));
-                            } else if matching_vars.len() > 1 {
-                                let message = format!(
-                                    "`{identifier}` resolves to multiple regulator IDs: `{matching_vars:?}`"
-                                );
-                                return Err(ParserError::at(position, message));
-                            }
-                            debug_assert_eq!(matching_vars.len(), 1);
-                            matching_vars.into_iter().next().unwrap()
-                        };
-                        result
-                            .push(BmaTokenData::Atomic(Literal::Var(var_id)).at(identifier_start));
-                        position += length;
-                    }
-                    id => {
-                        let message = format!("`{id}` is not a recognized function or variable");
-                        return Err(ParserError::at(identifier_start, message));
-                    }
-                }
+                // Variable or function call
+                let token = parse_atomic_expression(input, &mut position, variable_id_hint)?;
+                result.push(token);
             }
             c => {
                 // Any other character is unexpected at this point.
@@ -246,6 +223,116 @@ fn try_tokenize_recursive(
     }
 
     Ok((result, position - start_at))
+}
+
+/// Parse a single atomic expression (number, variable, function, or parenthesized group)
+/// starting at the given position. Returns the token and advances the position.
+fn parse_atomic_expression(
+    input: &[char],
+    position: &mut usize,
+    variable_id_hint: &[(u32, String)],
+) -> Result<BmaToken, ParserError> {
+    let start_pos = *position;
+
+    if *position >= input.len() {
+        let message = "Unexpected end of input";
+        return Err(ParserError::at(*position, message.to_string()));
+    }
+
+    match input[*position] {
+        '(' => {
+            // Parenthesized expression
+            *position += 1;
+            let (group, length) =
+                try_tokenize_recursive(input, *position, false, true, variable_id_hint)?;
+            let token = BmaTokenData::TokenList(group).at(*position);
+            *position += length;
+            Ok(token)
+        }
+        '0'..='9' => {
+            // Number literal
+            let number = collect_number_str(input, *position);
+            match number.parse::<i32>() {
+                Ok(constant) => {
+                    let token = BmaTokenData::Atomic(Literal::Const(constant)).at(*position);
+                    *position += number.len();
+                    Ok(token)
+                }
+                Err(e) => {
+                    let message = format!("Invalid number `{number}`: {e}");
+                    Err(ParserError::at(*position, message))
+                }
+            }
+        }
+        c if is_valid_start_name(c) => {
+            // Variable or function call
+            let identifier_start = *position;
+            let id = collect_identifier_str(input, *position);
+            *position += id.len();
+            match id.as_str() {
+                "var" => {
+                    let (identifier, length) = collect_variable_identifier(input, *position)?;
+                    let var_id = if let Ok(var_id) = identifier.parse::<u32>() {
+                        var_id
+                    } else {
+                        let matching_vars = variable_id_hint
+                            .iter()
+                            .filter(|(_id, name)| name.as_str() == identifier.as_str())
+                            .map(|(id, _)| *id)
+                            .collect::<BTreeSet<_>>();
+                        if matching_vars.is_empty() {
+                            let message = format!("`{identifier}` is not a known regulator");
+                            return Err(ParserError::at(*position, message));
+                        } else if matching_vars.len() > 1 {
+                            let message = format!(
+                                "`{identifier}` resolves to multiple regulator IDs: `{matching_vars:?}`"
+                            );
+                            return Err(ParserError::at(*position, message));
+                        }
+                        debug_assert_eq!(matching_vars.len(), 1);
+                        matching_vars.into_iter().next().unwrap()
+                    };
+                    *position += length;
+                    Ok(BmaTokenData::Atomic(Literal::Var(var_id)).at(identifier_start))
+                }
+                id if ["min", "max", "avg"].contains(&id) => {
+                    let (args, length) =
+                        collect_function_arguments(input, *position, variable_id_hint)?;
+                    let op = AggregateFn::try_from(id).unwrap();
+                    if args.is_empty() {
+                        let message = format!("Function `{id}` expects at least one argument");
+                        return Err(ParserError::at(*position, message));
+                    }
+                    *position += length;
+                    Ok(BmaTokenData::Aggregate(op, args).at(identifier_start))
+                }
+                id if ["abs", "ceil", "floor"].contains(&id) => {
+                    let (args, length) =
+                        collect_function_arguments(input, *position, variable_id_hint)?;
+                    if args.len() != 1 {
+                        let message = format!(
+                            "Function `{}` expects exactly one argument; found `{}`",
+                            id,
+                            args.len()
+                        );
+                        return Err(ParserError::at(*position, message));
+                    }
+                    let op = UnaryFn::try_from(id).unwrap();
+                    let arg = args.into_iter().next().unwrap();
+                    *position += length;
+                    Ok(BmaTokenData::Unary(op, Box::new(arg)).at(identifier_start))
+                }
+                id => {
+                    let message = format!("`{id}` is not a recognized function or variable");
+                    Err(ParserError::at(identifier_start, message))
+                }
+            }
+        }
+        c => {
+            let message = format!("Unexpected character `{c}`");
+            Err(ParserError::at(start_pos, message))
+        }
+    }
 }
 
 /// Check all whitespaces at the front of the iterator.

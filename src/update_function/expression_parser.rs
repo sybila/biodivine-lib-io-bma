@@ -7,7 +7,7 @@ use BmaTokenData::{Aggregate, Atomic, Binary, TokenList, Unary};
 /// Parse an BMA update function formula string representation into an actual expression tree.
 /// Basically a wrapper for tokenize+parse (used often for testing/debug purposes).
 ///
-/// Arg `variables` is a map of variable IDs to their names. It is needed because there are
+/// Arg `variables` is a map of variable IDs to their names. It is necessary because there are
 /// some weird format differences between different variants, and a variable can be referenced
 /// by either its ID or its name. We convert everything to IDs for easier processing.
 pub fn parse_bma_formula(
@@ -374,5 +374,196 @@ mod tests {
             result.message,
             "Found nothing at the left-hand-side of operator `+`"
         );
+    }
+
+    #[test]
+    fn test_unary_minus_simple_constant() {
+        // Test simple negative constant: -5
+        let input = "-5";
+        let result = parse_bma_formula(input, &[]);
+        let expected =
+            BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(5));
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_in_expression() {
+        // Test negative constant in arithmetic expression: 3 + -5
+        let input = "3 + -5";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Plus,
+            &BmaUpdateFunction::mk_constant(3),
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(5)),
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test precedence: -5 * 3 should be (-5) * 3, not -(5 * 3)
+        let input = "-5 * 3";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Mult,
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(5)),
+            &BmaUpdateFunction::mk_constant(3),
+        );
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_in_function_call() {
+        // Test negative constant as function argument: abs(-10)
+        let input = "abs(-10)";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_unary(
+            UnaryFn::Abs,
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(10)),
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test negative constant in parenthesized expression: (-5)
+        let input = "(-5)";
+        let result = parse_bma_formula(input, &[]);
+        let expected =
+            BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(5));
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_with_variable() {
+        // Test unary minus with variable: -var(42)
+        let vars = vec![(42u32, "x".to_string())];
+        let input = "-var(42)";
+        let result = parse_bma_formula(input, &vars);
+        let expected =
+            BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_variable(42));
+        assert_eq!(result, Ok(expected));
+
+        // Test unary minus with variable in expression: 5 + -var(42)
+        let input = "5 + -var(42)";
+        let result = parse_bma_formula(input, &vars);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Plus,
+            &BmaUpdateFunction::mk_constant(5),
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_variable(42)),
+        );
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_after_binary_operator() {
+        // Test unary minus after binary minus: 3 - -5
+        let input = "3 - -5";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Minus,
+            &BmaUpdateFunction::mk_constant(3),
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(5)),
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test unary minus after multiplication: 2 * -3
+        let input = "2 * -3";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Mult,
+            &BmaUpdateFunction::mk_constant(2),
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(3)),
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test unary minus after division: 10 / -2
+        let input = "10 / -2";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Div,
+            &BmaUpdateFunction::mk_constant(10),
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(2)),
+        );
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_in_aggregate_functions() {
+        // Test unary minus in aggregate function arguments: max(-1, -2, 3)
+        let input = "max(-1, -2, 3)";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_aggregation(
+            AggregateFn::Max,
+            &[
+                BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(1)),
+                BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(2)),
+                BmaUpdateFunction::mk_constant(3),
+            ],
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test unary minus in min function: min(5, -3)
+        let input = "min(5, -3)";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_aggregation(
+            AggregateFn::Min,
+            &[
+                BmaUpdateFunction::mk_constant(5),
+                BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(3)),
+            ],
+        );
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_before_function_call() {
+        // Test unary minus before aggregate function: -max(1, 2)
+        let input = "-max(1, 2)";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_unary(
+            UnaryFn::Neg,
+            &BmaUpdateFunction::mk_aggregation(
+                AggregateFn::Max,
+                &[
+                    BmaUpdateFunction::mk_constant(1),
+                    BmaUpdateFunction::mk_constant(2),
+                ],
+            ),
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test unary minus before unary function: -abs(5)
+        let input = "-abs(5)";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_unary(
+            UnaryFn::Neg,
+            &BmaUpdateFunction::mk_unary(UnaryFn::Abs, &BmaUpdateFunction::mk_constant(5)),
+        );
+        assert_eq!(result, Ok(expected));
+    }
+
+    #[test]
+    fn test_unary_minus_with_complex_expressions() {
+        // Test unary minus with parenthesized expression: -(3 + 2)
+        let input = "-(3 + 2)";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_unary(
+            UnaryFn::Neg,
+            &BmaUpdateFunction::mk_arithmetic(
+                ArithOp::Plus,
+                &BmaUpdateFunction::mk_constant(3),
+                &BmaUpdateFunction::mk_constant(2),
+            ),
+        );
+        assert_eq!(result, Ok(expected));
+
+        // Test a complex expression with multiple unary minuses: 3 + -5 - -2
+        let input = "3 + -5 - -2";
+        let result = parse_bma_formula(input, &[]);
+        let expected = BmaUpdateFunction::mk_arithmetic(
+            ArithOp::Minus,
+            &BmaUpdateFunction::mk_arithmetic(
+                ArithOp::Plus,
+                &BmaUpdateFunction::mk_constant(3),
+                &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(5)),
+            ),
+            &BmaUpdateFunction::mk_unary(UnaryFn::Neg, &BmaUpdateFunction::mk_constant(2)),
+        );
+        assert_eq!(result, Ok(expected));
     }
 }
