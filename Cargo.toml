@@ -24,14 +24,25 @@ path = "src/bin/load_json.rs"
 name = "load-xml"
 path = "src/bin/load_xml.rs"
 
+[[bin]]
+name = "aeon_to_bma"
+path = "src/bin/aeon_to_bma.rs"
+
+[[bin]]
+name = "bma_to_aeon"
+path = "src/bin/bma_to_aeon.rs"
+
 [dependencies]
 biodivine-lib-bdd = ">=0.6.2, <1.0.0"
-biodivine-lib-param-bn = ">=0.6.2, <1.0.0"
+biodivine-lib-param-bn = ">=0.7.2, <1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "3.12.0"
+serde_with = "3.16"
 serde-xml-rs = "0.8"
 num-traits = "0.2"
 thiserror = "2.0"
 anyhow = "1.0"
 rust_decimal = { version = "1.37", features = ["macros"] }
+
+[dev-dependencies]
+test-generator = "0.3"
