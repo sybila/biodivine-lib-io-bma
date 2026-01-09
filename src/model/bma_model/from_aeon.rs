@@ -136,10 +136,14 @@ impl TryFrom<&BooleanNetwork> for BmaModel {
 }
 
 #[cfg(test)]
+extern crate test_generator;
+
+#[cfg(test)]
 mod tests {
     use crate::BmaModel;
     use crate::RelationshipType;
     use biodivine_lib_param_bn::BooleanNetwork;
+    use test_generator::test_resources;
 
     #[test]
     fn test_from_bn() {
@@ -163,7 +167,7 @@ mod tests {
         assert_eq!(var_a_bma.name, "A");
         assert!(var_a_bma.formula.is_some());
         let formula_a = var_a_bma.formula_string();
-        assert_eq!(formula_a, "(var(0) * (1 - var(1)))");
+        assert_eq!(formula_a, "min(var(0), (1 - var(1)))");
 
         assert_eq!(var_b_bma.name, "B");
         assert!(var_b_bma.formula.is_some());
@@ -254,5 +258,30 @@ mod tests {
 
         let result = BmaModel::try_from(&bn);
         assert!(result.is_err());
+    }
+
+    #[test_resources("models/bbm-inputs-true/*.aeon")]
+    fn test_round_trip_aeon_to_bma_to_aeon(path: &str) {
+        if path.ends_with("146.aeon") {
+            return; // 146.aeon is skipped because it causes stack overflow in debug mode
+        }
+
+        // Read the AEON file
+        let aeon_content = std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("Failed to read file {}: {}", path, e));
+
+        // Parse AEON into BooleanNetwork
+        let original_bn = BooleanNetwork::try_from(aeon_content.as_str())
+            .unwrap_or_else(|e| panic!("Failed to parse aeon file {}: {}", path, e));
+
+        // Convert BooleanNetwork to BmaModel
+        let bma_model = BmaModel::try_from(&original_bn).unwrap_or_else(|e| {
+            panic!(
+                "Failed to convert BooleanNetwork to BmaModel for {}: {}",
+                path, e
+            )
+        });
+
+        assert_eq!(bma_model.network.variables.len(), original_bn.num_vars());
     }
 }

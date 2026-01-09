@@ -1,6 +1,7 @@
+use crate::update_function::AggregateFn::{Max, Min};
 use crate::update_function::BmaUpdateFunction;
 use crate::update_function::expression_enums::ArithOp;
-use ArithOp::{Minus, Mult, Plus};
+use ArithOp::Minus;
 use anyhow::anyhow;
 use biodivine_lib_param_bn::{BinaryOp, FnUpdate};
 
@@ -26,13 +27,16 @@ impl BmaUpdateFunction {
             return Err(anyhow!("Found unsupported parameters {parameters:?}"));
         }
 
-        Ok(Self::try_from_fn_update_rec(fn_update))
+        Ok(Self::try_from_fn_update_rec(
+            &fn_update.to_and_or_normal_form(),
+        ))
     }
 
     /// Recursively converts the [`FnUpdate`] Boolean formula into a corresponding [`BmaFnUpdate`]
     /// real-number expression.
     ///
-    /// Precondition: The `fn_update` object cannot contain parameters.
+    /// Precondition: The `fn_update` object cannot contain parameters and must be AND-OR
+    /// normalized.
     pub(crate) fn try_from_fn_update_rec(fn_update: &FnUpdate) -> BmaUpdateFunction {
         match fn_update {
             FnUpdate::Const(val) => BmaUpdateFunction::mk_constant(i32::from(*val)),
@@ -51,43 +55,33 @@ impl BmaUpdateFunction {
                 let left_expr = Self::try_from_fn_update_rec(left);
                 let right_expr = Self::try_from_fn_update_rec(right);
 
+                /*
+                   In some sense, a slightly better translation system would be the following:
+                       - A && B to A * B
+                       - A || B to A + B - A * B
+                       - A ^ B to A + B - 2 * (A * B)
+                       - A <-> B to 1 - (A ^ B)
+                       - A -> B to 1 - A + A * B
+
+                    However, this creates excessive duplication of expressions, which
+                    then bloats complicated models significantly. As such, we are currently
+                    relying on the more common min/max translation of AND/OR operators.
+                */
+
                 match op {
-                    // AND: map A && B to A * B
+                    // AND: map A && B to min(A, B)
                     BinaryOp::And => {
-                        BmaUpdateFunction::mk_arithmetic(Mult, &left_expr, &right_expr)
+                        BmaUpdateFunction::mk_aggregation(Min, &[left_expr, right_expr])
                     }
-                    // OR: map A || B to A + B - A * B
+                    // OR: map A || B to max(A, B)
                     BinaryOp::Or => {
-                        let sum_expr =
-                            BmaUpdateFunction::mk_arithmetic(Plus, &left_expr, &right_expr);
-                        let prod_expr =
-                            BmaUpdateFunction::mk_arithmetic(Mult, &left_expr, &right_expr);
-                        BmaUpdateFunction::mk_arithmetic(Minus, &sum_expr, &prod_expr)
+                        BmaUpdateFunction::mk_aggregation(Max, &[left_expr, right_expr])
                     }
-                    // XOR: map A ^ B to A + B - 2 * (A * B)
-                    BinaryOp::Xor => {
-                        let sum_expr =
-                            BmaUpdateFunction::mk_arithmetic(Plus, &left_expr, &right_expr);
-                        let prod_expr =
-                            BmaUpdateFunction::mk_arithmetic(Mult, &left_expr, &right_expr);
-                        let two = BmaUpdateFunction::mk_constant(2);
-                        let two_prod_expr =
-                            BmaUpdateFunction::mk_arithmetic(Mult, &two, &prod_expr);
-                        BmaUpdateFunction::mk_arithmetic(Minus, &sum_expr, &two_prod_expr)
-                    }
-                    // IFF: map A <-> B to 1 - (A ^ B)
-                    BinaryOp::Iff => {
-                        // This is not very efficient, but IFF is a very rare operator...
-                        let xor = FnUpdate::Binary(BinaryOp::Xor, left.clone(), right.clone());
-                        BmaUpdateFunction::try_from_fn_update_rec(&FnUpdate::mk_not(xor))
-                    }
-                    // IMP: map A -> B to 1 - A + A * B
-                    BinaryOp::Imp => {
-                        let not_a = FnUpdate::Not(left.clone());
-                        let not_left_expr = BmaUpdateFunction::try_from_fn_update_rec(&not_a);
-                        let prod_expr =
-                            BmaUpdateFunction::mk_arithmetic(Mult, &left_expr, &right_expr);
-                        BmaUpdateFunction::mk_arithmetic(Plus, &not_left_expr, &prod_expr)
+                    // XOR: map A ^ B to min(max(A, B), max(1 - A, 1 - B))
+                    BinaryOp::Xor | BinaryOp::Iff | BinaryOp::Imp => {
+                        panic!(
+                            "Precondition violated: `FnUpdate` cannot contain xor/iff/imp operators."
+                        )
                     }
                 }
             }
