@@ -743,7 +743,7 @@ mod tests {
             vec![CannotBuildFunctionTable {
                 id: 0,
                 expression: "(1 / 0)".to_string(),
-                error: "Division by zero".to_string(),
+                error: "Cannot evaluate (1 / 0) in {}: Division by zero".to_string(),
             },]
         );
     }

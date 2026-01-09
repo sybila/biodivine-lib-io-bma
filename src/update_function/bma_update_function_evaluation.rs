@@ -184,7 +184,10 @@ impl BmaVariable {
                 normalized_valuation.insert(*source_id, normalized_level);
             }
 
-            let raw_result = function.evaluate_raw(&normalized_valuation)?;
+            let raw_result = match function.evaluate_raw(&normalized_valuation) {
+                Ok(result) => result,
+                Err(e) => return Err(anyhow!("Cannot evaluate {function} in {valuation:?}: {e}")),
+            };
 
             table.push((valuation, self.normalize_output_level(raw_result)));
         }
